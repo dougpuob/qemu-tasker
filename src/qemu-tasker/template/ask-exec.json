@@ -1,0 +1,10 @@
+{
+  "request": {
+	"command" : "exec",
+	"timestamp": "",
+	"data" : {
+		"taskid": 0,
+		"runcmd" : ""
+	}
+  }
+}

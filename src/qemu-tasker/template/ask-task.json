@@ -1,0 +1,29 @@
+{
+	"request": {
+	  "command": "task",
+	  "timestamp": "",
+	  "config": {
+		"longlife": 10,
+		"qemu": {
+		  "prog": "qemu-system-x86_64",
+		  "args": [
+			"-m",
+			"4G",
+			"-smp",
+			"4",
+			"-accel",
+			"kvm",
+			"-usb",
+			"-device",
+			"usb-tablet",
+			"-drive",
+			"file=/home/dougpuob/workspace/qemu-runner/windows-10-20h2.qcow2,format=qcow2,snapshot=on"
+		  ]
+		},
+		"ssh": {
+		  "username": "dougpuob",
+		  "password": "dougpuob"
+		}
+	  }
+	}
+  }

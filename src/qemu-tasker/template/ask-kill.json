@@ -1,0 +1,9 @@
+{
+  "request": {
+	"command" : "kill",
+	"timestamp": "",
+	"data" : {
+		"taskid": 0
+	}
+  }
+}

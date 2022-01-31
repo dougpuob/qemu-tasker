@@ -1,0 +1,10 @@
+{
+  "response": {
+	"command" : "kill",
+	"timestamp" : ""
+	"data" : {
+		"taskid" : 0,
+		"result" : "success"
+	}
+  }
+}

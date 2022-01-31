@@ -1,0 +1,14 @@
+{
+  "request": {
+	"command" : "info",
+	"timestamp": "",
+	"data" : {
+		"taskid": 0,
+		"active" : true,
+		"time" : {
+			"started" : "",
+			"remaining" : ""
+		}
+	}
+  }
+}
