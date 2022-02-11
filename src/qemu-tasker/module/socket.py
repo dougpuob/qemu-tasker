@@ -128,16 +128,21 @@ class server:
     def dispatch_command(self, taskid, cmd):
         for qemu_inst in self.qemu_inst_list:
             if qemu_inst.task_info.get_taskid() == taskid:
+                matched = True
                 if cmd.kind == command.command_kind.Exec:
                     err_lines, msg_lines = qemu_inst.exec_on_guest(cmd)
-                    print(err_lines)
-                    print(msg_lines)
                     return err_lines, msg_lines
+                elif cmd.kind == command.command_kind.Qmp:
+                    ret = qemu_inst.exec_qmp_command(cmd)
+                    return ret
                 elif cmd.kind == command.command_kind.Kill:
                     qemu_inst.terminate()
                     self.qemu_inst_list_killing_waiting.append(qemu_inst)
                     self.qemu_inst_list.remove(qemu_inst)
                     return
+                else:
+                    print("Invalid TASKID({}) !!!".format(taskid))
+
                 return
 
     def thread_routine_listening_tcp(self):
@@ -174,23 +179,31 @@ class server:
                     
                 elif "exec" == client_cmd['request']['command']:
                     cmd_cfg = config.exec_command_config()
-                    print(client_cmd['request']['config'])
                     cmd_cfg.load_config(client_cmd['request']['config'])
-                    print("cmd_cfg.taskid={}".format(cmd_cfg.taskid))
-                    print("cmd_cfg.arguments={}".format(cmd_cfg.arguments))
                     exec_cmd = command.exec_command(cmd_cfg)
                     err_lines, msg_lines = self.dispatch_command(cmd_cfg.taskid, exec_cmd)
                     data = json.dumps(
                             { "response" : {
                                 "stderr" : err_lines,
-                                "stdout" : msg_lines 
+                                "stdout" : msg_lines
                             }})
+                    conn.send(bytes(data, encoding="utf-8"))
+
+                elif "qmp" == client_cmd['request']['command']:
+                    cmd_cfg = config.qmp_command_config()
+                    cmd_cfg.load_config(client_cmd['request']['config'])
+                    qmp_cmd = command.qmp_command(cmd_cfg)
+                    ret = self.dispatch_command(cmd_cfg.taskid, qmp_cmd)
+                    data = json.dumps(
+                             { "response" : ret
+                             })
                     conn.send(bytes(data, encoding="utf-8"))
 
                 else:
                     logging.info("Unsupported command ('{}')".format(client_cmd['request']['command']))
 
                 conn.close()
+
 
 class client:
     def __init__(self, host_ip, host_port):
@@ -227,6 +240,13 @@ class client:
     def exec_exec_cmd(self, exec_cmd_cfg):
         logging.info("socker.py!client::exec_exec_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)
         exec_cmd = command.exec_command(exec_cmd_cfg)
+        mesg = exec_cmd.get_json_text()        
+        received = self.send(mesg)
+        print(received)
+
+    def exec_qmp_cmd(self, qmp_cmd_cfg):
+        logging.info("socker.py!client::exec_qmp_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)
+        exec_cmd = command.qmp_command(qmp_cmd_cfg)
         mesg = exec_cmd.get_json_text()        
         received = self.send(mesg)
         print(received)

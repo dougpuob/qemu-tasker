@@ -186,9 +186,7 @@ class qemu_machine:
         if command.arguments:
              cmd_str = cmd_str + " " + " ".join(command.arguments)        
         if self.conn_ssh:
-            print("b4 cmd_str={}".format(cmd_str))
-            stdin,stdout,stderr = self.conn_ssh.exec_command(command=cmd_str)            
-            print("ft cmd_str={}".format(cmd_str))
+            stdin,stdout,stderr = self.conn_ssh.exec_command(command=cmd_str)    
             err_lines = []
             msg_lines = []
             if stderr.readable():
@@ -197,6 +195,12 @@ class qemu_machine:
                 msg_lines.extend(stdout.readlines())
             return err_lines, msg_lines
         return
+
+    def exec_qmp_command(self, command):        
+        if self.conn_qmp:
+            ret = self.conn_qmp.cmd(command.execute, args=command.arguments)
+            print(ret)
+            return ret            
 
     def is_qmp_connected(self):
         return self.flag_is_qmp_connected
@@ -294,11 +298,6 @@ class qemu_machine:
         qmp_accept_thread.setDaemon(True)
         qmp_accept_thread.start()
 
-    def exec_ssh(self, command):
-        stdin, stdout, stderr = self.conn_ssh.exec_command(command)
-        print(stderr)
-        print(stdout)
-
     def create(self, taskid, task_cfg):
         logging.info("command.py!task::create()")
         
@@ -356,6 +355,9 @@ class command_kind:
     @property
     def Exec(self):
         return "exec"
+    @property
+    def Qmp(self):
+        return "qmp"
     @property
     def Info(self):
         return "info"
@@ -415,6 +417,7 @@ class kill_command(command):
         logging.info("command.py!kill_command::__init__()")
         super().__init__("kill", command_kind.Kill)
 
+        self.taskid = cmd_cfg.taskid
         self.cmd_json_data = super(kill_command, self).get_basic_schema()
         self.cmd_json_data['request']['config'] = {
                 "taskid": cmd_cfg.taskid
@@ -425,6 +428,7 @@ class exec_command(command):
         logging.info("command.py!kill_command::__init__()")
         super().__init__("exec", command_kind.Exec)
 
+        self.taskid = cmd_cfg.taskid
         self.program = cmd_cfg.program
         self.arguments = cmd_cfg.arguments
 
@@ -434,3 +438,30 @@ class exec_command(command):
                 "program" : cmd_cfg.program,
                 "arguments" : cmd_cfg.arguments
             }
+
+class qmp_command(command):
+    def __init__(self, cmd_cfg):
+        logging.info("command.py!qmp_command::__init__()")
+        super().__init__("qmp", command_kind.Qmp)
+
+        self.taskid = cmd_cfg.taskid
+        self.execute = cmd_cfg.execute
+        self.arguments = cmd_cfg.arguments
+
+        self.cmd_json_data = super(qmp_command, self).get_basic_schema()
+        self.cmd_json_data['request']['config'] = {
+                "taskid": cmd_cfg.taskid,
+                "execute" : cmd_cfg.execute,
+                "arguments" : cmd_cfg.arguments
+            }
+    @property
+    def qmp_capabilities():
+        return "qmp_capabilities"
+
+    @property
+    def query_status():
+        return "query-status"
+
+    @property
+    def query_commands():
+        return "query-commands"
