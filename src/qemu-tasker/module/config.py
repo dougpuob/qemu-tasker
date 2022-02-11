@@ -63,4 +63,16 @@ class exec_command_config(command_config):
         self.program = json_data['program']
         self.arguments = json_data['arguments']
 
+class qmp_command_config(command_config):
+    def __init__(self):
+        self.taskid = -1
+        self.execute = ""
+        self.arguments = ""
+
+    def load_config(self, json_data):
+        self.taskid = int(json_data['taskid'])
+        self.execute = json_data['execute']
+        self.arguments = json_data['arguments']
+
+
 
