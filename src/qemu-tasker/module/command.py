@@ -9,9 +9,12 @@ import paramiko
 import threading
 import subprocess
 import logging
-from time import sleep
-import psutil
 
+import psutil
+import re
+import subprocess
+
+from time import sleep
 
 from datetime import datetime
 from module import config
@@ -41,28 +44,30 @@ class host_information:
         return self.host_tcp_port
 
 class task_information:
-    def __init__(self, host_info, taskid, task_cfg):
+    def __init__(self, host_info, taskid:int, three_avail_tcp_ports, task_cfg):
         self.host_info = host_info
-        self.taskid = taskid
+        self.taskid:int = taskid
         self.task_cfg = task_cfg
 
         self.host_addr = None
-        self.host_port = 0
+        self.host_port:int = 0
         
         self.proc_instance = None
         self.proc_thread = None
-        self.proc_pid = 0
+        self.proc_pid:int = 0
         self.proc_args = None
 
-        self.port_mon = taskid + 1
-        self.port_ssh = taskid + 2        
-        self.port_nc  = taskid + 3
+        self.port_mon:int = three_avail_tcp_ports[0]
+        self.port_ssh:int = three_avail_tcp_ports[1]
+        self.port_nc:int  = three_avail_tcp_ports[2]
         
-        self.longlife_max = task_cfg.longlife * 60
-        self.longlife_spare = task_cfg.longlife * 60
+        self.longlife_max:int = task_cfg.longlife * 60
+        self.longlife_spare:int = task_cfg.longlife * 60
         
         self.task_status = None
-        
+
+    def get_taskid(self) -> int:
+        return self.taskid
 
     def get_host_addr(self):
         return self.host_info.get_host_addr()
@@ -106,10 +111,10 @@ class task_information:
         self.proc_args = proc.args
 
 
-class task_instance:
-    def __init__(self, host_info, taskid, task_cfg): 
-        logging.info("command.py!task::__init__()")
-        self.name_ = ""
+class qemu_machine:
+    def __init__(self, host_info, taskid:int, task_cfg): 
+        self.name = "qemu_instance"
+        logging.info("command.py!{}::{}()".format(self.name, "__init__"))
 
         # qemu device attached
         self.is_qemu_device_attached_qmp = False
@@ -121,7 +126,11 @@ class task_instance:
         # args
         self.host_info = host_info
         self.task_cfg = task_cfg
-        self.task_info = task_information(host_info, taskid, task_cfg)        
+        self.avail_tcp_ports = self.find_avaliable_ports(taskid, 3)
+        self.tcp_port_qmp = self.avail_tcp_ports[0]
+        self.tcp_port_ssh = self.avail_tcp_ports[1]
+        self.tcp_port_nc  = self.avail_tcp_ports[2]
+        self.task_info = task_information(host_info, taskid, self.avail_tcp_ports, task_cfg)
 
         # qemu instances
         self.qemu_thread = None
@@ -138,6 +147,56 @@ class task_instance:
         self.attach_qemu_device_nic()
         self.attach_qemu_device_qmp()
         self.create(taskid, task_cfg)
+
+    def __del__(self):
+        if self.conn_qmp:
+            self.conn_qmp.close()
+
+    def terminate(self):
+        self.qemu_proc.kill()
+
+    def find_avaliable_ports(self, start_port, amount):        
+        occupied_ports = self.get_occupied_ports()
+
+        ret_list = []
+        next_start_port = start_port
+
+        index = 0        
+        while index < amount:
+            while True:
+                next_start_port = next_start_port + 1
+                if not next_start_port in occupied_ports:
+                    ret_list.append(next_start_port)
+                    occupied_ports.append(next_start_port)
+                    break
+            index = index + 1
+        return ret_list
+
+    def get_occupied_ports(self):
+        conns_list = psutil.net_connections()
+        ret_ports = []
+
+        for conn in conns_list:
+            ret_ports.append(conn.laddr.port)
+
+        return ret_ports
+    
+    def exec_on_guest(self, command):
+        cmd_str = command.program
+        if command.arguments:
+             cmd_str = cmd_str + " " + " ".join(command.arguments)        
+        if self.conn_ssh:
+            print("b4 cmd_str={}".format(cmd_str))
+            stdin,stdout,stderr = self.conn_ssh.exec_command(command=cmd_str)            
+            print("ft cmd_str={}".format(cmd_str))
+            err_lines = []
+            msg_lines = []
+            if stderr.readable():
+                err_lines.extend(stderr.readlines())
+            if stdout.readable():
+                msg_lines.extend(stdout.readlines())
+            return err_lines, msg_lines
+        return
 
     def is_qmp_connected(self):
         return self.flag_is_qmp_connected
@@ -176,24 +235,26 @@ class task_instance:
         self.qemu_proc = subprocess.Popen(prog_args_list, shell=False, close_fds = False)
         task_info.update_proc(self.qemu_proc)
 
+        self.create_qmp_connection()
+        self.create_ssh_connection()
+
         self.qemu_proc.wait()
-        
-    def create_ssh_connection(self):
-        if self.flag_is_ssh_connected:
-            return
+        self.qemu_proc = None
 
-        if not self.conn_ssh:
-            host_addr = self.task_info.get_host_addr()
-            host_port = self.task_info.get_ssh_port()
-            username = self.task_info.get_ssh_username()
-            password = self.task_info.get_ssh_password()
-            logging.info("create_ssh_connection().  host_addr={} host_port={} username={} password={}".format(host_addr, host_port, username, password))
+    def thread_wait_qmp_accept(self):
+        logging.info("command.py!task::thread_wait_qmp_accept()")
+        if self.conn_qmp:
+            self.conn_qmp.accept()
+            self.flag_is_qmp_connected = self.conn_qmp.get_sock_fd() != 0        
 
-            try:    
+    def thread_wait_ssh_connect(self, host_addr, host_port, username, password):
+        logging.info("command.py!task::thread_wait_ssh_connect()")
+        while not self.flag_is_ssh_connected:
+            try:   
                 self.conn_ssh = paramiko.SSHClient()
                 self.conn_ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                                
-                self.conn_ssh.connect(host_addr, host_port, username, password, banner_timeout=200)
+
+                self.conn_ssh.connect(host_addr, host_port, username, password, banner_timeout=200, timeout=200)
                 self.flag_is_ssh_connected = True
 
                 stdin,stdout,stderr = self.conn_ssh.exec_command("ping localhost")
@@ -202,17 +263,36 @@ class task_instance:
         
             except Exception as e:
                 logging.exception("e=" + str(e))
+
+            sleep(1)
+
+    def create_ssh_connection(self):
+        if self.flag_is_ssh_connected:
+            return
+
+        if not self.conn_ssh:
+            host_addr = self.task_info.get_host_addr()
+            host_port = self.tcp_port_ssh
+            username = self.task_info.get_ssh_username()
+            password = self.task_info.get_ssh_password()
+            logging.info("create_ssh_connection().  host_addr={} host_port={} username={} password={}".format(host_addr, host_port, username, password))
+            
+            wait_ssh_thread = threading.Thread(target = self.thread_wait_ssh_connect, args=(host_addr, host_port, username, password))
+            wait_ssh_thread.setDaemon(True)
+            wait_ssh_thread.start()
         
     def create_qmp_connection(self):
         if self.flag_is_qmp_connected:
             return
 
         host_addr = self.task_info.get_host_addr()
-        host_port = self.task_info.get_monitor_port()
-        print((host_addr, host_port))
-        self.conn_qmp = QEMUMonitorProtocol((host_addr, host_port), server=True)        
-        self.conn_qmp.accept()
-        self.flag_is_qmp_connected = self.conn_qmp.get_sock_fd() != 0
+        host_port = self.tcp_port_qmp
+
+        print("create_qmp_connection={}".format((host_addr, host_port)))
+        self.conn_qmp = QEMUMonitorProtocol((host_addr, host_port), server=True)
+        qmp_accept_thread = threading.Thread(target = self.thread_wait_qmp_accept)
+        qmp_accept_thread.setDaemon(True)
+        qmp_accept_thread.start()
 
     def exec_ssh(self, command):
         stdin, stdout, stderr = self.conn_ssh.exec_command(command)
@@ -232,7 +312,7 @@ class task_instance:
 
         self.qemu_thread = threading.Thread(target = self.thread_open_proc, args=(qemu_cmdargs, self.task_info))
         self.qemu_thread.setDaemon(True)
-        self.qemu_thread.start()        
+        self.qemu_thread.start()
     
         self.task_info.update_thread(self.qemu_thread)
         self.task_info.update_status(TASK_STATUS.Creating)       
@@ -241,7 +321,6 @@ class task_instance:
         logging.info("command.py!task::kill()")        
         for proc in psutil.process_iter():
             if proc.pid == self.qemu_proc.pid:
-                print ("is_running=%d", proc.is_running())
                 os.kill(proc.pid, 9)
 
         sleep(2)
@@ -261,49 +340,97 @@ class task_instance:
     def revert_runtime_snapshot(self) -> bool:
         logging.info("command.py!task::revert_runtime_snapshot()")
 
+class command_kind:
+    @property
+    def Unknown(self):
+        return "unknown"        
+    @property
+    def Server(self):
+        return "server"
+    @property
+    def Task(self):
+        return "task"
+    @property
+    def Kill(self):
+        return "kill"
+    @property
+    def Exec(self):
+        return "exec"
+    @property
+    def Info(self):
+        return "info"
 
 class command:
-    def __init__(self, name):
+    def __init__(self, name, kind=command_kind.Unknown):
         logging.info("command.py!command::__init__()")
-        self.name_ = name
-        self.jsoncmd = None
-    
+        self.name = name        
+        self.cmd_json_data = None
+        self.kind = kind
+
+    def get_taskid(self) -> int :
+        return self.taskid
+
     def get_basic_schema(self):
         logging.info("command.py!command::get_basic_schema()")
         return { "request" : { 
-                    "command" : self.name_ ,
+                    "command" : self.name ,
                     "timestamp" : "" }}
 
-    def get_jsoncmd(self):
-        logging.info("command.py!command::get_jsoncmd()")
-        return self.jsoncmd
+    def get_json_data(self):
+        logging.info("command.py!command::get_json_data()")
+        return self.cmd_json_data
 
-    def get_jsoncmd_str(self):
-        logging.info("command.py!command::get_jsoncmd_str()")
-        return self.json_to_str(self.jsoncmd)
+    def get_json_text(self):
+        logging.info("command.py!command::get_json_text()")
+        return self.json_to_text(self.cmd_json_data)
     
-    def json_to_str(self, jsoncmd):
-        logging.info("command.py!command::json_to_str()")
-        return json.dumps(jsoncmd)
+    def json_to_text(self, json_data):
+        logging.info("command.py!command::json_to_text()")
+        return json.dumps(json_data)
 
-    def str_to_json(self, jsoncmd_str):
-        logging.info("command.py!command::str_to_json()")
-        return json.load(jsoncmd_str)
+    def text_to_json(self, json_text):
+        logging.info("command.py!command::text_to_json()")
+        return json.load(json_text)
 
 class task_command(command):
-    def __init__(self, task_cfg):
+    def __init__(self, cmd_cfg):
         logging.info("command.py!task_command::__init__()")
-        super().__init__("task")
-        self.jsoncmd = super(task_command, self).get_basic_schema()
-        self.jsoncmd['request']['config'] = {
-                "longlife": task_cfg.longlife,
+        super().__init__("task", command_kind.Task)
+        
+        self.cmd_json_data = super(task_command, self).get_basic_schema()
+        self.cmd_json_data['request']['config'] = {
+                "longlife": cmd_cfg.longlife,
                 "qemu": {
-                    "prog": task_cfg.qemu.prog,
-                    "args": task_cfg.qemu.args,
+                    "prog": cmd_cfg.qemu.prog,
+                    "args": cmd_cfg.qemu.args,
                 },
                 "ssh": {
-                    "username": task_cfg.ssh.username,
-                    "password": task_cfg.ssh.password
+                    "username": cmd_cfg.ssh.username,
+                    "password": cmd_cfg.ssh.password
                 }
             }
         
+class kill_command(command):
+    def __init__(self, cmd_cfg):
+        logging.info("command.py!kill_command::__init__()")
+        super().__init__("kill", command_kind.Kill)
+
+        self.cmd_json_data = super(kill_command, self).get_basic_schema()
+        self.cmd_json_data['request']['config'] = {
+                "taskid": cmd_cfg.taskid
+            }
+
+class exec_command(command):
+    def __init__(self, cmd_cfg):
+        logging.info("command.py!kill_command::__init__()")
+        super().__init__("exec", command_kind.Exec)
+
+        self.program = cmd_cfg.program
+        self.arguments = cmd_cfg.arguments
+
+        self.cmd_json_data = super(exec_command, self).get_basic_schema()
+        self.cmd_json_data['request']['config'] = {
+                "taskid": cmd_cfg.taskid,
+                "program" : cmd_cfg.program,
+                "arguments" : cmd_cfg.arguments
+            }

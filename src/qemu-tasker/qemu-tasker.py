@@ -31,18 +31,21 @@ parser_task.add_argument('-T', '--test',  action='store_true')
 
 # subcommand kill
 parser_kill = subparsers.add_parser('kill', parents = [parent_parser], help='kill the specific QEMU machine instance')
-parser_kill.add_argument('-T', '--task')  
+parser_kill.add_argument('-T', '--taskid', type=int)  
 
 # subcommand exec
 parser_exec = subparsers.add_parser('exec', parents = [parent_parser], help='execute a specific command at guest operating system')
-parser_exec.add_argument('-T', '--task')
-parser_exec.add_argument('-C', '--cmd')
+parser_exec.add_argument('-T', '--taskid', type=int)
+parser_exec.add_argument('-P', '--program')
+parser_exec.add_argument('-A', '--arguments')
 
 # subcommand query
 parser_query = subparsers.add_parser('query', parents = [parent_parser], help='query information from the QEMU machine instance')
-parser_query.add_argument('-T', '--task')
+parser_query.add_argument('-T', '--taskid')
 
 args = parser.parse_args()
+print(args)
+
 logging.basicConfig(filename='default.log', 
                     level=logging.INFO,
                     format="[%(asctime)s][%(levelname)s] %(message)s",
@@ -52,33 +55,47 @@ logging.info('------------------------------------------------------------------
 logging.info(args)
 
 config_path = pathlib.Path.joinpath(pathlib.Path(__file__).parent.absolute(), 'config/config.json')
-config_data = config.config().load_file(config_path)
+config_data = config.command_config().load_file(config_path)
 logging.info("Config Content: " + str(config_data))
 
 host_ip = config_data['host']['ip']
 host_port = config_data['host']['port']
 host_info = command.host_information(host_ip, host_port)
 
+
 if 'server' == args.command:
     socket.server(host_ip, host_port).start()
 
 elif 'task' == args.command:
     assert args.config, "Please specific a config file !!!"
-    task_cfg = config.task_config()
-    task_cfg.load_config_file(args.config)
+    cmd_cfg = config.task_command_config()
+    cmd_cfg.load_config_from_file(args.config)
     if args.test:
-        taskid = 10000
-        task_inst = command.task_instance(host_info, taskid, task_cfg)
+        taskid:int = 10000
+        task_inst = command.qemu_machine(host_info, taskid, cmd_cfg)
     else:
-        socket.client(host_ip, host_port).create_task(task_cfg)
+        socket.client(host_ip, host_port).exec_task_cmd(cmd_cfg)
 
 elif 'info' == args.command:
     print('info')
+
 elif 'kill' == args.command:
-    print('kill')
-elif 'exec' == args.command:
-    socket.server(host_ip, host_port).send(args.task, args.cmd) 
+    cmd_cfg = config.kill_command_config()
+    cmd_cfg.load_config( {"taskid" : args.taskid})
+    socket.client(host_ip, host_port).exec_kill_cmd(cmd_cfg)
+
+elif 'exec' == args.command:    
+    cmd_cfg = config.exec_command_config()
+    input_args = []
+    if args.arguments:
+        input_args.extend(args.arguments.split(' '))
+    cmd_cfg.load_config( {"taskid" : args.taskid,
+                          "program": args.program,
+                          "arguments": input_args })
+    socket.client(host_ip, host_port).exec_exec_cmd(cmd_cfg)
+
 elif 'query' == args.command:
     print('query')
+
 else:    
     parser.print_help()

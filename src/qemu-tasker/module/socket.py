@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
+from email import message
 import socket
 import threading
 import time
 import logging
 import json
 import pprint
+
+import psutil
+import re
+import subprocess
 
 from module import command
 from module import config
@@ -16,12 +21,14 @@ class server:
 
         self.is_started = True
         self.host_info = command.host_information(host_ip, host_port)
-        self.host_ip = self.host_info.get_host_addr()
-        self.host_port = self.host_info.get_host_port()
-        self.index_ = 0
-        self.taskid_ = 10000        
-        self.task_inst_list = []
-        self.killing_waiting_list = []
+
+        self.task_index = 0
+        self.task_base_id = 10000                
+        self.qemu_inst_list = []
+        self.qemu_inst_list_killing_waiting = []
+
+        # Port
+        self.occupied_ports = []
 
         # Thread objects
         self.thread_task = None 
@@ -32,9 +39,9 @@ class server:
         self.is_started = False
         self.socker_server.close()
 
-        self.thread_task = None 
-        self.thread_postpone  = None
         self.thread_tcp = None
+        self.thread_task = None 
+        self.thread_postpone  = None        
 
     def stop(self):
         self.is_started = False
@@ -48,7 +55,7 @@ class server:
         self.thread_task.start()
 
         # Start postpone actions.
-        self.thread_postpone = threading.Thread(target = self.thread_routine_postpone_actions)
+        self.thread_postpone = threading.Thread(target = self.thread_routine_killing_waiting)
         self.thread_postpone.setDaemon(True)
         self.thread_postpone.start()
 
@@ -72,56 +79,73 @@ class server:
             time.sleep(1)
            
             print('------------------------------------')
-            print('QEMU instance number = {}'.format(len(self.task_inst_list)))
+            print('QEMU instance number = {}'.format(len(self.qemu_inst_list)))
             index = 0
-            for task_inst in self.task_inst_list:
+            for qemu_inst in self.qemu_inst_list:
                 index = index + 1
-                if task_inst.get_task_info().get_longlife() > 0:
-                    spare_secs = task_inst.task_info.get_longlife()
-                    is_qmp_connected = self.get_bool(task_inst.is_qmp_connected())
-                    is_ssh_connected = self.get_bool(task_inst.is_ssh_connected())
-                    print('  Instance#{} QMP: {} SSH: {} Longlife: {}(secs)'.format(index, is_qmp_connected, is_ssh_connected, spare_secs))
-                    task_inst.get_task_info().decrease_longlife()                    
+                if qemu_inst.get_task_info().get_longlife() > 0:
+                    taskid = qemu_inst.get_task_info().get_taskid()
+                    is_qmp_connected = self.get_bool(qemu_inst.is_qmp_connected())
+                    is_ssh_connected = self.get_bool(qemu_inst.is_ssh_connected())
+                    spare_secs = qemu_inst.task_info.get_longlife()
+
+                    print('  Instance#{} TaskId:{} Ports:{} QMP:{} SSH:{} Longlife:{}(secs)'.format(
+                            index, 
+                            taskid, 
+                            qemu_inst.avail_tcp_ports, 
+                            is_qmp_connected, 
+                            is_ssh_connected, 
+                            spare_secs))
+
+                    qemu_inst.get_task_info().decrease_longlife()                    
                 else:
-                    self.killing_waiting_list.append(task_inst)
-                    self.task_inst_list.remove(task_inst)
+                    self.qemu_inst_list_killing_waiting.append(qemu_inst)
+                    self.qemu_inst_list.remove(qemu_inst)
                     
-    def thread_routine_postpone_actions(self):	
+                if not qemu_inst.qemu_proc:
+                    self.qemu_inst_list.remove(qemu_inst)
+
+    def thread_routine_killing_waiting(self):	
         logging.info("socker.py!server::thread_routine_postpone_actions()")
         print('thread_routine_postpone_actions ...')
         
         while self.is_started:
-
-            # Handling postone actions.
-            for task_inst in self.task_inst_list:
-                # Creating QMP connection
-                if not task_inst.is_qmp_connected():
-                    task_inst.create_qmp_connection()
-
-                # Creating SSH connection
-                if not task_inst.is_ssh_connected():
-                    task_inst.create_ssh_connection()
-
             # Handling killing waiting list.
-            for task_inst in self.killing_waiting_list:                
-                kill_ret = task_inst.kill()
+            for qemu_inst in self.qemu_inst_list_killing_waiting:
+                
+                kill_ret = qemu_inst.kill()
                 if kill_ret:
-                    self.killing_waiting_list.remove(task_inst)
+                    self.qemu_inst_list_killing_waiting.remove(qemu_inst)
 
             time.sleep(1)
 
-    def get_new_taskid(self):
-        logging.info("socker.py!server::get_new_taskid()")
-        self.index_ = self.index_ + 1
-        self.taskid_ = self.taskid_ + (self.index_ * 10)
-        return self.taskid_
+    def get_new_taskid(self):        
+        logging.info("socker.py!server::get_new_taskid()")        
+
+        self.task_index = self.task_index + 1
+        return self.task_base_id + (self.task_index * 10)
+
+    def dispatch_command(self, taskid, cmd):
+        for qemu_inst in self.qemu_inst_list:
+            if qemu_inst.task_info.get_taskid() == taskid:
+                if cmd.kind == command.command_kind.Exec:
+                    err_lines, msg_lines = qemu_inst.exec_on_guest(cmd)
+                    print(err_lines)
+                    print(msg_lines)
+                    return err_lines, msg_lines
+                elif cmd.kind == command.command_kind.Kill:
+                    qemu_inst.terminate()
+                    self.qemu_inst_list_killing_waiting.append(qemu_inst)
+                    self.qemu_inst_list.remove(qemu_inst)
+                    return
+                return
 
     def thread_routine_listening_tcp(self):
         logging.info("socker.py!server::thread_routine_listening_tcp()")
         print('thread_worker_tcp ...')
 
         self.socker_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socker_server.bind((self.host_ip, self.host_port))
+        self.socker_server.bind((self.host_info.host_tcp_addr, self.host_info.host_tcp_port))
         self.socker_server.listen(10)
 
         while True:
@@ -132,14 +156,39 @@ class server:
                 client_cmd = json.loads(client_mesg)
                 print(client_cmd)
                 logging.info(client_cmd)
-                if "task" == client_cmd['request']['command']:
-                    taskid = self.get_new_taskid()
-                    task_cfg = config.task_config()
+                if "task" == client_cmd['request']['command']:                    
+                    task_cfg = config.task_command_config()
+
+                    taskid:int = self.get_new_taskid()
                     task_cfg.load_config(client_cmd['request']['config'])
 
                     logging.info("socker.py!server::thread_worker_tcp(), is going to create a new task ...")
-                    task_inst = command.task_instance(self.host_info, taskid, task_cfg)
-                    self.task_inst_list.append(task_inst)
+                    qemu_inst = command.qemu_machine(self.host_info, taskid, task_cfg)
+                    self.qemu_inst_list.append(qemu_inst)
+
+                elif "kill" == client_cmd['request']['command']:
+                    cmd_cfg = config.kill_command_config()
+                    cmd_cfg.load_config(client_cmd['request']['config'])
+                    kill_cmd = command.kill_command(cmd_cfg)
+                    self.dispatch_command(cmd_cfg.taskid, kill_cmd)
+                    
+                elif "exec" == client_cmd['request']['command']:
+                    cmd_cfg = config.exec_command_config()
+                    print(client_cmd['request']['config'])
+                    cmd_cfg.load_config(client_cmd['request']['config'])
+                    print("cmd_cfg.taskid={}".format(cmd_cfg.taskid))
+                    print("cmd_cfg.arguments={}".format(cmd_cfg.arguments))
+                    exec_cmd = command.exec_command(cmd_cfg)
+                    err_lines, msg_lines = self.dispatch_command(cmd_cfg.taskid, exec_cmd)
+                    data = json.dumps(
+                            { "response" : {
+                                "stderr" : err_lines,
+                                "stdout" : msg_lines 
+                            }})
+                    conn.send(bytes(data, encoding="utf-8"))
+
+                else:
+                    logging.info("Unsupported command ('{}')".format(client_cmd['request']['command']))
 
                 conn.close()
 
@@ -149,46 +198,36 @@ class client:
         self.host_ip = host_ip
         self.host_port = host_port
         self.task_info_list_ = []
-        self.command = command.command("")
 
-    def create_task(self, task_cfg):
-        logging.info("socker.py!client::create_task(), Host=%s Port=%d", self.host_ip, self.host_port)
-        
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((self.host_ip, self.host_port))
-
-        create_task_jsoncmd = command.task_command(task_cfg).get_jsoncmd()
-        client_to_server_message = self.command.json_to_str(create_task_jsoncmd)
-        client.send(client_to_server_message.encode())
-        logging.info("socker.py!client::create_task(), Sent: %s", client_to_server_message)
-        
-        message_from_server = str(client.recv(1024), encoding='utf-8')
-        logging.info("socker.py!client::create_task(), Received: %s", message_from_server)
-        client.close()
-
-    def send_command(self, taskid, json_data):
-        logging.info("socker.py!client::send_command(), TaskId=%d Host=%s Port=%d", taskid, self.host_ip, self.host_port)
+    def send(self, mesg) -> str:
+        logging.info("socker.py!client::send(), Host=%s Port=%d", self.host_ip, self.host_port)        
+        print(mesg)
 
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client.connect((self.host_ip, self.host_port))
-
-        client_to_server_message = self.command.json_to_str(json_data)
-        client.send(client_to_server_message.encode())
-        logging.info("socker.py!client::send_command(), Sent: %s", taskid, client_to_server_message)
         
-        message_from_server = str(client.recv(1024), encoding='utf-8')
-        logging.info("socker.py!client::send_command(), Received: %s", taskid, message_from_server)
+        client.send(mesg.encode())
+        received = str(client.recv(1024), encoding='utf-8')
+        
         client.close()
+        return received
 
-    def send(self, taskid, message):
-        logging.info("socker.py!client::send(), TaskId=%d Host=%s Port=%d", taskid, self.host_ip, self.host_port)
+    def exec_task_cmd(self, task_cmd_cfg):
+        logging.info("socker.py!client::exec_task_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)        
+        task_cmd = command.task_command(task_cmd_cfg)
+        mesg = task_cmd.get_json_text()
+        self.send(mesg)
 
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((self.host_ip, self.host_port))
-        client_to_server_message = message
-        client.send(client_to_server_message.encode())
-        logging.info("socker.py!client::send(), Sent: %s", taskid, client_to_server_message)
+    def exec_kill_cmd(self, kill_cmd_cfg):
+        logging.info("socker.py!client::exec_kill_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)
+        kill_cmd = command.kill_command(kill_cmd_cfg)
+        mesg = kill_cmd.get_json_text()        
+        self.send(mesg)
+    
+    def exec_exec_cmd(self, exec_cmd_cfg):
+        logging.info("socker.py!client::exec_exec_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)
+        exec_cmd = command.exec_command(exec_cmd_cfg)
+        mesg = exec_cmd.get_json_text()        
+        received = self.send(mesg)
+        print(received)
 
-        serv_mesg = str(client.recv(1024), encoding='utf-8')
-        logging.info("socker.py!client::send(), Received: %s", taskid, serv_mesg)
-        client.close()
