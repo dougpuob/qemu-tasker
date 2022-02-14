@@ -19,15 +19,15 @@ parser = argparse.ArgumentParser(add_help=True)
 subparsers = parser.add_subparsers(dest="command")
 
 # subcommand start                                                                  
-parser_start = subparsers.add_parser('server', parents = [parent_parser], help='start a QEMU-Tasker daemon')           
+parser_start = subparsers.add_parser('server', parents = [parent_parser], help='start a server daemon')
 
 # subcommand info
 parser_info = subparsers.add_parser('info', parents = [parent_parser], help='fetch current daemon information')
 
-# subcommand task
-parser_task = subparsers.add_parser('task', parents = [parent_parser], help='launch a QEMU achine instance')
-parser_task.add_argument('-C', '--config', required=True)
-parser_task.add_argument('-T', '--test',  action='store_true')
+# subcommand start
+parser_start = subparsers.add_parser('start', parents = [parent_parser], help='launch a QEMU achine instance')
+parser_start.add_argument('-C', '--config', required=True)
+parser_start.add_argument('-T', '--test',  action='store_true')
 
 # subcommand kill
 parser_kill = subparsers.add_parser('kill', parents = [parent_parser], help='kill the specific QEMU machine instance')
@@ -94,15 +94,15 @@ host_info = command.host_information(host_ip, host_port)
 if 'server' == args.command:
     socket.server(host_ip, host_port).start()
 
-elif 'task' == args.command:
+elif 'start' == args.command:
     assert args.config, "Please specific a config file !!!"
-    cmd_cfg = config.task_command_config()
+    cmd_cfg = config.start_command_config()
     cmd_cfg.load_config_from_file(args.config)
     if args.test:
         taskid:int = 10000
         task_inst = command.qemu_machine(host_info, taskid, cmd_cfg)
     else:
-        socket.client(host_ip, host_port).exec_task_cmd(cmd_cfg)
+        socket.client(host_ip, host_port).exec_start_cmd(cmd_cfg)
 
 elif 'info' == args.command:
     print('info')

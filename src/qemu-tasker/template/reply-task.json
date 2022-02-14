@@ -1,7 +1,7 @@
 {
   "response": {
-	"command" : "task",
-	"timestamp" : ""
+	"command" : "start",
+	"timestamp" : "",
 	"data" : {
 		"token" : "",
 		"taskid" : 0,

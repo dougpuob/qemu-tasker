@@ -31,7 +31,7 @@ class _ssh_config:
         self.username = None
         self.password = None
 
-class task_command_config(command_config):
+class start_command_config(command_config):
     def __init__(self):
         self.longlife = 0
         self.qemu = _qemu_config()

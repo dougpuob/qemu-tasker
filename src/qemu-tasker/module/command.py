@@ -235,7 +235,7 @@ class qemu_machine:
         return self.task_info
 
     def thread_open_proc(self, prog_args_list, task_info):
-        logging.info("command.py!task::thread_open_proc()")
+        logging.info("command.py!qemu_machine::thread_open_proc()")
 
         self.qemu_proc = subprocess.Popen(prog_args_list, shell=False, close_fds = False)
         task_info.update_proc(self.qemu_proc)
@@ -247,13 +247,13 @@ class qemu_machine:
         self.qemu_proc = None
 
     def thread_wait_qmp_accept(self):
-        logging.info("command.py!task::thread_wait_qmp_accept()")
+        logging.info("command.py!qemu_machine::thread_wait_qmp_accept()")
         if self.conn_qmp:
             self.conn_qmp.accept()
             self.flag_is_qmp_connected = self.conn_qmp.get_sock_fd() != 0        
 
     def thread_wait_ssh_connect(self, host_addr, host_port, username, password):
-        logging.info("command.py!task::thread_wait_ssh_connect()")
+        logging.info("command.py!qemu_machine::thread_wait_ssh_connect()")
         while not self.flag_is_ssh_connected:
             try:   
                 self.conn_ssh = paramiko.SSHClient()
@@ -300,7 +300,7 @@ class qemu_machine:
         qmp_accept_thread.start()
 
     def create(self, taskid, task_cfg):
-        logging.info("command.py!task::create()")
+        logging.info("command.py!qemu_machine::create()")
         
         qemu_cmdargs = []
         qemu_cmdargs.append(task_cfg.qemu.prog)
@@ -308,7 +308,7 @@ class qemu_machine:
         qemu_cmdargs.extend(self.base_args)
 
         print(qemu_cmdargs)
-        logging.info("command.py!task::create(), qemu_cmdargs=%s", qemu_cmdargs)
+        logging.info("command.py!qemu_machine::create(), qemu_cmdargs=%s", qemu_cmdargs)
 
         self.qemu_thread = threading.Thread(target = self.thread_open_proc, args=(qemu_cmdargs, self.task_info))
         self.qemu_thread.setDaemon(True)
@@ -318,7 +318,7 @@ class qemu_machine:
         self.task_info.update_status(TASK_STATUS.Creating)       
 
     def kill(self) -> bool:        
-        logging.info("command.py!task::kill()")        
+        logging.info("command.py!qemu_machine::kill()")        
         for proc in psutil.process_iter():
             if proc.pid == self.qemu_proc.pid:
                 os.kill(proc.pid, 9)
@@ -332,13 +332,13 @@ class qemu_machine:
         return True
 
     def exec(self, command) -> int:
-        logging.info("command.py!task::exec()")        
+        logging.info("command.py!qemu_machine::exec()")        
 
     def take_runtime_snapshot(self) -> bool:
-        logging.info("command.py!task::take_runtime_snapshot()")
+        logging.info("command.py!qemu_machine::take_runtime_snapshot()")
 
     def revert_runtime_snapshot(self) -> bool:
-        logging.info("command.py!task::revert_runtime_snapshot()")
+        logging.info("command.py!qemu_machine::revert_runtime_snapshot()")
 
 class command_kind:
     @property
@@ -348,8 +348,8 @@ class command_kind:
     def Server(self):
         return "server"
     @property
-    def Task(self):
-        return "task"
+    def Start(self):
+        return "start"
     @property
     def Kill(self):
         return "kill"
@@ -395,12 +395,12 @@ class command:
         logging.info("command.py!command::text_to_json()")
         return json.load(json_text)
 
-class task_command(command):
+class start_command(command):
     def __init__(self, cmd_cfg):
         logging.info("command.py!task_command::__init__()")
-        super().__init__("task", command_kind.Task)
+        super().__init__("start", command_kind.Start)
         
-        self.cmd_json_data = super(task_command, self).get_basic_schema()
+        self.cmd_json_data = super(start_command, self).get_basic_schema()
         self.cmd_json_data['request']['config'] = {
                 "longlife": cmd_cfg.longlife,
                 "qemu": {

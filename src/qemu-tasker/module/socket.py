@@ -49,7 +49,7 @@ class server:
     def start(self):
         logging.info("socker.py!server::start()")
 
-        # Start QEMU machine tasker.
+        # Start QEMU machine.
         self.thread_task = threading.Thread(target = self.thread_routine_longlife_counting)
         self.thread_task.setDaemon(True)
         self.thread_task.start()
@@ -161,13 +161,13 @@ class server:
                 client_cmd = json.loads(client_mesg)
                 print(client_cmd)
                 logging.info(client_cmd)
-                if "task" == client_cmd['request']['command']:                    
-                    task_cfg = config.task_command_config()
+                if "start" == client_cmd['request']['command']:                    
+                    task_cfg = config.start_command_config()
 
                     taskid:int = self.get_new_taskid()
                     task_cfg.load_config(client_cmd['request']['config'])
 
-                    logging.info("socker.py!server::thread_worker_tcp(), is going to create a new task ...")
+                    logging.info("socker.py!server::thread_worker_tcp(), is going to create a new qemu machine ...")
                     qemu_inst = command.qemu_machine(self.host_info, taskid, task_cfg)
                     self.qemu_inst_list.append(qemu_inst)
 
@@ -225,10 +225,10 @@ class client:
         client.close()
         return received
 
-    def exec_task_cmd(self, task_cmd_cfg):
-        logging.info("socker.py!client::exec_task_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)        
-        task_cmd = command.task_command(task_cmd_cfg)
-        mesg = task_cmd.get_json_text()
+    def exec_start_cmd(self, start_cmd_cfg):
+        logging.info("socker.py!client::exec_start_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)        
+        start_cmd = command.start_command(start_cmd_cfg)
+        mesg = start_cmd.get_json_text()
         self.send(mesg)
 
     def exec_kill_cmd(self, kill_cmd_cfg):

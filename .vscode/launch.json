@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "/home/dougpuob/workspace/dougpuob/qemu-tasker/qemu-tasker.git/src/qemu-tasker/qemu-tasker.py",
             "console": "integratedTerminal",
-            "args": ["task", "--config", "/home/dougpuob/workspace/dougpuob/qemu-tasker/qemu-tasker.git/src/qemu-tasker/config/taskcfg_01.json"]
+            "args": ["start", "--config", "/home/dougpuob/workspace/dougpuob/qemu-tasker/qemu-tasker.git/src/qemu-tasker/config/taskcfg_01.json"]
         }
     ]
 }

@@ -1,6 +1,6 @@
 {
 	"request": {
-	  "command": "task",
+	  "command": "start",
 	  "timestamp": "",
 	  "config": {
 		"longlife": 10,
