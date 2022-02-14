@@ -5,6 +5,7 @@ import json
 from socket import timeout
 from sys import stdout
 import os
+from typing import Optional
 import paramiko
 import threading
 import subprocess
@@ -454,14 +455,285 @@ class qmp_command(command):
                 "execute" : cmd_cfg.execute,
                 "arguments" : cmd_cfg.arguments
             }
-    @property
-    def qmp_capabilities():
-        return "qmp_capabilities"
 
-    @property
-    def query_status():
-        return "query-status"
+class qmp_command_creator():
+    def __init__(self):
+        pass
 
-    @property
-    def query_commands():
-        return "query-commands"
+    def eject(self, device:str, force:Optional[bool]=False):
+        """
+        Eject a removable medium.
+        
+        - force: force ejection (json-bool, optional)
+        - device: device name (json-string)
+        """
+        qmp_cmd_json = { "execute"   : "eject", 
+                         "arguments" : { "device": device } }
+        return qmp_cmd_json
+
+    def change(self, device:str, target:str, arg:Optional[str] = ""):
+        """
+        Change a removable medium or VNC configuration.
+
+        - "device": device name (json-string)
+        - "target": filename or item (json-string)
+        - "arg": additional argument (json-string, optional)
+        """
+        qmp_cmd_json = { "execute"   : "change", 
+                         "arguments" : { "device" : device,
+                                         "target" : target,
+                                         "arg"    : arg } }
+        return qmp_cmd_json
+
+    def screendump(self, filename:str):
+        """
+        Save screen into PPM image.
+
+        - "filename": file path (json-string)
+        """
+        qmp_cmd_json = { "execute"   : "screendump", 
+                         "arguments" : { "filename": filename } }
+        return qmp_cmd_json
+
+    def stop(self):
+        """
+        Stop the emulator.
+        """
+        qmp_cmd_json = { "execute"   : "stop" }
+        return qmp_cmd_json
+
+    def cont(self):
+        """
+        Resume emulation.       
+        """
+        qmp_cmd_json = { "execute"   : "cont" }
+        return qmp_cmd_json
+        
+    def system_wakeup(self):
+        """
+        Wakeup guest from suspend.
+        """
+        qmp_cmd_json = { "execute"   : "system_wakeup" }
+        return qmp_cmd_json
+        
+    def system_reset(self):
+        """
+        Reset the system.        
+        """
+        qmp_cmd_json = { "execute"   : "system_reset" }
+        return qmp_cmd_json
+        
+    def system_powerdown(self):
+        """
+        Send system power down event.
+        """
+        qmp_cmd_json = { "execute"   : "system_powerdown" }
+        return qmp_cmd_json
+        
+    def device_add(self, driver:str, bus: Optional[str], id:str):
+        """
+        
+        """
+        qmp_cmd_json = { "execute"   : "device_add", 
+                         "arguments" : { "driver": driver,
+                                         "bus": bus,
+                                         "id" : id } }
+        return qmp_cmd_json
+        
+    def device_del(self, id:str):
+        """
+        Remove a device.
+
+        - "id": the device's ID or QOM path (json-string)
+        """
+        qmp_cmd_json = { "execute"   : "device_del", 
+                         "arguments" : { "id": id } }
+        return qmp_cmd_json
+        
+    def snapshot_load(self, job_id:str, tag:str, vmstate:str, devices:list):
+        """
+        Load a VM snapshot
+
+        @job-id: identifier for the newly created job
+        @tag: name of the snapshot to load.
+        @vmstate: block device node name to load vmstate from
+        @devices: list of block device node names to load a snapshot from
+
+        Applications should not assume that the snapshot load is complete
+        when this command returns. The job commands / events must be used
+        to determine completion and to fetch details of any errors that arise.
+
+        Note that execution of the guest CPUs will be stopped during the
+        time it takes to load the snapshot.
+
+        It is strongly recommended that @devices contain all writable
+        block device nodes that can have changed since the original
+        @snapshot-save command execution.
+
+        Returns: nothing
+        """
+        qmp_cmd_json = { "execute"   : "snapshot-load", 
+                         "arguments" : {} }
+
+        if job_id:
+            qmp_cmd_json['arguments']['job-id'] = job_id
+        if tag:
+            qmp_cmd_json['arguments']['tag'] = tag
+        if vmstate:
+            qmp_cmd_json['arguments']['vmstate'] = vmstate
+        if devices:
+            qmp_cmd_json['arguments']['devices'] = devices
+
+        return qmp_cmd_json
+
+    def snapshot_save(self, job_id:str, tag:str, vmstate:str, devices:list):
+        """
+        Save a VM snapshot
+
+        @job-id: identifier for the newly created job
+        @tag: name of the snapshot to create
+        @vmstate: block device node name to save vmstate to
+        @devices: list of block device node names to save a snapshot to
+
+        Applications should not assume that the snapshot save is complete
+        when this command returns. The job commands / events must be used
+        to determine completion and to fetch details of any errors that arise.
+
+        Note that execution of the guest CPUs may be stopped during the
+        time it takes to save the snapshot. A future version of QEMU
+        may ensure CPUs are executing continuously.
+
+        It is strongly recommended that @devices contain all writable
+        block device nodes if a consistent snapshot is required.
+
+        If @tag already exists, an error will be reported
+
+        Returns: nothing
+        """
+        qmp_cmd_json = { "execute"   : "snapshot-save", 
+                         "arguments" : {} }
+
+        if job_id:
+            qmp_cmd_json['arguments']['job-id'] = job_id
+        if tag:
+            qmp_cmd_json['arguments']['tag'] = tag
+        if vmstate:
+            qmp_cmd_json['arguments']['vmstate'] = vmstate
+        if devices:
+            qmp_cmd_json['arguments']['devices'] = devices
+
+        return qmp_cmd_json
+        
+    def snapshot_delete(self, job_id:str, tag:str, devices:list):
+        """
+        Delete a VM snapshot
+
+        @job-id: identifier for the newly created job
+        @tag: name of the snapshot to delete.
+        @devices: list of block device node names to delete a snapshot from
+
+        Applications should not assume that the snapshot delete is complete
+        when this command returns. The job commands / events must be used
+        to determine completion and to fetch details of any errors that arise.
+
+        Returns: nothing
+        """
+        qmp_cmd_json = { "execute"   : "snapshot-save", 
+                         "arguments" : {} }
+
+        if job_id:
+            qmp_cmd_json['arguments']['job-id'] = job_id
+        if tag:
+            qmp_cmd_json['arguments']['tag'] = tag
+        if devices:
+            qmp_cmd_json['arguments']['devices'] = devices
+
+        return qmp_cmd_json
+        
+    # def OOOOOOOOOOOOO(self):
+    #     """
+        
+    #     """
+    #     qmp_cmd_json = { "execute"   : "OOOOOOOOOOO", 
+    #                      "arguments" : { "OOOOOOOOOOO": OOOOOOOOOOO } }
+    #     return qmp_cmd_json
+        
+    # def OOOOOOOOOOOOO(self):
+    #     """
+        
+    #     """
+    #     qmp_cmd_json = { "execute"   : "OOOOOOOOOOO", 
+    #                      "arguments" : { "OOOOOOOOOOO": OOOOOOOOOOO } }
+    #     return qmp_cmd_json
+        
+    # def OOOOOOOOOOOOO(self):
+    #     """
+        
+    #     """
+    #     qmp_cmd_json = { "execute"   : "OOOOOOOOOOO", 
+    #                      "arguments" : { "OOOOOOOOOOO": OOOOOOOOOOO } }
+    #     return qmp_cmd_json
+        
+    # def OOOOOOOOOOOOO(self):
+    #     """
+        
+    #     """
+    #     qmp_cmd_json = { "execute"   : "OOOOOOOOOOO", 
+    #                      "arguments" : { "OOOOOOOOOOO": OOOOOOOOOOO } }
+    #     return qmp_cmd_json
+        
+    # def OOOOOOOOOOOOO(self):
+    #     """
+        
+    #     """
+    #     qmp_cmd_json = { "execute"   : "OOOOOOOOOOO", 
+    #                      "arguments" : { "OOOOOOOOOOO": OOOOOOOOOOO } }
+    #     return qmp_cmd_json
+        
+    # def OOOOOOOOOOOOO(self):
+    #     """
+        
+    #     """
+    #     qmp_cmd_json = { "execute"   : "OOOOOOOOOOO", 
+    #                      "arguments" : { "OOOOOOOOOOO": OOOOOOOOOOO } }
+    #     return qmp_cmd_json
+        
+    # def OOOOOOOOOOOOO(self):
+    #     """
+        
+    #     """
+    #     qmp_cmd_json = { "execute"   : "OOOOOOOOOOO", 
+    #                      "arguments" : { "OOOOOOOOOOO": OOOOOOOOOOO } }
+    #     return qmp_cmd_json
+        
+    # def OOOOOOOOOOOOO(self):
+    #     """
+        
+    #     """
+    #     qmp_cmd_json = { "execute"   : "OOOOOOOOOOO", 
+    #                      "arguments" : { "OOOOOOOOOOO": OOOOOOOOOOO } }
+    #     return qmp_cmd_json
+        
+    # def OOOOOOOOOOOOO(self):
+    #     """
+        
+    #     """
+    #     qmp_cmd_json = { "execute"   : "OOOOOOOOOOO", 
+    #                      "arguments" : { "OOOOOOOOOOO": OOOOOOOOOOO } }
+    #     return qmp_cmd_json
+        
+    # def OOOOOOOOOOOOO(self):
+    #     """
+        
+    #     """
+    #     qmp_cmd_json = { "execute"   : "OOOOOOOOOOO", 
+    #                      "arguments" : { "OOOOOOOOOOO": OOOOOOOOOOO } }
+    #     return qmp_cmd_json
+        
+    # def OOOOOOOOOOOOO(self):
+    #     """
+        
+    #     """
+    #     qmp_cmd_json = { "execute"   : "OOOOOOOOOOO", 
+    #                      "arguments" : { "OOOOOOOOOOO": OOOOOOOOOOO } }
+    #     return qmp_cmd_json
