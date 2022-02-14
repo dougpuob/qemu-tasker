@@ -42,30 +42,38 @@ parser_exec.add_argument('-A', '--arguments')
 # subcommand qmp
 parser_exec = subparsers.add_parser('qmp', parents = [parent_parser], help='execute a specific QMP command on host QEMU machine')
 parser_exec.add_argument('-T', '--taskid', type=int, required=True)
-parser_exec.add_argument('-E', '--execute', required=True,
-                                            choices=[# qmp-commands.hx
-                                                     'quit',
-                                                     'stop',
-                                                     'cont',
-                                                     'resume',
-                                                     'system_wakeup',
-                                                     'system_reset',
-                                                     'system_powerdown',
-                                                     'inject-nmi',
-                                                     'migrate_cancel',
-                                                     'query-dump',
-                                                     'query-fdsets',
-                                                     'qmp_capabilities', 
-                                                     'query-tpm',
-                                                     'query-tpm-models',
-                                                     'query-tpm-types',
-                                                     'rtc-reset-reinjection',
-                                                     'query-gic-capabilities',
-                                                     'query-hotpluggable-cpus',
-                                                     'query-measurements',
-                                                     'query-status', 
-                                                     'query-commands'])
+parser_exec.add_argument('-E', '--execute', required=True)
 parser_exec.add_argument('-A', '--arguments')
+# parser_exec.add_argument('-E', '--execute', required=True,
+#                                             choices=[# qmp-commands.hx
+#                                                      'quit',
+#                                                      'stop',
+#                                                      'cont',
+#                                                      'resume',
+#                                                      'system_wakeup',
+#                                                      'system_reset',
+#                                                      'system_powerdown',
+#                                                      'inject-nmi',
+#                                                      'migrate_cancel',
+#                                                      'query-dump',
+#                                                      'query-fdsets',
+#                                                      'qmp_capabilities', 
+#                                                      'query-tpm',
+#                                                      'query-tpm-models',
+#                                                      'query-tpm-types',
+#                                                      'rtc-reset-reinjection',
+#                                                      'query-gic-capabilities',
+#                                                      'query-hotpluggable-cpus',
+#                                                      'query-measurements',
+#                                                      'query-status', 
+#                                                      'query-commands',
+#                                                      #
+#                                                      # Argument commands
+#                                                      #
+#                                                      'query-named-block-nodes',
+#                                                      'query-snapshot-status',
+#                                                      'savevm', 'loadvm',#                                                      ])
+
 
 # subcommand query
 parser_query = subparsers.add_parser('query', parents = [parent_parser], help='query information from the QEMU machine instance')
@@ -102,7 +110,7 @@ elif 'start' == args.command:
         taskid:int = 10000
         task_inst = command.qemu_machine(host_info, taskid, cmd_cfg)
     else:
-        socket.client(host_ip, host_port).exec_start_cmd(cmd_cfg)
+        socket.client(host_ip, host_port).run_start_cmd(cmd_cfg)
 
 elif 'info' == args.command:
     print('info')
@@ -110,7 +118,7 @@ elif 'info' == args.command:
 elif 'kill' == args.command:
     cmd_cfg = config.kill_command_config()
     cmd_cfg.load_config( {"taskid" : args.taskid})
-    socket.client(host_ip, host_port).exec_kill_cmd(cmd_cfg)
+    socket.client(host_ip, host_port).run_kill_cmd(cmd_cfg)
 
 elif 'exec' == args.command:    
     cmd_cfg = config.exec_command_config()
@@ -120,14 +128,14 @@ elif 'exec' == args.command:
     cmd_cfg.load_config( {"taskid" : args.taskid,
                           "program": args.program,
                           "arguments": input_args })
-    socket.client(host_ip, host_port).exec_exec_cmd(cmd_cfg)
+    socket.client(host_ip, host_port).run_exec_cmd(cmd_cfg)
 
 elif 'qmp' == args.command:    
     cmd_cfg = config.qmp_command_config()
     cmd_cfg.load_config( {"taskid" : args.taskid,
                           "execute": args.execute,
                           "arguments": args.arguments })
-    socket.client(host_ip, host_port).exec_qmp_cmd(cmd_cfg)
+    socket.client(host_ip, host_port).run_qmp_cmd(cmd_cfg)
 
 elif 'query' == args.command:
     print('query')

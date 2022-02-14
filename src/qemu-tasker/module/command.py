@@ -182,26 +182,40 @@ class qemu_machine:
 
         return ret_ports
     
-    def exec_on_guest(self, command):
+    def exec_ssh_command(self, command):
+        msg_lines = []
+        err_lines = []
+        
         cmd_str = command.program
         if command.arguments:
-             cmd_str = cmd_str + " " + " ".join(command.arguments)        
+             cmd_str = cmd_str + " " + " ".join(command.arguments)
+        
         if self.conn_ssh:
-            stdin,stdout,stderr = self.conn_ssh.exec_command(command=cmd_str)    
-            err_lines = []
-            msg_lines = []
+            stdin,stdout,stderr = self.conn_ssh.exec_command(command=cmd_str)                
             if stderr.readable():
                 err_lines.extend(stderr.readlines())
             if stdout.readable():
                 msg_lines.extend(stdout.readlines())
-            return err_lines, msg_lines
-        return
+            return True, msg_lines, err_lines
 
-    def exec_qmp_command(self, command):        
+        return False, msg_lines, err_lines
+
+    def exec_qmp_command(self, command):
+        out_text = ""
+        err_text = ""
+        
         if self.conn_qmp:
-            ret = self.conn_qmp.cmd(command.execute, args=command.arguments)
-            print(ret)
-            return ret            
+            out_text = self.conn_qmp.cmd(command.execute, args=command.arguments)
+            return True, out_text, err_text
+        
+        err_text = "The QMP connection is empty !!!"
+        return False, out_text, err_text
+
+    def exec_terminate_qemu(self, qemu_inst):
+        qemu_inst.terminate()
+        self.qemu_inst_list_killing_waiting.append(qemu_inst)
+        self.qemu_inst_list.remove(qemu_inst)
+        return True, "", ""
 
     def is_qmp_connected(self):
         return self.flag_is_qmp_connected
@@ -250,7 +264,7 @@ class qemu_machine:
         logging.info("command.py!qemu_machine::thread_wait_qmp_accept()")
         if self.conn_qmp:
             self.conn_qmp.accept()
-            self.flag_is_qmp_connected = self.conn_qmp.get_sock_fd() != 0        
+            self.flag_is_qmp_connected = True
 
     def thread_wait_ssh_connect(self, host_addr, host_port, username, password):
         logging.info("command.py!qemu_machine::thread_wait_ssh_connect()")
@@ -450,11 +464,19 @@ class qmp_command(command):
         self.arguments = cmd_cfg.arguments
 
         self.cmd_json_data = super(qmp_command, self).get_basic_schema()
-        self.cmd_json_data['request']['config'] = {
-                "taskid": cmd_cfg.taskid,
-                "execute" : cmd_cfg.execute,
-                "arguments" : cmd_cfg.arguments
-            }
+        if self.arguments:
+            print("self.arguments={} ({})".format(self.arguments, type(self.arguments)))
+            self.cmd_json_data['request']['config'] = {
+                    "taskid": cmd_cfg.taskid,
+                    "execute" : cmd_cfg.execute,
+                    "arguments" : json.loads(self.arguments)
+                }
+        else:
+            self.cmd_json_data['request']['config'] = {
+                    "taskid": cmd_cfg.taskid,
+                    "execute" : cmd_cfg.execute,
+                    "arguments" : ""
+                }
 
 class qmp_command_creator():
     def __init__(self):

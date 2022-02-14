@@ -126,24 +126,23 @@ class server:
         return self.task_base_id + (self.task_index * 10)
 
     def dispatch_command(self, taskid, cmd):
+        ret:bool = False
+        out_text = ""
+        err_text = ""
+
         for qemu_inst in self.qemu_inst_list:
             if qemu_inst.task_info.get_taskid() == taskid:
-                matched = True
                 if cmd.kind == command.command_kind.Exec:
-                    err_lines, msg_lines = qemu_inst.exec_on_guest(cmd)
-                    return err_lines, msg_lines
+                    ret, msg_lines, err_lines = qemu_inst.exec_ssh_command(cmd)
                 elif cmd.kind == command.command_kind.Qmp:
-                    ret = qemu_inst.exec_qmp_command(cmd)
-                    return ret
+                    ret, out_text, err_text = qemu_inst.exec_qmp_command(cmd)
                 elif cmd.kind == command.command_kind.Kill:
-                    qemu_inst.terminate()
-                    self.qemu_inst_list_killing_waiting.append(qemu_inst)
-                    self.qemu_inst_list.remove(qemu_inst)
-                    return
+                    ret, out_text, err_text = self.exec_terminate_qemu(qemu_inst)
                 else:
-                    print("Invalid TASKID({}) !!!".format(taskid))
-
-                return
+                    err_text = "TASKID is not FOUND"
+                break
+        
+        return ret, out_text, err_text
 
     def thread_routine_listening_tcp(self):
         logging.info("socker.py!server::thread_routine_listening_tcp()")
@@ -158,9 +157,15 @@ class server:
             client_mesg = str(conn.recv(1024), encoding='utf-8')
             logging.info("socker.py!server::thread_routine_listening_tcp(), client_mesg=" + client_mesg)
             if client_mesg.startswith("{\"request\":"):
+                
                 client_cmd = json.loads(client_mesg)
-                print(client_cmd)
+                print(client_cmd)                
                 logging.info(client_cmd)
+
+                ret = False
+                out_text = ""
+                err_text = ""
+
                 if "start" == client_cmd['request']['command']:                    
                     task_cfg = config.start_command_config()
 
@@ -171,37 +176,41 @@ class server:
                     qemu_inst = command.qemu_machine(self.host_info, taskid, task_cfg)
                     self.qemu_inst_list.append(qemu_inst)
 
+                    ret = True
+                    out_text = ""
+                    err_text = ""
+
                 elif "kill" == client_cmd['request']['command']:
                     cmd_cfg = config.kill_command_config()
                     cmd_cfg.load_config(client_cmd['request']['config'])
                     kill_cmd = command.kill_command(cmd_cfg)
-                    self.dispatch_command(cmd_cfg.taskid, kill_cmd)
+                    ret, out_text, err_text = self.dispatch_command(cmd_cfg.taskid, kill_cmd)
                     
                 elif "exec" == client_cmd['request']['command']:
                     cmd_cfg = config.exec_command_config()
                     cmd_cfg.load_config(client_cmd['request']['config'])
                     exec_cmd = command.exec_command(cmd_cfg)
-                    err_lines, msg_lines = self.dispatch_command(cmd_cfg.taskid, exec_cmd)
-                    data = json.dumps(
-                            { "response" : {
-                                "stderr" : err_lines,
-                                "stdout" : msg_lines
-                            }})
-                    conn.send(bytes(data, encoding="utf-8"))
+                    ret, out_text, err_text = self.dispatch_command(cmd_cfg.taskid, exec_cmd)
 
                 elif "qmp" == client_cmd['request']['command']:
                     cmd_cfg = config.qmp_command_config()
                     cmd_cfg.load_config(client_cmd['request']['config'])
                     qmp_cmd = command.qmp_command(cmd_cfg)
-                    ret = self.dispatch_command(cmd_cfg.taskid, qmp_cmd)
-                    data = json.dumps(
-                             { "response" : ret
-                             })
-                    conn.send(bytes(data, encoding="utf-8"))
+                    ret, out_text, err_text = self.dispatch_command(cmd_cfg.taskid, qmp_cmd)
 
-                else:
-                    logging.info("Unsupported command ('{}')".format(client_cmd['request']['command']))
+                else:                    
+                    ret = False
+                    out_text = "Unsupported command ('{}')".format(client_cmd['request']['command'])
+                    err_text = ""
 
+                data = json.dumps(
+                        { "response" : {
+                            "return" : ret,
+                            "stderr" : err_text,
+                            "stdout" : out_text
+                        }})
+
+                conn.send(bytes(data, encoding="utf-8"))
                 conn.close()
 
 
@@ -211,43 +220,57 @@ class client:
         self.host_ip = host_ip
         self.host_port = host_port
         self.task_info_list_ = []
+        self.sock_conn = None
+
+    def __del__(self):
+        if self.sock_conn:
+            self.sock_conn.close()
+            self.sock_conn = None
 
     def send(self, mesg) -> str:
         logging.info("socker.py!client::send(), Host=%s Port=%d", self.host_ip, self.host_port)        
         print(mesg)
 
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((self.host_ip, self.host_port))
+        self.sock_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock_conn.connect((self.host_ip, self.host_port))
         
-        client.send(mesg.encode())
-        received = str(client.recv(1024), encoding='utf-8')
+        self.sock_conn.send(mesg.encode())
         
-        client.close()
-        return received
+        BUFF_SIZE = 2048
+        received = b''
+        while True:            
+            part = self.sock_conn.recv(BUFF_SIZE)
+            received = received + part
+            if len(part) < BUFF_SIZE:
+                break
+                
+        self.sock_conn.close()
+        return str(received, encoding='utf-8')
 
-    def exec_start_cmd(self, start_cmd_cfg):
-        logging.info("socker.py!client::exec_start_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)        
+    def run_start_cmd(self, start_cmd_cfg):
+        logging.info("socker.py!client::run_start_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)        
         start_cmd = command.start_command(start_cmd_cfg)
         mesg = start_cmd.get_json_text()
-        self.send(mesg)
+        received = self.send(mesg)
+        print(received)
 
-    def exec_kill_cmd(self, kill_cmd_cfg):
-        logging.info("socker.py!client::exec_kill_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)
+    def run_kill_cmd(self, kill_cmd_cfg):
+        logging.info("socker.py!client::run_kill_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)
         kill_cmd = command.kill_command(kill_cmd_cfg)
         mesg = kill_cmd.get_json_text()        
-        self.send(mesg)
+        received = self.send(mesg)
+        print(received)
     
-    def exec_exec_cmd(self, exec_cmd_cfg):
-        logging.info("socker.py!client::exec_exec_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)
+    def run_exec_cmd(self, exec_cmd_cfg):
+        logging.info("socker.py!client::run_exec_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)
         exec_cmd = command.exec_command(exec_cmd_cfg)
         mesg = exec_cmd.get_json_text()        
         received = self.send(mesg)
         print(received)
 
-    def exec_qmp_cmd(self, qmp_cmd_cfg):
-        logging.info("socker.py!client::exec_qmp_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)
+    def run_qmp_cmd(self, qmp_cmd_cfg):
+        logging.info("socker.py!client::run_qmp_cmd(), Host=%s Port=%d", self.host_ip, self.host_port)
         exec_cmd = command.qmp_command(qmp_cmd_cfg)
         mesg = exec_cmd.get_json_text()        
         received = self.send(mesg)
         print(received)
-
