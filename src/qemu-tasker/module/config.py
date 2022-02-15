@@ -1,78 +1,337 @@
 # -*- coding: utf-8 -*-
+from array import array
+from ctypes.wintypes import UINT
 import json
 import logging
 
+import json
+from os import kill
 
-class command_config:
+class config():
+    def _try(self, o):
+        try: 
+            return o.__dict__
+        except:
+            return str(o).replace('\n', '')
+    
+    def toTEXT(self):
+        #return json.dumps(self, default=lambda o: o.__dict__)
+        return json.dumps(self, default=lambda o: self._try(o))
+
+    def toJSON(self):
+        return json.loads(self.toTEXT())
+        
+class socket_address(config):
+    def __init__(self, addr:str, port:int):
+        self.addr:str = addr
+        self.port:int = port
+
+class tcp_fwd_ports(config):
+    def __init__(self, qmp:int, ssh:int):
+        self.qmp = qmp
+        self.ssh = ssh       
+
+class qemu_longlife(config):
+    def __init__(self, instance_maximum:int, longlife_minutes:int):
+        self.instance_maximum = instance_maximum
+        self.longlife_minutes = longlife_minutes
+
+class ssh_login(config):
+    def __init__(self, username:str, password:str): 
+        self.username = username
+        self.password = password
+
+
+class server_config_default(config):
     def __init__(self):
-        self.taskid = -1
+        self.socket_address = socket_address("localhost", 12801)
+        self.qemu_longlife = qemu_longlife(10, 10)
+        self.ssh_login = ssh_login("dougpuob", "dougpuob")
 
-    def load_file(self, json_file_path):
-        with open(json_file_path) as json_str:
-            return json.load(json_str)
+class server_config(config):
+    def __init__(self, json_data):
+        """
+        json_data = {
+            "socket_address": {
+                "addr": "localhost",
+                "port": 12801
+            },
+            "qemu_longlife": {
+                "instance_maximum": 10,
+                "longlife_minutes": 10
+            },
+            "ssh_login": {
+                "username": "dougpuob",
+                "password": "dougpuob"
+            }
+        }
+        """
+        srv_cfg_def = server_config_default()
+        
+        if json_data.get('socket_address'):
+            self.socket_address = json_data['socket_address']
+        else:
+            self.socket_address = srv_cfg_def.socket_address
+            
+        if json_data.get('qemu_longlife'):
+            self.qemu_longlife = json_data['qemu_longlife']
+        else:
+            self.qemu_longlife = srv_cfg_def.qemu_longlife
+            
+        if json_data.get('ssh_login'):
+            self.ssh_login = json_data['ssh_login']
+        else:
+            self.ssh_login = srv_cfg_def.ssh_login
 
-    def load_config_from_text(self, json_data_str):
-        logging.info("config.py!config::load_config_str()")
-        json_data = json.loads(json_data_str)
-        self.load_config(json_data)
 
-    def load_config_from_file(self, json_file_path):
-        logging.info("config.py!config::load_config_file()")
-        json_data = self.load_file(json_file_path)
-        self.load_config(json_data)
+class exec_arguments(config):
+    def __init__(self, program:str, arguments:list): 
+        self.program = program
+        self.arguments = arguments
 
-class _qemu_config:
-    def __init__(self): 
-        self.prog = None
-        self.args = []
+class qmp_arguments(config):
+    def __init__(self, execute:str, arguments:json): 
+        self.execute = execute
+        self.arguments = arguments
 
-class _ssh_config:
-    def __init__(self): 
-        self.username = None
-        self.password = None
-
-class start_command_config(command_config):
+class command_kind:
     def __init__(self):
-        self.longlife = 0
-        self.qemu = _qemu_config()
-        self.ssh = _ssh_config()
+        self.unknown = "unknown"        
+        self.server  = "server"     
+        self.start   = "start"     
+        self.kill    = "kill"     
+        self.exec    = "exec"     
+        self.qmp     = "qmp" 
+        self.info    = "info"  
 
-    def load_config(self, json_data):
-        self.longlife = json_data['longlife']
-        self.qemu.prog = json_data['qemu']['prog']
-        self.qemu.args = json_data['qemu']['args']
-        self.ssh.username = json_data['ssh']['username']
-        self.ssh.password = json_data['ssh']['password']
-
-
-class kill_command_config(command_config):
+class task_status:
     def __init__(self):
-        self.taskid = -1
+        self.unknown    = "unknown"
+        self.creating   = "creating"
+        self.connecting = "connecting"
+        self.running    = "running"
+        self.killing    = "killing"
+        self.abandoned  = "abandoned"
 
-    def load_config(self, json_data):
-        self.taskid = int(json_data['taskid'])
+class request(config):
+    def __init__(self, command:str, data:json):
+        print(data)
+        self.command = command
+        self.data = data
 
-class exec_command_config(command_config):
-    def __init__(self):
-        self.taskid = -1
-        self.program = ""
-        self.arguments = []
+class response(config):
+    def __init__(self, command:str, data:json):
+        self.command = command
+        self.data = data
 
-    def load_config(self, json_data):
-        self.taskid = int(json_data['taskid'])
-        self.program = json_data['program']
-        self.arguments = json_data['arguments']
+#
+# Default
+# 
+class default_reply(config):
+    def __init__(self, data:json):        
+        self.taskid = data['taskid']
+        self.result  = data['result']
+        self.errcode = data['errcode']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
+        
+class default_response(config):
+    def __init__(self, command:str, reply:default_reply):
+        self.response = response(command, reply.toJSON())
 
-class qmp_command_config(command_config):
-    def __init__(self):
-        self.taskid = -1
-        self.execute = ""
-        self.arguments = ""
+        
+#
+# Bad
+# 
+class bad_reply(config):
+    def __init__(self, data:json):        
+        self.taskid = data['taskid']
+        self.result  = data['result']
+        self.errcode = data['errcode']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
+        
+class bad_response(config):
+    def __init__(self, reply:bad_reply):
+        self.response = response(command_kind().unknown, reply.toJSON())
 
-    def load_config(self, json_data):
-        self.taskid = int(json_data['taskid'])
-        self.execute = json_data['execute']
-        self.arguments = json_data['arguments']
+        
 
 
+#
+# Start
+#
+class start_command(config):
+    def __init__(self, program:str, arguments:array, longlife:int, ssh_login:ssh_login):
+        self.program = program
+        self.arguments = arguments
+        self.longlife = longlife
+        self.ssh_login = ssh_login
 
+class start_config(config):
+    def __init__(self, data:json):
+        print(data)
+        assert data.get('program')  , "data['program']"
+        assert data.get('arguments'), "data['arguments']"
+        assert data.get('longlife') , "data['longlife']"
+        assert data.get('ssh_login'), "data['ssh_login']"
+
+        self.cmd = start_command(data['program'],
+                                 data['arguments'],
+                                 data['longlife'],
+                                 ssh_login(data['ssh_login']['username'], data['ssh_login']['password']))
+
+class start_reply(config):
+    def __init__(self, data:json):        
+        self.taskid = data['taskid']
+        self.fwd_ports = tcp_fwd_ports(data['fwd_ports']['qmp'], 
+                                       data['fwd_ports']['ssh'])
+        self.result  = data['result']
+        self.errcode = data['errcode']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
+
+
+class  start_request(config):
+    def __init__(self, command:start_command):
+        self.request = request(command_kind().start, command.toJSON())
+
+class digest_start_request(config):
+    def __init__(self, req:json):
+        assert (req['command'] == command_kind().start)
+        self.request = request(command_kind().start, req['data'])
+
+class start_response(config):
+    def __init__(self, reply:start_reply):
+        self.response = response(command_kind().start, reply.toJSON())
+
+
+#
+# Exec
+#
+class exec_command(config):
+    def __init__(self, taskid:int, exec_args:exec_arguments):
+        self.taskid = taskid
+        self.exec_args = exec_args
+
+class exec_config(config):
+    def __init__(self, data:json):
+        assert data.get('taskid')  , "data['taskid']"
+        assert data.get('exec_args')  , "data['exec_args']"
+
+        self.cmd  = exec_command(data['taskid'], 
+                                 exec_arguments(data['exec_args']['program'], 
+                                                data['exec_args']['arguments']))
+
+class exec_reply(config):
+    def __init__(self, data:json):
+        self.result  = data['result']
+        self.errcode = data['errcode']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
+
+class exec_request(config):
+    def __init__(self, command:exec_command):
+        self.request = request(command_kind().exec, command.toJSON())
+
+class digest_exec_request(config):
+    def __init__(self, data:json):
+        assert (data['command'] == command_kind().exec)
+        self.request = request(data['command'], data['data'])
+
+class exec_response(config):
+    def __init__(self, reply:exec_reply):
+        self.response = response(command_kind().exec, reply.toJSON())
+
+class digest_exec_response(config):
+    def __init__(self, req:json):
+        print("{}● digest_exec_response={}".format("", req))
+        self.command = req['response']['command']
+        self.reply = exec_reply(req['response']['data'])
+
+#
+# Kill
+#
+class kill_command(config):
+    def __init__(self, taskid:int):
+        self.taskid = taskid
+
+class kill_config(config):
+    def __init__(self, data:json):
+        assert data.get('taskid')  , "data['taskid']"
+
+        self.cmd  = kill_command(data['taskid'])
+
+class kill_reply(config):
+    def __init__(self, data:json):
+        assert data.get('taskid')  , "data['taskid']"
+        
+        self.taskid = data['taskid']
+        self.result = data['result']
+        self.errcode = data['errcode']
+        self.stderr = data['stderr']
+        self.stdout = data['stdout']
+
+class kill_request(config):
+    def __init__(self, command:kill_command):
+        self.request = request(command_kind().kill, command.toJSON())
+
+class digest_kill_request(config):
+    def __init__(self, req:json):
+        print("{}● digest_kill_request={}".format("", req))
+        assert (req['response']['command'] == command_kind().kill)
+        assert (req['response']['data'])
+
+        self.command = req['response']['command']
+        self.reply = kill_reply(req['response']['data'])
+
+class kill_response(config):
+    def __init__(self, reply:kill_reply):
+        self.response = response(command_kind().kill, reply.toJSON())
+
+
+class digest_kill_response(config):
+    def __init__(self, req:json):
+        assert (req['response']['command'] == command_kind().kill)
+        assert (req['response']['data'])
+
+        self.command = req['response']['command'] 
+        self.reply = kill_reply(req['response']['data'])
+
+
+#
+# QMP
+#
+class qmp_command(config):
+    def __init__(self, taskid:int, execute:str, argsjson:json):
+        self.taskid = taskid
+        self.execute = execute
+        self.argsjson = argsjson
+
+class qmp_config(config):
+    def __init__(self, data:json):
+        self.cmd  = qmp_command(data['taskid'],
+                                data['execute'],
+                                data['argsjson'])
+
+class qmp_reply(config):
+    def __init__(self, data:json):
+        self.taskid = data['taskid']
+        self.result = data['result']
+        self.errcode = data['errcode']
+        self.stderr = data['stderr']
+        self.stdout = data['stdout']
+
+class qmp_request(config):
+    def __init__(self, command:qmp_command):
+        self.request = request(command_kind().qmp, command.toJSON())
+
+class qmp_response(config):
+    def __init__(self, reply:qmp_reply):
+        self.response = response(command_kind().qmp, reply.toJSON())
+
+class digest_qmp_response(config):
+    def __init__(self, req:json):
+        print("{}● digest_qmp_response={}".format("", req))
+        self.command = req['response']['command']
+        self.reply = qmp_reply(req['response']['data'])
