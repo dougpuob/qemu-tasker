@@ -74,3 +74,26 @@ python3 qemu-tasker.py qmp --taskid 10010 \
                            --execute human-monitor-command \
                            --argsjson='''{"command-line" : "savevm snapshot01" }'''
 ```
+
+
+``` bash
+python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
+                         --taskid 10010 \
+                         --execute human-monitor-command \
+                         --argsjson='''{"command-line" : "savevm winusb" }'''
+
+python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
+                         --taskid 10010 \
+                         --execute human-monitor-command \
+                         --argsjson='''{"command-line" : "info snapshots" }'''
+
+python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
+                         --taskid 10010 \
+                         --execute human-monitor-command \
+                         --argsjson='''{"command-line" : "device_add usb-winusb,id=winusb-01,pcap=winusb-01.pcap" }'''
+
+python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
+                         --taskid 10010 \
+                         --execute human-monitor-command \
+                         --argsjson='''{"command-line" : "info usb" }'''
+```
