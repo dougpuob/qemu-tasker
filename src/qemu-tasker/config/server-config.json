@@ -1,0 +1,14 @@
+{
+	"socket_address": {
+		"addr": "localhost",
+		"port": 12801
+	},
+	"qemu_longlife": {
+		"instance_maximum": 10,
+		"longlife_minutes": 10
+	},
+	"ssh_login": {
+		"username": "dougpuob",
+		"password": "dougpuob"
+	}
+}
