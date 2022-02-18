@@ -14,9 +14,11 @@ parser = argparse.ArgumentParser(add_help=True)
 
 # create sub-parser
 subparsers = parser.add_subparsers(dest="command")
+parser.add_argument('-H', '--host', type=str, default="localhost")
+parser.add_argument('-P', '--port', type=int, default=12801)
 
 # subcommand start                                                                  
-parser_start = subparsers.add_parser('server', parents = [parent_parser], help='start a server daemon')
+parser_server = subparsers.add_parser('server', parents = [parent_parser], help='start a server daemon')
 
 # subcommand start
 parser_start = subparsers.add_parser('start', parents = [parent_parser], help='launch a QEMU achine instance')
@@ -51,11 +53,7 @@ logging.basicConfig(filename='default.log',
 logging.info('--------------------------------------------------------------------------------')
 logging.info(args)
 
-srvcfg_path = pathlib.Path.joinpath(pathlib.Path(__file__).parent.absolute(), 'config/server-config.json')
-srvcfg_json = json.load(open(srvcfg_path))
-
-socket_addr = config.socket_address(srvcfg_json['socket_address']['addr'], 
-                                    srvcfg_json['socket_address']['port'])
+socket_addr = config.socket_address(args.host, args.port)
 
 if 'server' == args.command:
     server(socket_addr).start()
