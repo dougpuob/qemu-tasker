@@ -18,7 +18,8 @@ def attach_qemu_device_qmp(self):
     if self.is_qemu_device_attached_qmp:
         return
     self.is_qemu_device_attached_qmp = True
-    arg1 = ["-chardev", "socket,id=qmp,host={},port={}".format(self.socket_addr.addr, self.fwd_ports.qmp)]
+    arg1 = ["-chardev", "socket,id=qmp,host={},port={}".format(self.socket_addr.addr, 
+                                                               self.fwd_ports.qmp)]
     arg2 = ["-mon", "chardev=qmp,mode=control"]
     self.base_args.extend(arg1)
 ```
@@ -63,9 +64,13 @@ python3 qemu-tasker.py exec --taskid 10010 --program "ipconfig" --arguments="-al
 ### QMP
 
 ``` bash
-python3 qemu-tasker.py qmp --taskid 10010 --execute human-monitor-command --argsjson='''{"command-line" : "info version" }'''
+python3 qemu-tasker.py qmp --taskid 10010 \
+                           --execute human-monitor-command \
+                           --argsjson='''{"command-line" : "info version" }'''
 ```
 
 ``` bash
-python3 qemu-tasker.py qmp --taskid 10010 --execute human-monitor-command --argsjson='''{"command-line" : "savevm snapshot01" }'''
+python3 qemu-tasker.py qmp --taskid 10010 \
+                           --execute human-monitor-command \
+                           --argsjson='''{"command-line" : "savevm snapshot01" }'''
 ```
