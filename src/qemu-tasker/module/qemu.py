@@ -246,6 +246,12 @@ class qemu_instance:
 
         # first kill by its function.
         self.qemu_proc.kill()
+        
+        if self.conn_qmp:
+            self.conn_qmp.close()
+        
+        if self.conn_ssh:
+            self.conn_ssh.close()        
 
         # kill by signal if pid found.
         for proc in psutil.process_iter():

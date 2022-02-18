@@ -25,8 +25,8 @@ parser_start.add_argument('-T', '--test',  action='store_true')
 
 # subcommand kill
 parser_kill = subparsers.add_parser('kill', parents = [parent_parser], help='kill the specific QEMU machine instance')
-parser_kill.add_argument('-T', '--taskid', type=int, required=True)
-parser_kill.add_argument('-A', '--all',  action='store_true')
+parser_kill.add_argument('-T', '--taskid', type=int)
+parser_kill.add_argument('-A', '--killall',  action='store_true')
 
 # subcommand exec
 parser_exec = subparsers.add_parser('exec', parents = [parent_parser], help='execute a specific command at guest operating system')
@@ -39,13 +39,6 @@ parser_exec = subparsers.add_parser('qmp', parents = [parent_parser], help='exec
 parser_exec.add_argument('-T', '--taskid', type=int, required=True)
 parser_exec.add_argument('-E', '--execute', required=True)
 parser_exec.add_argument('-A', '--argsjson')
-
-# subcommand info
-parser_info = subparsers.add_parser('info', parents = [parent_parser], help='fetch current daemon information')
-
-# subcommand query
-parser_query = subparsers.add_parser('query', parents = [parent_parser], help='query information from the QEMU machine instance')
-parser_query.add_argument('-T', '--taskid')
 
 args = parser.parse_args()
 print("{}● args={}".format("", args))
@@ -80,7 +73,7 @@ elif 'exec' == args.command:
     client(socket_addr).send_exec(exec_cfg)
 
 elif 'kill' == args.command:
-    kill_cmd = config.kill_command(args.taskid)
+    kill_cmd = config.kill_command(args.taskid, args.killall)
     kill_cfg = config.kill_config(kill_cmd.toJSON())
     client(socket_addr).send_kill(kill_cfg)
 

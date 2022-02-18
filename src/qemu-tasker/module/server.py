@@ -204,6 +204,24 @@ class server:
             }
             return reply_data
 
+    def command_to_kill_all(self, kill_cmd:config.kill_command):
+
+        kill_numb = 0
+        for qemu_inst in self.qemu_inst_list:            
+            self.qemu_inst_list_killing_waiting.append(qemu_inst)
+            kill_numb = kill_numb + 1
+
+        self.qemu_inst_list.clear()
+        
+        reply_data = {
+            "taskid"    : kill_cmd.toJSON,
+            "result"    : True,
+            "errcode"   : 0,
+            "stderr"    : "",
+            "stdout"    : "{} QEMU instance was/were killed.".format(kill_numb) }
+        
+        return reply_data
+
     def command_to_qmp(self, qmp_cmd:config.qmp_command):
         qemu_inst = self.find_target_instance(qmp_cmd.taskid)                    
         if None == qemu_inst:
@@ -287,7 +305,12 @@ class server:
                 elif config.command_kind().kill == client_data['request']['command']:
                     print("{}● command_kind={}".format("  ", client_data['request']['command']))
                     kill_cfg = config.kill_config(client_data['request']['data'])                    
-                    reply_data = self.command_to_kill(kill_cfg.cmd)
+                    
+                    if kill_cfg.cmd.killall:                    
+                        reply_data = self.command_to_kill_all(kill_cfg.cmd)                    
+                    else:
+                        reply_data = self.command_to_kill(kill_cfg.cmd)
+
                     default_r = config.default_reply(reply_data)
                     default_resp = config.default_response(client_data['request']['command'], default_r)
                     resp_text = default_resp.toTEXT()

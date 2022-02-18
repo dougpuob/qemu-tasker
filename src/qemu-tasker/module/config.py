@@ -129,7 +129,7 @@ class response(config):
 # 
 class default_reply(config):
     def __init__(self, data:json):        
-        self.taskid = data['taskid']
+        self.taskid  = data['taskid']
         self.result  = data['result']
         self.errcode = data['errcode']
         self.stderr  = data['stderr']
@@ -145,7 +145,7 @@ class default_response(config):
 # 
 class bad_reply(config):
     def __init__(self, data:json):        
-        self.taskid = data['taskid']
+        self.taskid  = data['taskid']
         self.result  = data['result']
         self.errcode = data['errcode']
         self.stderr  = data['stderr']
@@ -170,12 +170,6 @@ class start_command(config):
 
 class start_config(config):
     def __init__(self, data:json):
-        print(data)
-        assert data.get('program')  , "data['program']"
-        assert data.get('arguments'), "data['arguments']"
-        assert data.get('longlife') , "data['longlife']"
-        assert data.get('ssh_login'), "data['ssh_login']"
-
         self.cmd = start_command(data['program'],
                                  data['arguments'],
                                  data['longlife'],
@@ -216,9 +210,6 @@ class exec_command(config):
 
 class exec_config(config):
     def __init__(self, data:json):
-        assert data.get('taskid')  , "data['taskid']"
-        assert data.get('exec_args')  , "data['exec_args']"
-
         self.cmd  = exec_command(data['taskid'], 
                                  exec_arguments(data['exec_args']['program'], 
                                                 data['exec_args']['arguments']))
@@ -245,7 +236,6 @@ class exec_response(config):
 
 class digest_exec_response(config):
     def __init__(self, req:json):
-        print("{}● digest_exec_response={}".format("", req))
         self.command = req['response']['command']
         self.reply = exec_reply(req['response']['data'])
 
@@ -253,24 +243,21 @@ class digest_exec_response(config):
 # Kill
 #
 class kill_command(config):
-    def __init__(self, taskid:int):
+    def __init__(self, taskid:int, killall:bool):
         self.taskid = taskid
+        self.killall = killall
 
 class kill_config(config):
     def __init__(self, data:json):
-        assert data.get('taskid')  , "data['taskid']"
-
-        self.cmd  = kill_command(data['taskid'])
+        self.cmd  = kill_command(data['taskid'], data['killall'])
 
 class kill_reply(config):
-    def __init__(self, data:json):
-        assert data.get('taskid')  , "data['taskid']"
-        
-        self.taskid = data['taskid']
-        self.result = data['result']
+    def __init__(self, data:json):        
+        self.taskid  = data['taskid']
+        self.result  = data['result']
         self.errcode = data['errcode']
-        self.stderr = data['stderr']
-        self.stdout = data['stdout']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
 
 class kill_request(config):
     def __init__(self, command:kill_command):
@@ -278,10 +265,6 @@ class kill_request(config):
 
 class digest_kill_request(config):
     def __init__(self, req:json):
-        print("{}● digest_kill_request={}".format("", req))
-        assert (req['response']['command'] == command_kind().kill)
-        assert (req['response']['data'])
-
         self.command = req['response']['command']
         self.reply = kill_reply(req['response']['data'])
 
@@ -292,9 +275,6 @@ class kill_response(config):
 
 class digest_kill_response(config):
     def __init__(self, req:json):
-        assert (req['response']['command'] == command_kind().kill)
-        assert (req['response']['data'])
-
         self.command = req['response']['command'] 
         self.reply = kill_reply(req['response']['data'])
 
@@ -316,11 +296,11 @@ class qmp_config(config):
 
 class qmp_reply(config):
     def __init__(self, data:json):
-        self.taskid = data['taskid']
-        self.result = data['result']
+        self.taskid  = data['taskid']
+        self.result  = data['result']
         self.errcode = data['errcode']
-        self.stderr = data['stderr']
-        self.stdout = data['stdout']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
 
 class qmp_request(config):
     def __init__(self, command:qmp_command):
@@ -332,6 +312,5 @@ class qmp_response(config):
 
 class digest_qmp_response(config):
     def __init__(self, req:json):
-        print("{}● digest_qmp_response={}".format("", req))
         self.command = req['response']['command']
         self.reply = qmp_reply(req['response']['data'])
