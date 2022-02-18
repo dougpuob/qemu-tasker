@@ -2,6 +2,8 @@
 
 The `qemu-tasker` project is a server-client program in Python which manage QEMU instances and communicate with them from the client side by commands. The `server` command to start a daemon as a server manage all QEMU instances and send/receive commands from clients; the `start` command to launch a QEMU program, options for QEMU in a JSON config file. the server will response you an unique <TASKID> to identify the QEMU process; the `kill` command to kill a QEMU instance by its <TASKID>; the `exec` command to execute command by SSH; the `qmp` command to communicate with QEMU Machie Protocol(QMP), of cause you can send HMP via QMP.
 
+![Figure](doc/figure.png)
+
 Make the `SSH` and `QMP` work, the `qemu-tasker` adds related QEMU options automatically when launch QEMU processes. You have to setup the SSH server in your operating system images, the username and password of SSH is in the config file.
 
 ``` python
