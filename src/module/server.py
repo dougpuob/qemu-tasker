@@ -189,7 +189,7 @@ class server:
             return reply_data
 
     def command_to_kill(self, kill_cmd:config.kill_command):
-        qemu_inst = self.find_target_instance(kill_cmd.toJSON)
+        qemu_inst = self.find_target_instance(kill_cmd.taskid)
         if None == qemu_inst:
             return self.get_wrong_taskid_reply_data(kill_cmd.toJSON)
         else:                        
@@ -205,7 +205,6 @@ class server:
             return reply_data
 
     def command_to_kill_all(self, kill_cmd:config.kill_command):
-
         kill_numb = 0
         for qemu_inst in self.qemu_inst_list:            
             self.qemu_inst_list_killing_waiting.append(qemu_inst)
