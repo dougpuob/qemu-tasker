@@ -115,7 +115,6 @@ class task_status:
 
 class request(config):
     def __init__(self, command:str, data:json):
-        print(data)
         self.command = command
         self.data = data
 

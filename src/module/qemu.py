@@ -105,7 +105,7 @@ class qemu_instance:
         if exec_args.arguments:
              cmd_str = cmd_str + " " + " ".join(exec_args.arguments)
         
-        print("{}● cmd_str={}".format("  ", cmd_str))
+        logging.info("{}● cmd_str={}".format("  ", cmd_str))
         if self.conn_ssh:
             stdin, stdout, stderr = self.conn_ssh.exec_command(command=cmd_str)
             if stderr.readable():
@@ -210,7 +210,7 @@ class qemu_instance:
         qemu_cmdargs.append(start_cmd.program)
         qemu_cmdargs.extend(start_cmd.arguments)
         qemu_cmdargs.extend(self.base_args)
-        print("{}● qemu_cmdargs={}".format("  ", qemu_cmdargs))
+        logging.info("{}● qemu_cmdargs={}".format("  ", qemu_cmdargs))
 
         self.start_cmd = start_cmd
         
