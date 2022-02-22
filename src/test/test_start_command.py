@@ -35,14 +35,14 @@ class test_start(unittest.TestCase):
         self.assertEqual(start_cmd.ssh_login, self.ssh_login)
         
     def test_start_config(self):
-        json_data = { "program" : self.program,
+        json_data = { "program"   : self.program,
                       "arguments" : self.arguments,
-                      "longlife" : self.longlife,
+                      "longlife"  : self.longlife,
                       "ssh_login" : self.ssh_login.toJSON() }
 
         start_cfg = start_config(json_data)
 
-        self.assertEqual(start_cfg.cmd, json_data)
+        self.assertEqual(start_cfg.cmd.toJSON(), json_data)
         self.assertEqual(start_cfg.cmd.program, self.program)
         self.assertEqual(start_cfg.cmd.arguments[0], self.arguments[0])
         self.assertEqual(start_cfg.cmd.arguments[1], self.arguments[1])
@@ -53,8 +53,11 @@ class test_start(unittest.TestCase):
 
 
     def test_start_reply(self):
-        json_data = { "result" : True,
-                      "taskid" : 1,
+        json_data = { "result"  : True,
+                      "taskid"  : 1,
+                      "errcode" : 0,
+                      "stdout"  : [],
+                      "stderr"  : [],
                       "fwd_ports" : { "qmp" : 1,
                                       "ssh" : 2 } }
         start_r = start_reply(json_data)
@@ -75,6 +78,9 @@ class test_start(unittest.TestCase):
     def test_start_response(self):
         json_data = { "result" : True,
                       "taskid" : 1,
+                      "errcode" : 0,
+                      "stdout"  : [],
+                      "stderr"  : [],
                       "fwd_ports" : { "qmp" : 1,
                                       "ssh" : 2 } }
 

@@ -177,13 +177,13 @@ class start_config(config):
 
 class start_reply(config):
     def __init__(self, data:json):        
-        self.taskid = data['taskid']
-        self.fwd_ports = tcp_fwd_ports(data['fwd_ports']['qmp'], 
-                                       data['fwd_ports']['ssh'])
+        self.taskid  = data['taskid']
         self.result  = data['result']
         self.errcode = data['errcode']
         self.stderr  = data['stderr']
-        self.stdout  = data['stdout']
+        self.stdout  = data['stdout']        
+        self.fwd_ports = tcp_fwd_ports(data['fwd_ports']['qmp'], 
+                                       data['fwd_ports']['ssh'])
 
 
 class  start_request(config):
