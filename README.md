@@ -50,50 +50,66 @@ optional arguments:
 
 ### Server
 ``` bash
-python3 qemu-tasker.py server
+❯ python3 qemu-tasker.py server
 ```
 ### Start
 ``` bash
-python3 qemu-tasker.py start --config config/qemu-taskcfg-01.json
+❯ python3 qemu-tasker.py start --config config/qemu-taskcfg-01.json
 ```
 
 ### Exec
 ``` bash
-python3 qemu-tasker.py exec --taskid 10010 --program "ipconfig" --arguments="-all"
+❯ python3 qemu-tasker.py exec --taskid 10010 --program "ipconfig" --arguments="-all"
 ```
 ### QMP
 
 ``` bash
-python3 qemu-tasker.py qmp --taskid 10010 \
-                           --execute human-monitor-command \
-                           --argsjson='''{"command-line" : "info version" }'''
+❯ python3 qemu-tasker.py qmp --taskid 10010 \
+                             --execute human-monitor-command \
+                             --argsjson='''{"command-line" : "info version" }'''
 ```
 
 ``` bash
-python3 qemu-tasker.py qmp --taskid 10010 \
-                           --execute human-monitor-command \
-                           --argsjson='''{"command-line" : "savevm snapshot01" }'''
+❯ python3 qemu-tasker.py qmp --taskid 10010 \
+                             --execute human-monitor-command \
+                             --argsjson='''{"command-line" : "savevm snapshot01" }'''
 ```
 
 
 ``` bash
-python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
-                         --taskid 10010 \
-                         --execute human-monitor-command \
-                         --argsjson='''{"command-line" : "savevm winusb" }'''
+❯ python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
+                           --taskid 10010 \
+                           --execute human-monitor-command \
+                           --argsjson='''{"command-line" : "savevm winusb" }'''
 
-python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
-                         --taskid 10010 \
-                         --execute human-monitor-command \
-                         --argsjson='''{"command-line" : "info snapshots" }'''
+❯ python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
+                           --taskid 10010 \
+                           --execute human-monitor-command \
+                           --argsjson='''{"command-line" : "info snapshots" }'''
 
-python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
-                         --taskid 10010 \
-                         --execute human-monitor-command \
-                         --argsjson='''{"command-line" : "device_add usb-winusb,id=winusb-01,pcap=winusb-01.pcap" }'''
+❯ python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
+                           --taskid 10010 \
+                           --execute human-monitor-command \
+                           --argsjson='''{"command-line" : "device_add usb-winusb,id=winusb-01,pcap=winusb-01.pcap" }'''
 
-python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
-                         --taskid 10010 \
-                         --execute human-monitor-command \
-                         --argsjson='''{"command-line" : "info usb" }'''
+❯ python3 ./qemu-tasker.py --host 172.17.100.17 qmp \
+                           --taskid 10010 \
+                           --execute human-monitor-command \
+                           --argsjson='''{"command-line" : "info usb" }'''
+
+# Upload a file from the server side to the QEMU guest OS.
+❯ python3 ./qemu-tasker.py --host 192.168.0.201 file \
+                           --taskid 10010 \
+                           --kind s2g_upload \
+                           --filepath "/home/dougpuob/run-smartgit.sh" \
+                           --savepath "abc/aaa/bbb/run-smartgit.sh" \
+                           --newdir   "abc/aaa/bbb"
+
+# Download a file from the QEMU guest OS to the server side.
+❯ python3 ./qemu-tasker.py --host 192.168.0.201 file \
+                           --taskid 10010 \
+                           --kind s2g_download \
+                           --filepath "c:\Users\dougpuob\abc\aaa\bbb\run-smartgit.sh" \
+                           --savepath "~/workspace/dougpuob/qemu-tasker/qemu-tasker.git/src/run-smartgit.sh"
+
 ```

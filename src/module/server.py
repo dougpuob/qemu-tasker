@@ -33,6 +33,13 @@ class server:
         self.thread_tcp = None
 
     def __del__(self):
+        self.terminate()
+
+        self.thread_tcp = None
+        self.thread_task = None 
+        self.thread_postpone = None
+        
+    def terminate(self):
         for qemu_inst in self.qemu_inst_list:
             qemu_inst.kill()
 
@@ -40,12 +47,8 @@ class server:
             qemu_inst.kill()
 
         self.is_started = False
-        self.tcp_conn.close()
-
-        self.thread_tcp = None
-        self.thread_task = None 
-        self.thread_postpone = None
-        
+        if self.tcp_conn:
+            self.tcp_conn.close()
 
     def stop(self):
         self.is_started = False
@@ -134,7 +137,7 @@ class server:
             "taskid"    : taskid,
             "result"    : False,
             "errcode"   : -1,
-            "stderr"    : "wrong taskid",
+            "stderr"    : ["wrong taskid"],
             "stdout"    : ""
         }
         return reply_data
@@ -144,7 +147,7 @@ class server:
             "taskid"    : taskid,
             "result"    : False,
             "errcode"   : -1,
-            "stderr"    : "SSH connection is not ready",
+            "stderr"    : ["SSH connection is not ready"],
             "stdout"    : ""
         }
         return reply_data
@@ -154,7 +157,7 @@ class server:
             "taskid"    : taskid,
             "result"    : False,
             "errcode"   : -1,
-            "stderr"    : "QMP connection is not ready",
+            "stderr"    : ["QMP connection is not ready"],
             "stdout"    : ""
         }
         return reply_data
@@ -164,7 +167,7 @@ class server:
             "taskid"    : taskid,
             "result"    : False,
             "errcode"   : -1,
-            "stderr"    : "Unsupported command",
+            "stderr"    : ["Unsupported command"],
             "stdout"    : ""
         }
         return reply_data
@@ -248,89 +251,136 @@ class server:
             }
             return reply_data
 
+    def command_to_file(self, file_cmd:config.file_command):
+        qemu_inst = self.find_target_instance(file_cmd.taskid)                    
+        if None == qemu_inst:
+            return self.get_wrong_taskid_reply_data(file_cmd.taskid)
+        if not qemu_inst.is_ssh_connected():
+            return self.get_ssh_not_ready_reply_data(file_cmd.taskid)
+        else:     
+            recv_text = qemu_inst.send_file(file_cmd)            
+
+            result  = len(qemu_inst.stderr) == 0
+            errcode = qemu_inst.errcode
+            stderr  = qemu_inst.stderr
+
+            if recv_text and isinstance(recv_text, str):
+                if  0 == len(recv_text):
+                    result  = False
+                    errcode = -1
+                    stderr  = ["no return"]
+
+            reply_data = {
+                "taskid"    : file_cmd.taskid,
+                "result"    : result,
+                "errcode"   : errcode,
+                "stderr"    : stderr,
+                "stdout"    : recv_text,
+            }
+            return reply_data
+
     def thread_routine_waiting_commands(self):
         print("{}● thread_worker_tcp{}".format("", " ..."))
         print("  socket_addr.addr={}".format(self.socket_addr.addr))
         print("  socket_addr.port={}".format(self.socket_addr.port))
 
-        self.tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.tcp_conn.bind((self.socket_addr.addr, self.socket_addr.port))
-        self.tcp_conn.listen(10)
+        try:
+        
+            self.tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.tcp_conn.bind((self.socket_addr.addr, self.socket_addr.port))
+            self.tcp_conn.listen(10)
 
-        while True:            
-            conn, addr = self.tcp_conn.accept()
-            client_mesg = str(conn.recv(1024), encoding='utf-8')
-            
-            print("{}● conn={}".format("  ", conn))
-            print("{}● client_mesg={}".format("  ", client_mesg))
-            
-            if client_mesg.startswith("{\"request\":"):
+            while True:            
+                conn, addr = self.tcp_conn.accept()
+                client_mesg = str(conn.recv(1024), encoding='utf-8')
                 
-                client_data = json.loads(client_mesg)
-                print("{}● client_data={}".format("  ", client_data))
+                print("{}● conn={}".format("  ", conn))
+                print("{}● client_mesg={}".format("  ", client_mesg))
 
-                resp_text = ""
+                if client_mesg.startswith("{\"request\":"):
+                    client_data = json.loads(client_mesg)
+                    print("{}● client_data={}".format("  ", client_data))
 
-                # Start
-                if config.command_kind().start == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
-                    start_cfg = config.start_config(client_data['request']['data'])                    
-                    taskid:int = self.get_new_taskid()                    
-                    qemu_inst = qemu.qemu_instance(self.socket_addr, taskid, start_cfg.cmd)
-                    self.qemu_inst_list.append(qemu_inst)
+                    resp_text = ""
 
-                    reply_data = {
-                        "taskid"    : taskid,
-                        "fwd_ports" : qemu_inst.fwd_ports.toJSON(),
-                        "result"    : (0 == qemu_inst.errcode),
-                        "errcode"   : qemu_inst.errcode,
-                        "stderr"    : qemu_inst.stderr,
-                        "stdout"    : qemu_inst.stdout,
-                    }
-                    start_r = config.start_reply(reply_data)
-                    start_resp = config.start_response(start_r)
-                    resp_text = start_resp.toTEXT()
+                    # Start
+                    if config.command_kind().start == client_data['request']['command']:
+                        print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                        start_cfg = config.start_config(client_data['request']['data'])                    
+                        taskid:int = self.get_new_taskid()   
+                        qemu_inst = qemu.qemu_instance(self.socket_addr, taskid, start_cfg.cmd)                                         
+                        self.qemu_inst_list.append(qemu_inst)
 
-                # Exec
-                elif config.command_kind().exec == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
-                    exec_cfg = config.exec_config(client_data['request']['data'])
-                    reply_data = self.command_to_exec(exec_cfg.cmd)
-                    default_r = config.default_reply(reply_data)
-                    default_resp = config.default_response(client_data['request']['command'], default_r)
-                    resp_text = default_resp.toTEXT()
+                        reply_data = {
+                            "taskid"    : taskid,
+                            "fwd_ports" : qemu_inst.fwd_ports.toJSON(),
+                            "result"    : (0 == qemu_inst.errcode),
+                            "errcode"   : qemu_inst.errcode,
+                            "stderr"    : qemu_inst.stderr,
+                            "stdout"    : qemu_inst.stdout,
+                        }
+                        start_r = config.start_reply(reply_data)
+                        start_resp = config.start_response(start_r)
+                        resp_text = start_resp.toTEXT()
 
-                # Kill
-                elif config.command_kind().kill == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
-                    kill_cfg = config.kill_config(client_data['request']['data'])                    
-                    
-                    if kill_cfg.cmd.killall:                    
-                        reply_data = self.command_to_kill_all(kill_cfg.cmd)                    
+                    # Exec
+                    elif config.command_kind().exec == client_data['request']['command']:
+                        print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                        exec_cfg = config.exec_config(client_data['request']['data'])
+                        reply_data = self.command_to_exec(exec_cfg.cmd)
+                        default_r = config.default_reply(reply_data)
+                        default_resp = config.default_response(client_data['request']['command'], default_r)
+                        resp_text = default_resp.toTEXT()
+
+                    # Kill
+                    elif config.command_kind().kill == client_data['request']['command']:
+                        print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                        kill_cfg = config.kill_config(client_data['request']['data'])                    
+                        
+                        if kill_cfg.cmd.killall:                    
+                            reply_data = self.command_to_kill_all(kill_cfg.cmd)                    
+                        else:
+                            reply_data = self.command_to_kill(kill_cfg.cmd)
+
+                        default_r = config.default_reply(reply_data)
+                        default_resp = config.default_response(client_data['request']['command'], default_r)
+                        resp_text = default_resp.toTEXT()
+                        
+                    # QMP
+                    elif config.command_kind().qmp == client_data['request']['command']:
+                        print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                        file_cfg = config.qmp_config(client_data['request']['data'])
+                        reply_data = self.command_to_qmp(file_cfg.cmd)
+                        default_r = config.default_reply(reply_data)
+                        default_resp = config.default_response(client_data['request']['command'], default_r)
+                        resp_text = default_resp.toTEXT()
+
+                    # file
+                    elif config.command_kind().file == client_data['request']['command']:
+                        print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                        file_cfg = config.file_config(client_data['request']['data'])
+                        reply_data = self.command_to_file(file_cfg.cmd)
+                        default_r = config.default_reply(reply_data)
+                        default_resp = config.default_response(client_data['request']['command'], default_r)
+                        resp_text = default_resp.toTEXT()
+
+                    # Others
                     else:
-                        reply_data = self.command_to_kill(kill_cfg.cmd)
-
-                    default_r = config.default_reply(reply_data)
-                    default_resp = config.default_response(client_data['request']['command'], default_r)
-                    resp_text = default_resp.toTEXT()
-                    
-                # QMP
-                elif config.command_kind().qmp == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
-                    qmp_cfg = config.qmp_config(client_data['request']['data'])
-                    reply_data = self.command_to_qmp(qmp_cfg.cmd)
-                    default_r = config.default_reply(reply_data)
-                    default_resp = config.default_response(client_data['request']['command'], default_r)
-                    resp_text = default_resp.toTEXT()
-
-                # Others
-                else:
-                    reply_data = self.get_unsupported_reply_data()
-                    bad_r = config.bad_reply(reply_data)
-                    bad_resp = config.bad_response(bad_r)
-                    resp_text = bad_resp.toTEXT()
+                        reply_data = self.get_unsupported_reply_data()
+                        bad_r = config.bad_reply(reply_data)
+                        bad_resp = config.bad_response(bad_r)
+                        resp_text = bad_resp.toTEXT()
 
                 print("{}● resp_text={}".format("  ", resp_text))
+
                 conn.send(bytes(resp_text, encoding="utf-8"))
                 conn.close()
                 conn = None
+
+        except Exception as e:            
+            print("{}● exception={}".format(e))
+            logging.info("{}● exception={}".format(e))
+
+        finally:
+            self.terminate()
+        

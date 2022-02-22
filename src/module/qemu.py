@@ -6,7 +6,6 @@ import json
 from socket import timeout
 from sys import stderr, stdout
 import os
-from typing import Optional
 import paramiko
 import threading
 import subprocess
@@ -20,6 +19,7 @@ from time import sleep
 
 from datetime import datetime
 from module import config
+from module.sshclient import SSHClient
 from module.qmp import QEMUMonitorProtocol
 
 
@@ -42,8 +42,8 @@ class qemu_instance:
         # qemu
         self.qemu_thread = None
         self.qemu_proc  = None
-        self.stderr = None
-        self.stdout = None
+        self.stderr = []
+        self.stdout = []
         self.errcode = 0
         self.status = config.task_status().unknown
         self.longlife = start_cmd.longlife * 60
@@ -72,6 +72,10 @@ class qemu_instance:
     def __del__(self):
         if self.conn_qmp:
             self.conn_qmp.close()
+    
+    def clear(self):
+        self.stderr = []
+        self.errcode = 0                    
 
     def find_avaliable_ports(self, start_port, amount):        
         occupied_ports = self.get_occupied_ports()
@@ -100,12 +104,13 @@ class qemu_instance:
         return ret_ports
     
     def send_exec(self, exec_args:config.exec_arguments):
+        self.clear()
 
         cmd_str = exec_args.program
         if exec_args.arguments:
              cmd_str = cmd_str + " " + " ".join(exec_args.arguments)
         
-        logging.info("{}● cmd_str={}".format("  ", cmd_str))
+        logging.info("● cmd_str={}".format(cmd_str))
         if self.conn_ssh:
             stdin, stdout, stderr = self.conn_ssh.exec_command(command=cmd_str)
             if stderr.readable():
@@ -125,9 +130,73 @@ class qemu_instance:
         return False
 
     def send_qmp(self, qmp_cmd:config.qmp_command):
+        self.clear()        
         if self.conn_qmp:
             return self.conn_qmp.cmd(qmp_cmd.execute, args=json.loads(qmp_cmd.argsjson))            
         return ""
+        
+
+    def send_file(self, file_cmd:config.file_command):
+        self.clear()
+
+        print("● send_file")
+        print("file_cmd.taskid={}".format(file_cmd.taskid))
+        print("file_cmd.kind={}".format(file_cmd.kind))
+        print("file_cmd.filepath={}".format(file_cmd.filepath))
+        print("file_cmd.savepath={}".format(file_cmd.savepath))
+        print("file_cmd.newdir={}".format(file_cmd.newdir))
+
+        logging.info("● send_file")
+        logging.info("file_cmd={}".format(file_cmd.toJSON()))       
+        logging.info("file_cmd.taskid={}".format(file_cmd.taskid))
+        logging.info("file_cmd.kind={}".format(file_cmd.kind))
+        logging.info("file_cmd.filepath={}".format(file_cmd.filepath))
+        logging.info("file_cmd.savepath={}".format(file_cmd.savepath))
+        logging.info("file_cmd.newdir={}".format(file_cmd.newdir))        
+
+        print("config.direction_kind.s2g_upload={}".format(config.direction_kind.s2g_upload))
+        print("config.direction_kind.s2g_download={}".format(config.direction_kind.s2g_download))
+
+        result:bool = False
+        
+        if self.conn_ssh:
+            sshclient = SSHClient()
+            sftp = sshclient.open_sftp_over_ssh(self.conn_ssh)
+            if sftp:
+                try:                    
+                    if file_cmd.kind == "s2g_upload":
+                        if file_cmd.newdir:
+                            sshclient.mkdir_p(sftp, file_cmd.newdir, True)
+                        sftp.put(file_cmd.filepath, file_cmd.savepath)
+                        result = True
+
+                    elif file_cmd.kind == "s2g_download":
+                        sftp.get(file_cmd.filepath, file_cmd.savepath)
+                        result = True
+
+                    else:
+                        result = False
+                        
+                        self.stderr = ["Unsupport direction kind !!!"]
+                        self.errcode = -2
+
+                        print("Unsupport direction kind !!!")
+                        logging.info("Unsupport direction kind !!!")                        
+
+                except Exception as e:
+                    result = False
+                    
+                    self.stderr = [str(e)]
+                    self.errcode = -1
+                    
+                    print("● exception={}".format(e))
+                    logging.info("● exception={}".format(e))
+                    pass
+
+                finally:
+                    sftp.close()
+
+        return result
 
     def is_qmp_connected(self):
         return self.flag_is_qmp_connected
@@ -171,7 +240,7 @@ class qemu_instance:
     def thread_ssh_try_connect(self, host_addr, host_port, username, password):
         logging.info("command.py!qemu_machine::thread_wait_ssh_connect()")
         while not self.flag_is_ssh_connected:
-            try:   
+            try:
                 self.conn_ssh = paramiko.SSHClient()
                 self.conn_ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
@@ -206,6 +275,8 @@ class qemu_instance:
         qmp_accept_thread.start()
 
     def create(self, taskid, start_cmd:config.start_command):        
+        self.clear()
+
         qemu_cmdargs = []
         qemu_cmdargs.append(start_cmd.program)
         qemu_cmdargs.extend(start_cmd.arguments)
@@ -241,6 +312,8 @@ class qemu_instance:
         self.status = config.task_status().connecting
 
     def kill(self) -> bool:        
+        self.clear()
+
         if None == self.qemu_proc:
             return True
 
@@ -267,4 +340,5 @@ class qemu_instance:
 
     def decrease_longlife(self):
         self.longlife = self.longlife - 1 
+
 

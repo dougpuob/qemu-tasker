@@ -7,6 +7,8 @@ import logging
 import json
 from os import kill
 
+from enum import Enum
+
 class config():
     def _try(self, o):
         try: 
@@ -40,7 +42,6 @@ class ssh_login(config):
     def __init__(self, username:str, password:str): 
         self.username = username
         self.password = password
-
 
 class server_config_default(config):
     def __init__(self):
@@ -102,7 +103,7 @@ class command_kind:
         self.kill    = "kill"     
         self.exec    = "exec"     
         self.qmp     = "qmp" 
-        self.info    = "info"  
+        self.file    = "file"  
 
 class task_status:
     def __init__(self):
@@ -313,3 +314,53 @@ class digest_qmp_response(config):
     def __init__(self, req:json):
         self.command = req['response']['command']
         self.reply = qmp_reply(req['response']['data'])
+
+
+
+#
+# File2Guest
+#
+class direction_kind(Enum):
+    unknown = 0
+    c2g_upload   = 1
+    c2g_download = 2
+    s2g_upload   = 3
+    s2g_download = 4
+
+class file_command(config):
+    def __init__(self, taskid:int, kind:direction_kind, filepath:str, savepath:str, newdir:str):
+        self.taskid = taskid
+        self.kind = kind
+        self.filepath = filepath
+        self.savepath = savepath
+        self.newdir = newdir
+
+class file_config(config):
+    def __init__(self, data:json):
+        self.cmd  = file_command(data['taskid'], data['kind'], data['filepath'], data['savepath'], data['newdir'])
+
+class file_reply(config):
+    def __init__(self, data:json):        
+        self.taskid  = data['taskid']
+        self.result  = data['result']
+        self.errcode = data['errcode']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
+
+class file_request(config):
+    def __init__(self, command:file_command):
+        self.request = request(command_kind().file, command.toJSON())
+
+class digest_file_request(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = file_reply(req['response']['data'])
+
+class file_response(config):
+    def __init__(self, reply:file_reply):
+        self.response = response(command_kind().file, reply.toJSON())
+
+class digest_file_response(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command'] 
+        self.reply = file_reply(req['response']['data'])

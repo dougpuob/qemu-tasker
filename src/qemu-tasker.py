@@ -9,6 +9,9 @@ from module.server import server
 from module.client import client
 
 
+#
+# Program arugments
+#
 parent_parser = argparse.ArgumentParser(add_help=False)
 parser = argparse.ArgumentParser(add_help=True) 
 
@@ -16,6 +19,7 @@ parser = argparse.ArgumentParser(add_help=True)
 subparsers = parser.add_subparsers(dest="command")
 parser.add_argument('-H', '--host', type=str, default="localhost")
 parser.add_argument('-P', '--port', type=int, default=12801)
+parser.add_argument('-V', '--verbose', action='store_true')
 
 # subcommand start                                                                  
 parser_server = subparsers.add_parser('server', parents = [parent_parser], help='start a server daemon')
@@ -28,7 +32,7 @@ parser_start.add_argument('-T', '--test',  action='store_true')
 # subcommand kill
 parser_kill = subparsers.add_parser('kill', parents = [parent_parser], help='kill the specific QEMU machine instance')
 parser_kill.add_argument('-T', '--taskid', type=int)
-parser_kill.add_argument('-A', '--killall',  action='store_true')
+parser_kill.add_argument('-A', '--killall', action='store_true')
 
 # subcommand exec
 parser_exec = subparsers.add_parser('exec', parents = [parent_parser], help='execute a specific command at guest operating system')
@@ -42,9 +46,24 @@ parser_exec.add_argument('-T', '--taskid', type=int, required=True)
 parser_exec.add_argument('-E', '--execute', required=True)
 parser_exec.add_argument('-A', '--argsjson')
 
-args = parser.parse_args()
-print("{}● args={}".format("", args))
+# subcommand file
+parser_file = subparsers.add_parser('file', parents = [parent_parser], help='transfer files between client and guest, or server and guest')
+parser_file.add_argument('-T', '--taskid', type=int, required=True)
+parser_file.add_argument('-K', '--kind', type=str, required=True, choices=['c2g_upload', 
+                                                                           'c2g_download', 
+                                                                           's2g_upload', 
+                                                                           's2g_download'])
+parser_file.add_argument('-F', '--filepath', type=str, required=True)
+parser_file.add_argument('-S', '--savepath', type=str, required=True)
+parser_file.add_argument('-N', '--newdir', type=str)
 
+
+args = parser.parse_args()
+
+
+#
+# Start log
+#
 logging.basicConfig(filename='default.log', 
                     level=logging.INFO,
                     format="[%(asctime)s][%(levelname)s] %(message)s",
@@ -79,6 +98,11 @@ elif 'qmp' == args.command:
     qmp_cmd = config.qmp_command(args.taskid, args.execute, args.argsjson)
     qmp_cfg = config.qmp_config(qmp_cmd.toJSON())
     client(socket_addr).send_qmp(qmp_cfg)
+
+elif 'file' == args.command:
+    file = config.file_command(args.taskid, args.kind, args.filepath, args.savepath, args.newdir)
+    file_cfg = config.file_config(file.toJSON())
+    client(socket_addr).send_file(file_cfg)    
 
 else:    
     parser.print_help()
