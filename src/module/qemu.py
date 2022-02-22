@@ -157,46 +157,56 @@ class qemu_instance:
         print("config.direction_kind.s2g_upload={}".format(config.direction_kind.s2g_upload))
         print("config.direction_kind.s2g_download={}".format(config.direction_kind.s2g_download))
 
-        result:bool = False
+        sshclient = SSHClient()
+        sftp = sshclient.open_sftp_over_ssh(self.conn_ssh)
         
-        if self.conn_ssh:
-            sshclient = SSHClient()
-            sftp = sshclient.open_sftp_over_ssh(self.conn_ssh)
-            if sftp:
-                try:                    
-                    if file_cmd.kind == "s2g_upload":
-                        if file_cmd.newdir:
-                            sshclient.mkdir_p(sftp, file_cmd.newdir, True)
-                        sftp.put(file_cmd.filepath, file_cmd.savepath)
-                        result = True
+        file_reply_json = sshclient.cmd_dispatch(file_cmd)
+        self.errcode = file_reply_json["errcode"]
+        self.stderr  = file_reply_json["stderr"]
+        self.stdout  = file_reply_json["stdout"]
+        sftp.close()
 
-                    elif file_cmd.kind == "s2g_download":
-                        sftp.get(file_cmd.filepath, file_cmd.savepath)
-                        result = True
-
-                    else:
-                        result = False
-                        
-                        self.stderr = ["Unsupport direction kind !!!"]
-                        self.errcode = -2
-
-                        print("Unsupport direction kind !!!")
-                        logging.info("Unsupport direction kind !!!")                        
-
-                except Exception as e:
-                    result = False
-                    
-                    self.stderr = [str(e)]
-                    self.errcode = -1
-                    
-                    print("● exception={}".format(e))
-                    logging.info("● exception={}".format(e))
-                    pass
-
-                finally:
-                    sftp.close()
-
+        result  = file_reply_json["result"]
         return result
+
+        # if self.conn_ssh:
+        #     sshclient = SSHClient()
+        #     sftp = sshclient.open_sftp_over_ssh(self.conn_ssh)
+        #     if sftp:
+        #         try:                    
+        #             if file_cmd.kind == "s2g_upload":
+        #                 if file_cmd.newdir:
+        #                     sshclient.mkdir_p(sftp, file_cmd.newdir, True)
+        #                 sftp.put(file_cmd.filepath, file_cmd.savepath)
+        #                 result = True
+
+        #             elif file_cmd.kind == "s2g_download":
+        #                 sftp.get(file_cmd.filepath, file_cmd.savepath)
+        #                 result = True
+
+        #             else:
+        #                 result = False
+                        
+        #                 self.stderr = ["Unsupport direction kind !!!"]
+        #                 self.errcode = -2
+
+        #                 print("Unsupport direction kind !!!")
+        #                 logging.info("Unsupport direction kind !!!")                        
+
+        #         except Exception as e:
+        #             result = False
+                    
+        #             self.stderr = [str(e)]
+        #             self.errcode = -1
+                    
+        #             print("● exception={}".format(e))
+        #             logging.info("● exception={}".format(e))
+        #             pass
+
+        #         finally:
+        #             sftp.close()
+
+        #return result
 
     def is_qmp_connected(self):
         return self.flag_is_qmp_connected

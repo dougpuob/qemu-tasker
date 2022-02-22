@@ -5,6 +5,7 @@ import logging
 import paramiko
 
 from module import config
+from module.sshclient import SSHClient
 
 
 class client:
@@ -13,17 +14,18 @@ class client:
         self.start_cfg:config.start_config = None
 
         self.flag_is_ssh_connected = False
-        self.tcp_conn = None
-        self.ssh_conn = None
+        self.conn_tcp = None
+        self.conn_ssh = None
+        self.conn_sftp = None
 
     def __del__(self):
-        if self.tcp_conn:
-            self.tcp_conn.close()
-            self.tcp_conn = None
+        if self.conn_tcp:
+            self.conn_tcp.close()
+            self.conn_tcp = None
 
-        if self.ssh_conn:
-            self.ssh_conn.close()
-            self.ssh_conn = None
+        if self.conn_ssh:
+            self.conn_ssh.close()
+            self.conn_ssh = None
 
     def connect_sftp(self):
         self.conn_sftp = paramiko.SSHClient()
@@ -44,20 +46,20 @@ class client:
         
 
     def send(self, mesg:str) -> str:
-        self.tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.tcp_conn.connect((self.host_addr.addr, self.host_addr.port))
+        self.conn_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.conn_tcp.connect((self.host_addr.addr, self.host_addr.port))
         
-        self.tcp_conn.send(mesg.encode())
+        self.conn_tcp.send(mesg.encode())
         
         BUFF_SIZE = 2048
         received = b''
         while True:            
-            part = self.tcp_conn.recv(BUFF_SIZE)
+            part = self.conn_tcp.recv(BUFF_SIZE)
             received = received + part
             if len(part) < BUFF_SIZE:
                 break
                 
-        self.tcp_conn.close()
+        self.conn_tcp.close()
         return str(received, encoding='utf-8')
 
     def send_start(self, start_cfg:config.start_config):
@@ -109,11 +111,21 @@ class client:
         print("[qemu-tasker] command result: {}".format(qmp_resp.reply.result))
         
     def send_file(self, file_cfg:config.file_config):
-        file_req = config.file_request(file_cfg.cmd)
-        file_resp_text = self.send(file_req.toTEXT())
-        logging.info("● file_resp_text={}".format(file_resp_text))
         try:
-            file_resp = config.digest_file_response(json.loads(file_resp_text))    
+            if file_cfg.cmd.kind == "c2g_upload" or file_cfg.cmd.kind == "c2g_download":
+                file_reply = config.file_reply(self.send_file_direct(file_cfg))
+                file_resp_json = config.file_response(file_reply).toJSON()
+                file_resp = config.digest_file_response(file_resp_json)    
+                
+            elif file_cfg.cmd.kind == "s2g_upload" or file_cfg.cmd.kind == "s2g_download":
+                file_req = config.file_request(file_cfg.cmd)        
+                file_resp_text = self.send(file_req.toTEXT())
+                logging.info("● file_resp_text={}".format(file_resp_text))
+                file_resp = config.digest_file_response(json.loads(file_resp_text))    
+
+            else:
+                pass        
+            
             print("[qemu-tasker] command result: {}".format(file_resp.reply.result))
             if not file_resp.reply.result:
                 print("stdout :{}".format(file_resp.reply.stdout))
@@ -122,4 +134,25 @@ class client:
             
         except Exception as e:            
             print("[qemu-tasker] {}".format(e))
+    
+    def send_file_direct(self, file_cfg:config.file_config):        
+        client_cfg = json.load(open(file_cfg.cmd.config))
+        start_cfg = config.start_config(client_cfg)
+
+        sshclient = SSHClient()
+        conn_ssh = sshclient.open(self.host_addr.addr,
+                                  self.host_addr.port, 
+                                  start_cfg.cmd.ssh_login.username,
+                                  start_cfg.cmd.ssh_login.password,
+                                  True)
+        if conn_ssh:            
+            file_reply_json = sshclient.cmd_dispatch(file_cfg.cmd)
+            sshclient.close()
+            return file_reply_json
+            
+        return None
+                    
+
+        
+        
         

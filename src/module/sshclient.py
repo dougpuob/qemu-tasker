@@ -52,7 +52,7 @@ class SSHClient:
     
         return None
 
-    def mkdir_p(self, sftp, remote, is_dir=False):
+    def mkdir_p(self, remote, is_dir=False):
         
         dirs_ = []
         if is_dir:
@@ -69,6 +69,46 @@ class SSHClient:
         while len(dirs_):
             dir_ = dirs_.pop()
             try:
-                sftp.stat(dir_)
+                self.conn_sftp.stat(dir_)
             except:
-                sftp.mkdir(dir_)
+                self.conn_sftp.mkdir(dir_)
+
+
+    def cmd_dispatch(self, file_cmd:config.file_command):
+        result = False            
+        stdout = []
+        stderr = []
+        errcode = 0
+
+        try:                    
+            if file_cmd.kind == "s2g_upload" or file_cmd.kind == "c2g_upload":
+                if file_cmd.newdir:
+                    self.mkdir_p(file_cmd.newdir, True)
+                self.conn_sftp.put(file_cmd.filepath, file_cmd.savepath)
+                result = True
+
+            elif file_cmd.kind == "s2g_download" or file_cmd.kind == "c2g_download":
+                self.conn_sftp.get(file_cmd.filepath, file_cmd.savepath)
+                result = True
+
+            else:
+                result = False                
+                self.stderr = ["Unsupport direction kind !!!"]
+                self.errcode = -2
+           
+
+        except Exception as e:
+            result = False            
+            stderr = [str(e)]
+            errcode = -1            
+            
+        
+        reply_data = {
+                "taskid"    : file_cmd.taskid,
+                "result"    : result,
+                "errcode"   : errcode,
+                "stderr"    : stderr,
+                "stdout"    : stdout,
+            }
+
+        return reply_data

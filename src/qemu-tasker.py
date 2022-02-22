@@ -56,6 +56,8 @@ parser_file.add_argument('-K', '--kind', type=str, required=True, choices=['c2g_
 parser_file.add_argument('-F', '--filepath', type=str, required=True)
 parser_file.add_argument('-S', '--savepath', type=str, required=True)
 parser_file.add_argument('-N', '--newdir', type=str)
+parser_file.add_argument('-C', '--config', type=str)
+parser_file.add_argument('-P', '--port', type=int)
 
 
 args = parser.parse_args()
@@ -100,7 +102,7 @@ elif 'qmp' == args.command:
     client(socket_addr).send_qmp(qmp_cfg)
 
 elif 'file' == args.command:
-    file = config.file_command(args.taskid, args.kind, args.filepath, args.savepath, args.newdir)
+    file = config.file_command(args.taskid, args.kind, args.filepath, args.savepath, args.newdir, args.config, args.port)
     file_cfg = config.file_config(file.toJSON())
     client(socket_addr).send_file(file_cfg)    
 

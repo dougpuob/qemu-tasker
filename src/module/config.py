@@ -328,16 +328,18 @@ class direction_kind(Enum):
     s2g_download = 4
 
 class file_command(config):
-    def __init__(self, taskid:int, kind:direction_kind, filepath:str, savepath:str, newdir:str):
+    def __init__(self, taskid:int, kind:direction_kind, filepath:str, savepath:str, newdir:str, config:str, port:int):
         self.taskid = taskid
         self.kind = kind
         self.filepath = filepath
         self.savepath = savepath
         self.newdir = newdir
+        self.config = config
+        self.port = port
 
 class file_config(config):
     def __init__(self, data:json):
-        self.cmd  = file_command(data['taskid'], data['kind'], data['filepath'], data['savepath'], data['newdir'])
+        self.cmd  = file_command(data['taskid'], data['kind'], data['filepath'], data['savepath'], data['newdir'], data['config'], data['port'])
 
 class file_reply(config):
     def __init__(self, data:json):        

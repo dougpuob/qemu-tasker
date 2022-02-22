@@ -112,4 +112,22 @@ optional arguments:
                            --filepath "c:\Users\dougpuob\abc\aaa\bbb\run-smartgit.sh" \
                            --savepath "~/workspace/dougpuob/qemu-tasker/qemu-tasker.git/src/run-smartgit.sh"
 
+# Upload a file from the client slide to the QEMU guest OS.
+❯ python3 ./qemu-tasker.py --host 192.168.0.201 file \
+                           --taskid 10010 \
+                           --kind c2g_upload \
+                           --filepath "/home/dougpuob/workspace/run-smartgit.sh" \
+                           --savepath "abc/aaa/bbb/run-smartgit.sh" \
+                           --newdir "abc/aaa/bbb" \
+                           --config qemu-taskcfg.json \
+                           --port 10012
+
+# Download a file from the QEMU guest OS to the client side.
+❯ python3 ./qemu-tasker.py --host 192.168.0.201 file \
+                           --taskid 10010 \
+                           --kind c2g_download \
+                           --filepath "c:\Users\dougpuob\abc\aaa\bbb\run-smartgit.sh" \
+                           --savepath "/home/dougpuob/workspace/dougpuob/qemu-tasker/qemu-tasker.git/src/run-smartgit.sh" \
+                           --config qemu-taskcfg.json \
+                           --port 10012
 ```
