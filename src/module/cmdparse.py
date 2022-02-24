@@ -2,7 +2,7 @@
 import argparse
 
 class cmdargs():
-    def __init__(self) -> None:
+    def __init__(self):
         #
         # Program arugments
         #
@@ -13,6 +13,7 @@ class cmdargs():
         subparsers = self.parser.add_subparsers(dest="command")
         self.parser.add_argument('-H', '--host', type=str, default="localhost")
         self.parser.add_argument('-P', '--port', type=int, default=12801)
+        self.parser.add_argument('-J', '--jsonreport', action='store_true', default=False)
         self.parser.add_argument('-V', '--verbose', action='store_true')
 
         # subcommand start                                                                  
@@ -52,6 +53,10 @@ class cmdargs():
         parser_file.add_argument('-N', '--newdir', type=str)
         parser_file.add_argument('-C', '--config', type=str)
         parser_file.add_argument('-P', '--port', type=int)
+
+    def print_help(self):
+        args = self.parser.print_help()
+        return args
 
     def get_parsed_args(self):
         args = self.parser.parse_args()
