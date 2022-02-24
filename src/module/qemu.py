@@ -110,24 +110,40 @@ class qemu_instance:
         if exec_args.arguments:
              cmd_str = cmd_str + " " + " ".join(exec_args.arguments)
         
+        retval = False
         logging.info("● cmd_str={}".format(cmd_str))
         if self.conn_ssh:
+            retval = True
             stdin, stdout, stderr = self.conn_ssh.exec_command(command=cmd_str)
-            if stderr.readable():
-                lines:array = stderr.readlines()                
-                for idx, val in enumerate(lines):
-                    lines[idx] = val.replace('\r', '').replace('\n', '')
-                self.stderr = lines
 
-            if stdout.readable():
-                lines = stdout.readlines()
-                for idx, val in enumerate(lines):
-                    lines[idx] = val.replace('\r', '').replace('\n', '')
-                self.stdout = lines
+            stdout_lines = []
+            stderr_lines = []
 
-            return True
+            index = 0
+            while index < 2:
+                sleep(2)
+                index = index + 1
+
+                if len(stdout_lines) >= 2048 or len(stderr_lines) >= 2048:
+                    stderr_lines.append("Over maximum line number !!!")
+                    retval = False
+                    break
+
+                if stderr.readable():
+                    stderr_lines.extend(stderr.readlines())
+
+                if stdout.readable():
+                    stdout_lines.extend(stdout.readlines())
+
+            for idx, val in enumerate(stdout_lines):
+                stdout_lines[idx] = val.replace('\r', '').replace('\n', '')
+            self.stdout = stdout_lines
+
+            for idx, val in enumerate(stderr_lines):
+                stderr_lines[idx] = val.replace('\r', '').replace('\n', '')
+            self.stderr = stderr_lines            
             
-        return False
+        return retval
 
     def send_qmp(self, qmp_cmd:config.qmp_command):
         self.clear()        
@@ -168,45 +184,6 @@ class qemu_instance:
 
         result  = file_reply_json["result"]
         return result
-
-        # if self.conn_ssh:
-        #     sshclient = SSHClient()
-        #     sftp = sshclient.open_sftp_over_ssh(self.conn_ssh)
-        #     if sftp:
-        #         try:                    
-        #             if file_cmd.kind == "s2g_upload":
-        #                 if file_cmd.newdir:
-        #                     sshclient.mkdir_p(sftp, file_cmd.newdir, True)
-        #                 sftp.put(file_cmd.filepath, file_cmd.savepath)
-        #                 result = True
-
-        #             elif file_cmd.kind == "s2g_download":
-        #                 sftp.get(file_cmd.filepath, file_cmd.savepath)
-        #                 result = True
-
-        #             else:
-        #                 result = False
-                        
-        #                 self.stderr = ["Unsupport direction kind !!!"]
-        #                 self.errcode = -2
-
-        #                 print("Unsupport direction kind !!!")
-        #                 logging.info("Unsupport direction kind !!!")                        
-
-        #         except Exception as e:
-        #             result = False
-                    
-        #             self.stderr = [str(e)]
-        #             self.errcode = -1
-                    
-        #             print("● exception={}".format(e))
-        #             logging.info("● exception={}".format(e))
-        #             pass
-
-        #         finally:
-        #             sftp.close()
-
-        #return result
 
     def is_qmp_connected(self):
         return self.flag_is_qmp_connected

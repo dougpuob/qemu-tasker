@@ -30,18 +30,25 @@ def attach_qemu_device_qmp(self):
 ## Commands
 
 ```
-usage: qemu-tasker.py [-h] {server,start,kill,exec,qmp} ...
+❯ python3 qemu-tasker.py --help
+
+usage: qemu-tasker.py [-h] [-H HOST] [-P PORT] [-V] {server,start,kill,exec,qmp,file} ...
 
 positional arguments:
-  {server,start,kill,exec,qmp}
+  {server,start,kill,exec,qmp,file}
     server              start a server daemon
     start               launch a QEMU achine instance
     kill                kill the specific QEMU machine instance
     exec                execute a specific command at guest operating system
     qmp                 execute a specific QMP command
+    file                transfer files between client and guest, or server and guest
 
 optional arguments:
   -h, --help            show this help message and exit
+  -H HOST, --host HOST
+  -P PORT, --port PORT
+  -V, --verbose
+
 ```
 
 ----------
@@ -110,13 +117,13 @@ optional arguments:
                            --taskid 10010 \
                            --kind s2g_download \
                            --filepath "c:\Users\dougpuob\abc\aaa\bbb\run-smartgit.sh" \
-                           --savepath "~/workspace/dougpuob/qemu-tasker/qemu-tasker.git/src/run-smartgit.sh"
+                           --savepath "/home/dougpuob/run-smartgit.sh"
 
 # Upload a file from the client slide to the QEMU guest OS.
 ❯ python3 ./qemu-tasker.py --host 192.168.0.201 file \
                            --taskid 10010 \
                            --kind c2g_upload \
-                           --filepath "/home/dougpuob/workspace/run-smartgit.sh" \
+                           --filepath "/home/dougpuob/run-smartgit.sh" \
                            --savepath "abc/aaa/bbb/run-smartgit.sh" \
                            --newdir "abc/aaa/bbb" \
                            --config qemu-taskcfg.json \
@@ -127,7 +134,7 @@ optional arguments:
                            --taskid 10010 \
                            --kind c2g_download \
                            --filepath "c:\Users\dougpuob\abc\aaa\bbb\run-smartgit.sh" \
-                           --savepath "/home/dougpuob/workspace/dougpuob/qemu-tasker/qemu-tasker.git/src/run-smartgit.sh" \
+                           --savepath "/home/dougpuob/run-smartgit.sh" \
                            --config qemu-taskcfg.json \
                            --port 10012
 ```

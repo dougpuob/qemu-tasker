@@ -86,15 +86,19 @@ class client:
         exec_req = config.exec_request(exec_cfg.cmd)
         exec_resp_text = self.send(exec_req.toTEXT())
         logging.info("● exec_resp_text={}".format(exec_resp_text))
-        exec_resp = config.digest_exec_response(json.loads(exec_resp_text))
-        print("[qemu-tasker] command result: {}".format(exec_resp.reply.result))
+        exec_resp_json = json.loads(exec_resp_text)
+        exec_resp = config.digest_exec_response(exec_resp_json)
+
         for line in exec_resp.reply.stdout:
             print(line)
             logging.info(line)
+                    
         for line in exec_resp.reply.stderr:
             print(line)
             logging.info(line)
-        
+
+        print("[qemu-tasker] command result: {}".format(exec_resp.reply.result))
+
     def send_kill(self, kill_cfg:config.kill_config):
         kill_req = config.kill_request(kill_cfg.cmd)
         kill_resp_text = self.send(kill_req.toTEXT())                        
