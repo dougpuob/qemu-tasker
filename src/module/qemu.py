@@ -24,26 +24,27 @@ from module.qmp import QEMUMonitorProtocol
 
 
 class qemu_instance:
-    def __init__(self, socket_addr:config.socket_address, taskid:int, start_cmd:config.start_command):         
-        
+    def __init__(self, socket_addr:config.socket_address, taskid:int, start_cmd:config.start_command):
+
         # Resource definition
         self.BUFF_SIZE = 2048
-        
+
         # qemu base args
         self.base_args = []
 
         # args
         self.start_cmd = None
         self.socket_addr = socket_addr
-        
+
         avail_tcp_ports = self.find_avaliable_ports(taskid, 2)
-        self.fwd_ports = config.tcp_fwd_ports(avail_tcp_ports[0], avail_tcp_ports[1]) 
+        self.fwd_ports = config.tcp_fwd_ports(avail_tcp_ports[0], avail_tcp_ports[1])
 
         # qemu
         self.qemu_thread = None
         self.qemu_proc  = None
         self.stderr = []
         self.stdout = []
+        self.pid = 0
         self.errcode = 0
         self.status = config.task_status().unknown
         self.longlife = start_cmd.longlife * 60
@@ -61,8 +62,8 @@ class qemu_instance:
         #
         # QEMU devices flags
         #
-        self.is_qemu_device_attached_nic = False        
-        self.is_qemu_device_attached_qmp = False     
+        self.is_qemu_device_attached_nic = False
+        self.is_qemu_device_attached_qmp = False
         self.attach_qemu_device_nic()
         self.attach_qemu_device_qmp()
 
@@ -72,18 +73,19 @@ class qemu_instance:
     def __del__(self):
         if self.conn_qmp:
             self.conn_qmp.close()
-    
-    def clear(self):
-        self.stderr = []
-        self.errcode = 0                    
 
-    def find_avaliable_ports(self, start_port, amount):        
+    def clear(self):
+        self.stderr.clear()
+        self.stdout.clear()
+        self.errcode = 0
+
+    def find_avaliable_ports(self, start_port, amount):
         occupied_ports = self.get_occupied_ports()
 
         ret_list = []
         next_start_port = start_port
 
-        index = 0        
+        index = 0
         while index < amount:
             while True:
                 next_start_port = next_start_port + 1
@@ -102,14 +104,14 @@ class qemu_instance:
             ret_ports.append(conn.laddr.port)
 
         return ret_ports
-    
+
     def send_exec(self, exec_args:config.exec_arguments):
         self.clear()
 
         cmd_str = exec_args.program
         if exec_args.arguments:
              cmd_str = cmd_str + " " + " ".join(exec_args.arguments)
-        
+
         retval = False
         logging.info("● cmd_str={}".format(cmd_str))
         if self.conn_ssh:
@@ -137,26 +139,28 @@ class qemu_instance:
 
             for idx, val in enumerate(stdout_lines):
                 stdout_lines[idx] = val.replace('\r', '').replace('\n', '')
-            self.stdout = stdout_lines
+            self.stdout.extend(stdout_lines)
 
             for idx, val in enumerate(stderr_lines):
                 stderr_lines[idx] = val.replace('\r', '').replace('\n', '')
-            self.stderr = stderr_lines            
-            
+            self.stderr.extend(stderr_lines)
+
         return retval
 
     def send_qmp(self, qmp_cmd:config.qmp_command):
         self.clear()
-        argsjson = None
-        try:
-            argsjson = json.loads(qmp_cmd.argsjson)        
-        except Exception as e:
-            exception_text = "exception=".format(exception_text)
-            logging.exception(exception_text)
-            print(exception_text)
+        # argsjson = None
+        # try:
+        #     argsjson = json.loads(qmp_cmd.argsjson)
+        #     logging.exception(argsjson)
+        #     print(argsjson)
+        # except Exception as e:
+        #     exception_text = "exception=".format(str(e))
+        #     logging.exception(exception_text)
+        #     print(exception_text)
 
         if self.conn_qmp:
-            return self.conn_qmp.cmd(qmp_cmd.execute, args=argsjson)
+            return self.conn_qmp.cmd(qmp_cmd.execute, args=qmp_cmd.argsjson)
         return ""
 
     def send_file(self, file_cmd:config.file_command):
@@ -170,19 +174,19 @@ class qemu_instance:
         print("file_cmd.newdir={}".format(file_cmd.newdir))
 
         logging.info("● send_file")
-        logging.info("file_cmd={}".format(file_cmd.toJSON()))       
+        logging.info("file_cmd={}".format(file_cmd.toJSON()))
         logging.info("file_cmd.taskid={}".format(file_cmd.taskid))
         logging.info("file_cmd.kind={}".format(file_cmd.kind))
         logging.info("file_cmd.filepath={}".format(file_cmd.filepath))
         logging.info("file_cmd.savepath={}".format(file_cmd.savepath))
-        logging.info("file_cmd.newdir={}".format(file_cmd.newdir))        
+        logging.info("file_cmd.newdir={}".format(file_cmd.newdir))
 
         print("config.direction_kind.s2g_upload={}".format(config.direction_kind.s2g_upload))
         print("config.direction_kind.s2g_download={}".format(config.direction_kind.s2g_download))
 
         sshclient = SSHClient()
         sftp = sshclient.open_sftp_over_ssh(self.conn_ssh)
-        
+
         file_reply_json = sshclient.cmd_dispatch(file_cmd)
         self.errcode = file_reply_json["errcode"]
         self.stderr  = file_reply_json["stderr"]
@@ -200,7 +204,7 @@ class qemu_instance:
 
     def attach_qemu_device_nic(self):
         if self.is_qemu_device_attached_nic:
-            return            
+            return
         self.is_qemu_device_attached_nic = True
         arg1 = ["-netdev", "user,id=network0,hostfwd=tcp::{}-:{}".format(self.fwd_ports.ssh, 22)]
         arg2 = ["-net", "nic,model=e1000,netdev=network0"]
@@ -216,13 +220,19 @@ class qemu_instance:
         self.base_args.extend(arg1)
         self.base_args.extend(arg2)
 
-    def thread_qemu_wait_proc(self, qemu_cmdargs):        
+    def thread_qemu_wait_proc(self, qemu_cmdargs):
         if self.qemu_proc:
             self.qemu_proc.wait()
-        
+
         self.errcode = self.qemu_proc.returncode
-        self.stdout, self.stderr = self.qemu_proc.communicate()
-        
+        stdout, stderr = self.qemu_proc.communicate()
+
+        if stdout:
+            self.stdout.extend(stdout)
+
+        if stderr:
+            self.stderr.extend(stderr)
+
         self.qemu_proc = None
 
     def thread_qmp_wait_accept(self):
@@ -241,7 +251,7 @@ class qemu_instance:
                 self.conn_ssh.connect(host_addr, host_port, username, password, banner_timeout=200, timeout=200)
                 self.flag_is_ssh_connected = True
                 self.status = config.task_status().running
-        
+
             except Exception as e:
                 logging.exception("e=" + str(e))
 
@@ -252,13 +262,13 @@ class qemu_instance:
             return
 
         if not self.conn_ssh:
-            wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_addr.addr, 
-                                                                                           self.fwd_ports.ssh, 
-                                                                                           self.start_cmd.ssh_login.username, 
+            wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_addr.addr,
+                                                                                           self.fwd_ports.ssh,
+                                                                                           self.start_cmd.ssh_login.username,
                                                                                            self.start_cmd.ssh_login.password))
             wait_ssh_thread.setDaemon(True)
             wait_ssh_thread.start()
-        
+
     def connect_qmp(self):
         if self.flag_is_qmp_connected:
             return
@@ -268,7 +278,7 @@ class qemu_instance:
         qmp_accept_thread.setDaemon(True)
         qmp_accept_thread.start()
 
-    def create(self, taskid, start_cmd:config.start_command):        
+    def create(self, taskid, start_cmd:config.start_command):
         self.clear()
 
         qemu_cmdargs = []
@@ -278,34 +288,43 @@ class qemu_instance:
         logging.info("{}● qemu_cmdargs={}".format("  ", qemu_cmdargs))
 
         self.start_cmd = start_cmd
-        
+
         if self.is_qemu_device_attached_qmp:
             self.connect_qmp()
 
-        self.qemu_proc = subprocess.Popen(qemu_cmdargs, shell=False, close_fds=True)                
-        
+        self.qemu_proc = subprocess.Popen(qemu_cmdargs, shell=False, close_fds=True)
+        self.pid = self.qemu_proc.pid
+
         try:
             self.stdout, self.stderr = self.qemu_proc.communicate(timeout=3)
-        except Exception as e:            
+        except Exception as e:
                 pass
         finally:
             self.errcode = self.qemu_proc.returncode
             if None == self.errcode:
-                self.errcode = 0                
+                self.errcode = 0
 
         if self.errcode == 0:
             self.qemu_thread = threading.Thread(target=self.thread_qemu_wait_proc, args=(qemu_cmdargs,))
             self.qemu_thread.setDaemon(True)
             self.qemu_thread.start()
-            
+
             self.status = config.task_status().creating
 
             if self.is_qemu_device_attached_nic:
                 self.connect_ssh()
-        
+
         self.status = config.task_status().connecting
 
-    def kill(self) -> bool:        
+
+    def is_proc_alive(self) -> bool:
+        if self.qemu_proc:
+            for proc in psutil.process_iter():
+                if proc.pid == self.qemu_proc.pid:
+                    return True
+        return False
+
+    def kill(self) -> bool:
         self.clear()
 
         if None == self.qemu_proc:
@@ -313,26 +332,32 @@ class qemu_instance:
 
         # first kill by its function.
         self.qemu_proc.kill()
-        
+
         if self.conn_qmp:
             self.conn_qmp.close()
-        
-        if self.conn_ssh:
-            self.conn_ssh.close()        
 
-        # kill by signal if pid found.
-        for proc in psutil.process_iter():
-            if proc.pid == self.qemu_proc.pid:
-                os.kill(proc.pid, 9)
-        
-        # confirm result
-        for proc in psutil.process_iter():
-            if proc.pid == self.qemu_proc.pid:
-                return False
+        if self.conn_ssh:
+            self.conn_ssh.close()
+
+        # waiting for it to die
+        retry = 0
+        is_alive = True
+        while retry <= 60 and is_alive:
+            retry = retry + 1
+            is_alive = self.is_proc_alive()
+            sleep(1)
+
+        self.stdout.append("Wait the process around {} seconds (PID is {})".format(retry, self.pid))
+
+        # still alive is a failure case
+        if is_alive:
+            self.errcode = -1
+            self.stderr.append("the process still existing (PID is {})".format(self.pid))
+            return False
 
         return True
 
     def decrease_longlife(self):
-        self.longlife = self.longlife - 1 
+        self.longlife = self.longlife - 1
 
 

@@ -20,30 +20,27 @@ class server:
 
         # Status
         self.is_started = True
-        
+
         # QEMU instance
         self.task_index = 0
-        self.task_base_id = 10000                
+        self.task_base_id = 10000
         self.qemu_inst_list = []
-        self.qemu_inst_list_killing_waiting = []
 
         # Thread objects
-        self.thread_task = None 
+        self.thread_task = None
         self.thread_postpone  = None
         self.thread_tcp = None
 
     def __del__(self):
         self.terminate()
 
+        self.is_started = False
         self.thread_tcp = None
-        self.thread_task = None 
+        self.thread_task = None
         self.thread_postpone = None
-        
+
     def terminate(self):
         for qemu_inst in self.qemu_inst_list:
-            qemu_inst.kill()
-
-        for qemu_inst in self.qemu_inst_list_killing_waiting:
             qemu_inst.kill()
 
         self.is_started = False
@@ -68,7 +65,7 @@ class server:
         # Wait connections and commands from clients.
         self.thread_tcp = threading.Thread(target = self.thread_routine_waiting_commands)
         self.thread_tcp.setDaemon(True)
-        self.thread_tcp.start()        
+        self.thread_tcp.start()
         self.thread_tcp.join()
 
     def get_bool(self, result):
@@ -77,12 +74,12 @@ class server:
         else:
             return "False"
 
-    def thread_routine_longlife_counting(self):	
+    def thread_routine_longlife_counting(self):
         print("{}● thread_routine_longlife_counting{}".format("", " ..."))
 
         while self.is_started:
             time.sleep(1)
-           
+
             print('--------------------------------------------------------------------------------')
             print('QEMU instance number = {}'.format(len(self.qemu_inst_list)))
             for qemu_inst_obj in self.qemu_inst_list:
@@ -94,16 +91,15 @@ class server:
 
                     print('  QEMU TaskId:{} Ports:{} QMP:{} SSH:{} Longlife:{}(s) {}'.format(
                             qemu_inst.taskid,
-                            qemu_inst.fwd_ports.toJSON(), 
-                            is_qmp_connected, 
+                            qemu_inst.fwd_ports.toJSON(),
+                            is_qmp_connected,
                             is_ssh_connected,
-                            qemu_inst.longlife, 
+                            qemu_inst.longlife,
                             qemu_inst.status))
 
-                    qemu_inst.decrease_longlife()                    
+                    qemu_inst.decrease_longlife()
 
                 else:
-                    self.qemu_inst_list_killing_waiting.append(qemu_inst)
                     self.qemu_inst_list.remove(qemu_inst)
 
     def thread_routine_killing_waiting(self):
@@ -111,15 +107,16 @@ class server:
 
         while self.is_started:
             # Handling killing waiting list.
-            for qemu_inst in self.qemu_inst_list_killing_waiting:                
-                kill_ret = qemu_inst.kill()
-                if kill_ret:
-                    self.qemu_inst_list_killing_waiting.remove(qemu_inst)
+            for qemu_inst in self.qemu_inst_list:
+                is_alive = qemu_inst.is_proc_alive()
+                if not is_alive:
+                    qemu_inst.kill()
+                    self.qemu_inst_list.remove(qemu_inst)
 
             time.sleep(1)
 
-    def get_new_taskid(self):        
-        logging.info("socker.py!server::get_new_taskid()")        
+    def get_new_taskid(self):
+        logging.info("socker.py!server::get_new_taskid()")
 
         self.task_index = self.task_index + 1
         return self.task_base_id + (self.task_index * 10)
@@ -180,7 +177,7 @@ class server:
         elif not qemu_inst.is_ssh_connected():
             print("{}● get_ssh_not_ready_reply_data{}".format("  ", " !!!"))
             return self.get_ssh_not_ready_reply_data(command.taskid)
-        else:         
+        else:
             result = qemu_inst.send_exec(command.exec_args)
             reply_data = {
                 "taskid"    : command.taskid,
@@ -195,12 +192,12 @@ class server:
         qemu_inst = self.find_target_instance(kill_cmd.taskid)
         if None == qemu_inst:
             return self.get_wrong_taskid_reply_data(kill_cmd.toJSON)
-        else:                        
+        else:
             self.qemu_inst_list.remove(qemu_inst)
-            self.qemu_inst_list_killing_waiting.append(qemu_inst)
+            result = qemu_inst.kill()
             reply_data = {
-                "taskid"    : kill_cmd.toJSON,
-                "result"    : qemu_inst.kill(),
+                "taskid"    : kill_cmd.taskid,
+                "result"    : result,
                 "errcode"   : qemu_inst.errcode,
                 "stderr"    : qemu_inst.stderr,
                 "stdout"    : qemu_inst.stdout
@@ -209,28 +206,28 @@ class server:
 
     def command_to_kill_all(self, kill_cmd:config.kill_command):
         kill_numb = 0
-        for qemu_inst in self.qemu_inst_list:            
-            self.qemu_inst_list_killing_waiting.append(qemu_inst)
+        for qemu_inst in self.qemu_inst_list:
+            qemu_inst.kill()
             kill_numb = kill_numb + 1
 
         self.qemu_inst_list.clear()
-        
+
         reply_data = {
             "taskid"    : kill_cmd.toJSON,
             "result"    : True,
             "errcode"   : 0,
             "stderr"    : "",
             "stdout"    : "{} QEMU instance was/were killed.".format(kill_numb) }
-        
+
         return reply_data
 
     def command_to_qmp(self, qmp_cmd:config.qmp_command):
-        qemu_inst = self.find_target_instance(qmp_cmd.taskid)                    
+        qemu_inst = self.find_target_instance(qmp_cmd.taskid)
         if None == qemu_inst:
             return self.get_wrong_taskid_reply_data(qmp_cmd.taskid)
         if not qemu_inst.is_qmp_connected():
             return self.get_qmp_not_ready_reply_data(qmp_cmd.taskid)
-        else:     
+        else:
             recv_text = qemu_inst.send_qmp(qmp_cmd)
 
             result  = True
@@ -252,13 +249,13 @@ class server:
             return reply_data
 
     def command_to_file(self, file_cmd:config.file_command):
-        qemu_inst = self.find_target_instance(file_cmd.taskid)                    
+        qemu_inst = self.find_target_instance(file_cmd.taskid)
         if None == qemu_inst:
             return self.get_wrong_taskid_reply_data(file_cmd.taskid)
         if not qemu_inst.is_ssh_connected():
             return self.get_ssh_not_ready_reply_data(file_cmd.taskid)
-        else:     
-            recv_text = qemu_inst.send_file(file_cmd)            
+        else:
+            recv_text = qemu_inst.send_file(file_cmd)
 
             result  = len(qemu_inst.stderr) == 0
             errcode = qemu_inst.errcode
@@ -285,15 +282,14 @@ class server:
         print("  socket_addr.port={}".format(self.socket_addr.port))
 
         try:
-        
             self.tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.tcp_conn.bind((self.socket_addr.addr, self.socket_addr.port))
             self.tcp_conn.listen(10)
 
-            while True:            
+            while self.is_started:
                 conn, addr = self.tcp_conn.accept()
                 client_mesg = str(conn.recv(1024), encoding='utf-8')
-                
+
                 print("{}● conn={}".format("  ", conn))
                 print("{}● client_mesg={}".format("  ", client_mesg))
 
@@ -306,9 +302,9 @@ class server:
                     # Start
                     if config.command_kind().start == client_data['request']['command']:
                         print("{}● command_kind={}".format("  ", client_data['request']['command']))
-                        start_cfg = config.start_config(client_data['request']['data'])                    
-                        taskid:int = self.get_new_taskid()   
-                        qemu_inst = qemu.qemu_instance(self.socket_addr, taskid, start_cfg.cmd)                                         
+                        start_cfg = config.start_config(client_data['request']['data'])
+                        taskid:int = self.get_new_taskid()
+                        qemu_inst = qemu.qemu_instance(self.socket_addr, taskid, start_cfg.cmd)
                         self.qemu_inst_list.append(qemu_inst)
 
                         reply_data = {
@@ -335,17 +331,17 @@ class server:
                     # Kill
                     elif config.command_kind().kill == client_data['request']['command']:
                         print("{}● command_kind={}".format("  ", client_data['request']['command']))
-                        kill_cfg = config.kill_config(client_data['request']['data'])                    
-                        
-                        if kill_cfg.cmd.killall:                    
-                            reply_data = self.command_to_kill_all(kill_cfg.cmd)                    
+                        kill_cfg = config.kill_config(client_data['request']['data'])
+
+                        if kill_cfg.cmd.killall:
+                            reply_data = self.command_to_kill_all(kill_cfg.cmd)
                         else:
                             reply_data = self.command_to_kill(kill_cfg.cmd)
 
                         default_r = config.default_reply(reply_data)
                         default_resp = config.default_response(client_data['request']['command'], default_r)
                         resp_text = default_resp.toTEXT()
-                        
+
                     # QMP
                     elif config.command_kind().qmp == client_data['request']['command']:
                         print("{}● command_kind={}".format("  ", client_data['request']['command']))
@@ -377,10 +373,9 @@ class server:
                 conn.close()
                 conn = None
 
-        except Exception as e:            
+        except Exception as e:
             print("{}● exception={}".format(e))
             logging.info("{}● exception={}".format(e))
 
         finally:
             self.terminate()
-        

@@ -17,7 +17,7 @@ args = cmdarg.get_parsed_args()
 #
 # Start log
 #
-logging.basicConfig(filename='default.log', 
+logging.basicConfig(filename='default.log',
                     level=logging.INFO,
                     format="[%(asctime)s][%(levelname)s] %(message)s",
                     datefmt='%Y-%m-%d-%H:%M:%S')
@@ -38,7 +38,7 @@ elif 'start' == args.command:
 
 elif 'exec' == args.command:
     exec_args = config.exec_arguments(args.program, args.arguments.split(' '))
-    exec_cmd = config.exec_command(args.taskid, exec_args)    
+    exec_cmd = config.exec_command(args.taskid, exec_args)
     exec_cfg = config.exec_config(exec_cmd.toJSON())
     client(socket_addr).send_exec(exec_cfg, args.jsonreport)
 
@@ -49,8 +49,8 @@ elif 'kill' == args.command:
 
 elif 'qmp' == args.command:
     print("args.argsjson={}".format(args.argsjson))
-    #argsjson = json.loads(args.argsjson)
-    argsjson = args.argsjson
+    argsjson = json.loads(args.argsjson)
+    #argsjson = args.argsjson
     qmp_cmd = config.qmp_command(args.taskid, args.execute, argsjson)
     qmp_cfg = config.qmp_config(qmp_cmd.toJSON())
     client(socket_addr).send_qmp(qmp_cfg, args.jsonreport)
@@ -58,7 +58,7 @@ elif 'qmp' == args.command:
 elif 'file' == args.command:
     file = config.file_command(args.taskid, args.kind, args.filepath, args.savepath, args.newdir, args.config, args.port)
     file_cfg = config.file_config(file.toJSON())
-    client(socket_addr).send_file(file_cfg, args.jsonreport)    
+    client(socket_addr).send_file(file_cfg, args.jsonreport)
 
-else:    
+else:
     cmdarg.print_help()

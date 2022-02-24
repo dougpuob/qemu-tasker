@@ -29,10 +29,10 @@ class SSHClient:
         try:
             self.conn_sftp = ssh_conn.open_sftp()
             return self.conn_sftp
-        
+
         except Exception as e:
             print(e)
-            
+
         return None
 
     def open(self, addr:str, port:int, username:str, password:str, enable_sftp:bool=True):
@@ -40,7 +40,7 @@ class SSHClient:
             self.conn_ssh = paramiko.SSHClient()
             self.conn_ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             self.conn_ssh.connect(addr, port, username, password, banner_timeout=200, timeout=200)
-        
+
             if enable_sftp:
                 self.open_sftp_over_ssh(self.conn_ssh)
                 return self.conn_ssh, self.conn_sftp
@@ -49,11 +49,11 @@ class SSHClient:
 
         except Exception as e:
             print(e)
-    
+
         return None
 
     def mkdir_p(self, remote, is_dir=False):
-        
+
         dirs_ = []
         if is_dir:
             dir_ = remote
@@ -63,8 +63,8 @@ class SSHClient:
             dirs_.append(dir_)
             dir_, _  = os.path.split(dir_)
 
-        if len(dir_) == 1 and not dir_.startswith("/"): 
-            dirs_.append(dir_) # For a remote path like y/x.txt 
+        if len(dir_) == 1 and not dir_.startswith("/"):
+            dirs_.append(dir_) # For a remote path like y/x.txt
 
         while len(dirs_):
             dir_ = dirs_.pop()
@@ -75,12 +75,12 @@ class SSHClient:
 
 
     def cmd_dispatch(self, file_cmd:config.file_command):
-        result = False            
+        result = False
         stdout = []
         stderr = []
         errcode = 0
 
-        try:                    
+        try:
             if file_cmd.kind == "s2g_upload" or file_cmd.kind == "c2g_upload":
                 if file_cmd.newdir:
                     self.mkdir_p(file_cmd.newdir, True)
@@ -92,17 +92,17 @@ class SSHClient:
                 result = True
 
             else:
-                result = False                
+                result = False
                 self.stderr = ["Unsupport direction kind !!!"]
                 self.errcode = -2
-           
+
 
         except Exception as e:
-            result = False            
+            result = False
             stderr = [str(e)]
-            errcode = -1            
-            
-        
+            errcode = -1
+
+
         reply_data = {
                 "taskid"    : file_cmd.taskid,
                 "result"    : result,

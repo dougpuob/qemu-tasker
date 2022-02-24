@@ -11,18 +11,18 @@ from enum import Enum
 
 class config():
     def _try(self, o):
-        try: 
+        try:
             return o.__dict__
         except:
             return str(o).replace('\n', '')
-    
+
     def toTEXT(self):
         #return json.dumps(self, default=lambda o: o.__dict__)
         return json.dumps(self, default=lambda o: self._try(o))
 
     def toJSON(self):
         return json.loads(self.toTEXT())
-        
+
 class socket_address(config):
     def __init__(self, addr:str, port:int):
         self.addr:str = addr
@@ -31,7 +31,7 @@ class socket_address(config):
 class tcp_fwd_ports(config):
     def __init__(self, qmp:int, ssh:int):
         self.qmp = qmp
-        self.ssh = ssh       
+        self.ssh = ssh
 
 class qemu_longlife(config):
     def __init__(self, instance_maximum:int, longlife_minutes:int):
@@ -39,7 +39,7 @@ class qemu_longlife(config):
         self.longlife_minutes = longlife_minutes
 
 class ssh_login(config):
-    def __init__(self, username:str, password:str): 
+    def __init__(self, username:str, password:str):
         self.username = username
         self.password = password
 
@@ -68,17 +68,17 @@ class server_config(config):
         }
         """
         srv_cfg_def = server_config_default()
-        
+
         if json_data.get('socket_address'):
             self.socket_address = json_data['socket_address']
         else:
             self.socket_address = srv_cfg_def.socket_address
-            
+
         if json_data.get('qemu_longlife'):
             self.qemu_longlife = json_data['qemu_longlife']
         else:
             self.qemu_longlife = srv_cfg_def.qemu_longlife
-            
+
         if json_data.get('ssh_login'):
             self.ssh_login = json_data['ssh_login']
         else:
@@ -86,24 +86,24 @@ class server_config(config):
 
 
 class exec_arguments(config):
-    def __init__(self, program:str, arguments:list): 
+    def __init__(self, program:str, arguments:list):
         self.program = program
         self.arguments = arguments
 
 class qmp_arguments(config):
-    def __init__(self, execute:str, arguments:json): 
+    def __init__(self, execute:str, arguments:json):
         self.execute = execute
         self.arguments = arguments
 
 class command_kind:
     def __init__(self):
-        self.unknown = "unknown"        
-        self.server  = "server"     
-        self.start   = "start"     
-        self.kill    = "kill"     
-        self.exec    = "exec"     
-        self.qmp     = "qmp" 
-        self.file    = "file"  
+        self.unknown = "unknown"
+        self.server  = "server"
+        self.start   = "start"
+        self.kill    = "kill"
+        self.exec    = "exec"
+        self.qmp     = "qmp"
+        self.file    = "file"
 
 class task_status:
     def __init__(self):
@@ -126,36 +126,36 @@ class response(config):
 
 #
 # Default
-# 
+#
 class default_reply(config):
-    def __init__(self, data:json):        
+    def __init__(self, data:json):
         self.taskid  = data['taskid']
         self.result  = data['result']
         self.errcode = data['errcode']
         self.stderr  = data['stderr']
         self.stdout  = data['stdout']
-        
+
 class default_response(config):
     def __init__(self, command:str, reply:default_reply):
         self.response = response(command, reply.toJSON())
 
-        
+
 #
 # Bad
-# 
+#
 class bad_reply(config):
-    def __init__(self, data:json):        
+    def __init__(self, data:json):
         self.taskid  = data['taskid']
         self.result  = data['result']
         self.errcode = data['errcode']
         self.stderr  = data['stderr']
         self.stdout  = data['stdout']
-        
+
 class bad_response(config):
     def __init__(self, reply:bad_reply):
         self.response = response(command_kind().unknown, reply.toJSON())
 
-        
+
 
 
 #
@@ -176,13 +176,13 @@ class start_config(config):
                                  ssh_login(data['ssh_login']['username'], data['ssh_login']['password']))
 
 class start_reply(config):
-    def __init__(self, data:json):        
+    def __init__(self, data:json):
         self.taskid  = data['taskid']
         self.result  = data['result']
         self.errcode = data['errcode']
         self.stderr  = data['stderr']
-        self.stdout  = data['stdout']        
-        self.fwd_ports = tcp_fwd_ports(data['fwd_ports']['qmp'], 
+        self.stdout  = data['stdout']
+        self.fwd_ports = tcp_fwd_ports(data['fwd_ports']['qmp'],
                                        data['fwd_ports']['ssh'])
 
 
@@ -210,8 +210,8 @@ class exec_command(config):
 
 class exec_config(config):
     def __init__(self, data:json):
-        self.cmd  = exec_command(data['taskid'], 
-                                 exec_arguments(data['exec_args']['program'], 
+        self.cmd  = exec_command(data['taskid'],
+                                 exec_arguments(data['exec_args']['program'],
                                                 data['exec_args']['arguments']))
 
 class exec_reply(config):
@@ -252,7 +252,7 @@ class kill_config(config):
         self.cmd  = kill_command(data['taskid'], data['killall'])
 
 class kill_reply(config):
-    def __init__(self, data:json):        
+    def __init__(self, data:json):
         self.taskid  = data['taskid']
         self.result  = data['result']
         self.errcode = data['errcode']
@@ -275,7 +275,7 @@ class kill_response(config):
 
 class digest_kill_response(config):
     def __init__(self, req:json):
-        self.command = req['response']['command'] 
+        self.command = req['response']['command']
         self.reply = kill_reply(req['response']['data'])
 
 
@@ -342,7 +342,7 @@ class file_config(config):
         self.cmd  = file_command(data['taskid'], data['kind'], data['filepath'], data['savepath'], data['newdir'], data['config'], data['port'])
 
 class file_reply(config):
-    def __init__(self, data:json):        
+    def __init__(self, data:json):
         self.taskid  = data['taskid']
         self.result  = data['result']
         self.errcode = data['errcode']
@@ -364,5 +364,5 @@ class file_response(config):
 
 class digest_file_response(config):
     def __init__(self, req:json):
-        self.command = req['response']['command'] 
+        self.command = req['response']['command']
         self.reply = file_reply(req['response']['data'])

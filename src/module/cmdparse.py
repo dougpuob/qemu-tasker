@@ -7,16 +7,17 @@ class cmdargs():
         # Program arugments
         #
         parent_parser = argparse.ArgumentParser(add_help=False)
-        self.parser = argparse.ArgumentParser(add_help=True) 
+        self.parser = argparse.ArgumentParser(add_help=True)
 
         # create sub-parser
         subparsers = self.parser.add_subparsers(dest="command")
         self.parser.add_argument('-H', '--host', type=str, default="localhost")
         self.parser.add_argument('-P', '--port', type=int, default=12801)
         self.parser.add_argument('-J', '--jsonreport', action='store_true', default=False)
+        self.parser.add_argument('-L', '--longlife', type=int, default=30)
         self.parser.add_argument('-V', '--verbose', action='store_true')
 
-        # subcommand start                                                                  
+        # subcommand start
         parser_server = subparsers.add_parser('server', parents = [parent_parser], help='start a server daemon')
 
         # subcommand start
@@ -44,9 +45,9 @@ class cmdargs():
         # subcommand file
         parser_file = subparsers.add_parser('file', parents = [parent_parser], help='transfer files between client and guest, or server and guest')
         parser_file.add_argument('-T', '--taskid', type=int, required=True)
-        parser_file.add_argument('-K', '--kind', type=str, required=True, choices=['c2g_upload', 
-                                                                                   'c2g_download', 
-                                                                                   's2g_upload', 
+        parser_file.add_argument('-K', '--kind', type=str, required=True, choices=['c2g_upload',
+                                                                                   'c2g_download',
+                                                                                   's2g_upload',
                                                                                    's2g_download'])
         parser_file.add_argument('-F', '--filepath', type=str, required=True)
         parser_file.add_argument('-S', '--savepath', type=str, required=True)

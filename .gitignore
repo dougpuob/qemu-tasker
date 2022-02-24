@@ -1,5 +1,7 @@
-.idea
 *.log
 *.out
+*.pcap
+*.bak
 __pycache__
+.idea
 .vscode
