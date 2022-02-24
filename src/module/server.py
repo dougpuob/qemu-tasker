@@ -231,7 +231,7 @@ class server:
         if not qemu_inst.is_qmp_connected():
             return self.get_qmp_not_ready_reply_data(qmp_cmd.taskid)
         else:     
-            recv_text = qemu_inst.send_qmp(qmp_cmd)            
+            recv_text = qemu_inst.send_qmp(qmp_cmd)
 
             result  = True
             errcode = 0

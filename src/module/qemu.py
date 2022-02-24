@@ -146,11 +146,18 @@ class qemu_instance:
         return retval
 
     def send_qmp(self, qmp_cmd:config.qmp_command):
-        self.clear()        
+        self.clear()
+        argsjson = None
+        try:
+            argsjson = json.loads(qmp_cmd.argsjson)        
+        except Exception as e:
+            exception_text = "exception=".format(exception_text)
+            logging.exception(exception_text)
+            print(exception_text)
+
         if self.conn_qmp:
-            return self.conn_qmp.cmd(qmp_cmd.execute, args=json.loads(qmp_cmd.argsjson))            
+            return self.conn_qmp.cmd(qmp_cmd.execute, args=argsjson)
         return ""
-        
 
     def send_file(self, file_cmd:config.file_command):
         self.clear()

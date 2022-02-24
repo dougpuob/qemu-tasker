@@ -48,7 +48,9 @@ elif 'kill' == args.command:
     client(socket_addr).send_kill(kill_cfg, args.jsonreport)
 
 elif 'qmp' == args.command:
-    argsjson = json.loads(args.argsjson)
+    print("args.argsjson={}".format(args.argsjson))
+    #argsjson = json.loads(args.argsjson)
+    argsjson = args.argsjson
     qmp_cmd = config.qmp_command(args.taskid, args.execute, argsjson)
     qmp_cfg = config.qmp_config(qmp_cmd.toJSON())
     client(socket_addr).send_qmp(qmp_cfg, args.jsonreport)
