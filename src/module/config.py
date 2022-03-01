@@ -104,6 +104,7 @@ class command_kind:
         self.exec    = "exec"
         self.qmp     = "qmp"
         self.file    = "file"
+        self.status  = "status"
 
 class task_status:
     def __init__(self):
@@ -366,3 +367,51 @@ class digest_file_response(config):
     def __init__(self, req:json):
         self.command = req['response']['command']
         self.reply = file_reply(req['response']['data'])
+
+
+#
+# Status
+#
+class status_command(config):
+    def __init__(self, taskid:int):
+        self.taskid = taskid
+
+class status_config(config):
+    def __init__(self, data:json):
+        self.cmd  = status_command(data['taskid'])
+
+class status_reply(config):
+    def __init__(self, data:json):
+        # base
+        self.taskid  = data['taskid']
+        self.result  = data['result']
+        self.errcode = data['errcode']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
+        
+        # extra
+        self.pid = data['pid']
+        self.status = data['status'] # status:task_status
+        self.fwd_ports = tcp_fwd_ports(data['fwd_ports']['qmp'],
+                                       data['fwd_ports']['ssh'])
+        self.is_connected_qmp = data['is_connected_qmp']
+        self.is_connected_ssh = data['is_connected_ssh']
+
+class status_request(config):
+    def __init__(self, command:status_command):
+        self.request = request(command_kind().status, command.toJSON())
+
+class digest_status_request(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = status_reply(req['response']['data'])
+
+class status_response(config):
+    def __init__(self, reply:status_reply):
+        self.response = response(command_kind().status, reply.toJSON())
+
+class digest_status_response(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = status_reply(req['response']['data'])
+

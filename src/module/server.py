@@ -276,6 +276,40 @@ class server:
             }
             return reply_data
 
+    def command_to_status(self, stat_cmd:config.status_command):
+        qemu_inst:qemu.qemu_instance  = self.find_target_instance(stat_cmd.taskid)
+        if None == qemu_inst:
+            reply_data = {
+                "result"  : False,
+                "taskid"  : stat_cmd.taskid,
+                "errcode" : 0 - stat_cmd.taskid,
+                "stdout"  : [],
+                "stderr"  : ["Cannot find the specific QEMU instance."],
+                "status"  : config.task_status().unknown,
+                "pid"     : 0,
+                "fwd_ports" : { "qmp" : 0,
+                                "ssh" : 0 },
+                "is_connected_qmp" : False,
+                "is_connected_ssh" : False
+                }
+            return reply_data
+
+        else:
+            reply_data = {
+                    "result"  : True,
+                    "taskid"  : qemu_inst.taskid,
+                    "errcode" : qemu_inst.errcode,
+                    "stdout"  : qemu_inst.stdout,
+                    "stderr"  : qemu_inst.stderr,
+                    "status"  : qemu_inst.status,
+                    "pid"     : qemu_inst.pid,
+                    "fwd_ports" : { "qmp" : qemu_inst.fwd_ports.qmp,
+                                    "ssh" : qemu_inst.fwd_ports.ssh },
+                    "is_connected_qmp" : qemu_inst.is_qmp_connected(),
+                    "is_connected_ssh" : qemu_inst.is_ssh_connected()
+                    }
+            return reply_data
+
     def thread_routine_waiting_commands(self):
         print("{}● thread_worker_tcp{}".format("", " ..."))
         print("  socket_addr.addr={}".format(self.socket_addr.addr))
@@ -359,6 +393,15 @@ class server:
                         default_r = config.default_reply(reply_data)
                         default_resp = config.default_response(client_data['request']['command'], default_r)
                         resp_text = default_resp.toTEXT()
+
+                    # status
+                    elif config.command_kind().status == client_data['request']['command']:
+                        print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                        stat_cfg = config.status_config(client_data['request']['data'])
+                        reply_data = self.command_to_status(stat_cfg.cmd)
+                        stat_r = config.status_reply(reply_data)
+                        stat_resp = config.status_response(stat_r)
+                        resp_text = stat_resp.toTEXT()
 
                     # Others
                     else:

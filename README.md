@@ -37,7 +37,7 @@ The server IP is `172.17.100.17`.
 ```
 ❯ python3 qemu-tasker.py --help
 
-usage: qemu-tasker.py [-h] [-H HOST] [-P PORT] [-V] {server,start,kill,exec,qmp,file} ...
+usage: qemu-tasker.py [-h] [-H HOST] [-P PORT] [-J] [-L LONGLIFE] [-V] {server,start,kill,exec,qmp,file,status} ...
 
 positional arguments:
   {server,start,kill,exec,qmp,file}
@@ -47,11 +47,14 @@ positional arguments:
     exec                execute a specific command at guest operating system
     qmp                 execute a specific QMP command
     file                transfer files between client and guest, or server and guest
+    status              query a specific QEMU status
 
 optional arguments:
   -h, --help            show this help message and exit
   -H HOST, --host HOST
   -P PORT, --port PORT
+  -J, --jsonreport
+  -L LONGLIFE, --longlife LONGLIFE
   -V, --verbose
 
 ```
@@ -114,6 +117,13 @@ optional arguments:
                            --taskid 10010 \
                            --execute human-monitor-command \
                            --argsjson='''{"command-line" : "info usb" }'''
+```
+
+``` powershell
+PS> python ./qemu-tasker.py --host 172.17.100.17 qmp \
+                            --taskid 10010 \
+                            --execute human-monitor-command \
+                            --argsjson='{\"command-line\":\"device_add usb-winusb,id=winusb-01,pcap=winusb-01.pcap\"}'
 ```
 
 ### File

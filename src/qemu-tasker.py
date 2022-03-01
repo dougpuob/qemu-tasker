@@ -50,7 +50,6 @@ elif 'kill' == args.command:
 elif 'qmp' == args.command:
     print("args.argsjson={}".format(args.argsjson))
     argsjson = json.loads(args.argsjson)
-    #argsjson = args.argsjson
     qmp_cmd = config.qmp_command(args.taskid, args.execute, argsjson)
     qmp_cfg = config.qmp_config(qmp_cmd.toJSON())
     client(socket_addr).send_qmp(qmp_cfg, args.jsonreport)
@@ -59,6 +58,11 @@ elif 'file' == args.command:
     file = config.file_command(args.taskid, args.kind, args.filepath, args.savepath, args.newdir, args.config, args.port)
     file_cfg = config.file_config(file.toJSON())
     client(socket_addr).send_file(file_cfg, args.jsonreport)
+
+elif 'status' == args.command:
+    stat = config.status_command(args.taskid)
+    stat_cfg = config.status_config(stat.toJSON())
+    client(socket_addr).send_status(stat_cfg, args.jsonreport)
 
 else:
     cmdarg.print_help()

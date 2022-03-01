@@ -115,6 +115,7 @@ class client:
 
 
     def send_qmp(self, qmp_cfg:config.qmp_config, is_json_report:bool=False):
+        qmp_resp = None
         qmp_req = config.qmp_request(qmp_cfg.cmd)
         qmp_resp_text = self.send(qmp_req.toTEXT())
 
@@ -162,6 +163,29 @@ class client:
 
         except Exception as e:
             print("[qemu-tasker] {}".format(e))
+
+    def send_status(self, stat_cfg:config.status_config, is_json_report:bool=False):
+        stat_resp = None
+        stat_req = config.status_request(stat_cfg.cmd)
+        stat_resp_text = self.send(stat_req.toTEXT())
+
+        logging.info("● stat_resp_text={}".format(stat_resp_text))
+        try:
+            stat_resp = config.digest_qmp_response(json.loads(stat_resp_text))
+        except Exception as e:
+            exception_text = "stat_resp_text={}".format(stat_resp_text)
+            print(exception_text)
+            logging.info(exception_text)
+
+            exception_text = "exception={}".format(str(e))
+            print(exception_text)
+            logging.info(exception_text)
+
+        if is_json_report:
+            print(json.dumps(json.loads(stat_resp_text), indent=2, sort_keys=True))
+        else:
+            print("[qemu-tasker] command result: {}".format(stat_resp.reply.result))
+
 
     def send_file_direct(self, file_cfg:config.file_config):
         client_cfg = json.load(open(file_cfg.cmd.config))
