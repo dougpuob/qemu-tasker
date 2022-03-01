@@ -78,7 +78,7 @@ optional arguments:
 ❯ python3 qemu-tasker.py --host 172.17.100.17 exec \
                          --taskid 10010 \
                          --program "ipconfig" \
-                         --arguments="-all"
+                         --argument="-all"
 ```
 
 ### QMP

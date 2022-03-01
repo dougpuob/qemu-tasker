@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import argparse
+import json
 
 class cmdargs():
     def __init__(self):
@@ -34,13 +35,14 @@ class cmdargs():
         parser_exec = subparsers.add_parser('exec', parents = [parent_parser], help='execute a specific command at guest operating system')
         parser_exec.add_argument('-T', '--taskid', type=int, required=True)
         parser_exec.add_argument('-P', '--program', required=True)
-        parser_exec.add_argument('-A', '--arguments', default="")
+        parser_exec.add_argument('-A', '--argument')
 
         # subcommand qmp
         parser_exec = subparsers.add_parser('qmp', parents = [parent_parser], help='execute a specific QMP command')
         parser_exec.add_argument('-T', '--taskid', type=int, required=True)
         parser_exec.add_argument('-E', '--execute', required=True)
-        parser_exec.add_argument('-A', '--argsjson')
+        parser_exec.add_argument('-J', '--argsjson')
+        parser_exec.add_argument('-F', '--argsfile')
 
         # subcommand file
         parser_file = subparsers.add_parser('file', parents = [parent_parser], help='transfer files between client and guest, or server and guest')

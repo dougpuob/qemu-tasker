@@ -2,6 +2,7 @@
 import socket
 import json
 import logging
+from time import sleep
 import paramiko
 
 from module import config
@@ -54,10 +55,15 @@ class client:
         BUFF_SIZE = 2048
         received = b''
         while True:
+            sleep(0.1)
             part = self.conn_tcp.recv(BUFF_SIZE)
             received = received + part
             if len(part) < BUFF_SIZE:
-                break
+                try:
+                    json.loads(str(received, encoding='utf-8'))
+                    break
+                except Exception as e:
+                    continue
 
         self.conn_tcp.close()
         return str(received, encoding='utf-8')
@@ -139,9 +145,12 @@ class client:
 
     def send_file(self, file_cfg:config.file_config, is_json_report:bool=False):
         file_resp_text = None
+
         try:
             if file_cfg.cmd.kind == "c2g_upload" or file_cfg.cmd.kind == "c2g_download":
+                logging.info("Upload file from Client to Guest directly, this will by pass the Server.")
                 file_reply = config.file_reply(self.send_file_direct(file_cfg))
+                logging.info("called send_file_direct() function.")
                 file_resp = config.file_response(file_reply)
                 file_resp_json = file_resp.toJSON()
                 file_resp_text = file_resp.toTEXT()
@@ -154,7 +163,10 @@ class client:
                 file_resp = config.digest_file_response(json.loads(file_resp_text))
 
             else:
+                logging.info("bypassed !!!!")
                 pass
+
+            logging.info("● file_resp_text={}".format(file_resp_text))
 
             if is_json_report:
                 print(json.dumps(json.loads(file_resp_text), indent=2, sort_keys=True))
@@ -202,7 +214,15 @@ class client:
             sshclient.close()
             return file_reply_json
 
-        return None
+        else:
+            reply_data = {
+                "taskid"    : file_cfg.cmd.taskid,
+                "result"    : False,
+                "errcode"   : -1,
+                "stderr"    : ['The SSH connection is not existant !!!'],
+                "stdout"    : [],
+            }
+            return reply_data
 
 
 

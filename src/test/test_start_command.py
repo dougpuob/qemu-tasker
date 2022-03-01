@@ -7,7 +7,7 @@ TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(TEST_DIR, os.pardir))
 sys.path.insert(0, PROJECT_DIR) 
 
-from module.config import ssh_login
+from module.config import os_kind, ssh_login
 from module.config import command_kind
 from module.config import start_config
 from module.config import start_command
@@ -53,17 +53,21 @@ class test_start(unittest.TestCase):
 
 
     def test_start_reply(self):
-        json_data = { "result"  : True,
-                      "taskid"  : 1,
-                      "errcode" : 0,
-                      "stdout"  : [],
-                      "stderr"  : [],
+        json_data = { "result"    : True,
+                      "taskid"    : 1,
+                      "errcode"   : 0,
+                      "stdout"    : [],
+                      "stderr"    : [],
+                      "cwd"       : '/home/dougpuob',
+                      "os"        : os_kind().windows,
                       "fwd_ports" : { "qmp" : 1,
                                       "ssh" : 2 } }
         start_r = start_reply(json_data)
 
         self.assertEqual(start_r.result, True)
         self.assertEqual(start_r.taskid, 1)
+        self.assertEqual(start_r.cwd, '/home/dougpuob')
+        self.assertEqual(start_r.os, os_kind().windows)
         self.assertEqual(start_r.fwd_ports.qmp, 1)
         self.assertEqual(start_r.fwd_ports.ssh, 2)
 
@@ -76,17 +80,21 @@ class test_start(unittest.TestCase):
         self.assertEqual(json.dumps(start_req.request.data), start_cmd.toTEXT())
 
     def test_start_response(self):
-        json_data = { "result" : True,
-                      "taskid" : 1,
-                      "errcode" : 0,
-                      "stdout"  : [],
-                      "stderr"  : [],
+        json_data = { "result"    : True,
+                      "taskid"    : 1,
+                      "errcode"   : 0,
+                      "stdout"    : [],
+                      "stderr"    : [],
+                      "cwd"       : '/home/dougpuob',
+                      "os"        : os_kind().windows,
                       "fwd_ports" : { "qmp" : 1,
                                       "ssh" : 2 } }
 
         start_r = start_reply(json_data)
         start_req = start_response(start_r)
         
+        self.assertEqual(start_r.result, True)
+        self.assertEqual(start_r.taskid, 1)        
         self.assertEqual(start_req.response.command, command_kind().start)
         self.assertEqual(start_req.response.data, json_data)
 

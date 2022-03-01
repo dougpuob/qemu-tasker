@@ -3,7 +3,7 @@
 import pathlib
 import logging
 import json
-import sys
+import os
 
 from module import config
 from module.server import server
@@ -17,7 +17,7 @@ args = cmdarg.get_parsed_args()
 #
 # Start log
 #
-logging.basicConfig(filename='default.log',
+logging.basicConfig(filename='qemu-tasker.log',
                     level=logging.INFO,
                     format="[%(asctime)s][%(levelname)s] %(message)s",
                     datefmt='%Y-%m-%d-%H:%M:%S')
@@ -27,42 +27,55 @@ logging.info(args)
 
 socket_addr = config.socket_address(args.host, args.port)
 
-if 'server' == args.command:
-    server(socket_addr).start()
+try:
+    if 'server' == args.command:
+        server(socket_addr).start()
 
-elif 'start' == args.command:
-    assert args.config, "Please specific a config file !!!"
-    client_cfg = json.load(open(args.config))
-    start_cfg = config.start_config(client_cfg)
-    client(socket_addr).send_start(start_cfg, args.jsonreport)
+    elif 'start' == args.command:
+        assert args.config, "Please specific a config file !!!"
+        client_cfg = json.load(open(args.config))
+        start_cfg = config.start_config(client_cfg)
+        client(socket_addr).send_start(start_cfg, args.jsonreport)
 
-elif 'exec' == args.command:
-    exec_args = config.exec_arguments(args.program, args.arguments.split(' '))
-    exec_cmd = config.exec_command(args.taskid, exec_args)
-    exec_cfg = config.exec_config(exec_cmd.toJSON())
-    client(socket_addr).send_exec(exec_cfg, args.jsonreport)
+    elif 'exec' == args.command:
+        exec_arg = config.exec_argument(args.program, args.argument)
+        exec_cmd = config.exec_command(args.taskid, exec_arg)
+        exec_cfg = config.exec_config(exec_cmd.toJSON())
+        client(socket_addr).send_exec(exec_cfg, args.jsonreport)
 
-elif 'kill' == args.command:
-    kill_cmd = config.kill_command(args.taskid, args.killall)
-    kill_cfg = config.kill_config(kill_cmd.toJSON())
-    client(socket_addr).send_kill(kill_cfg, args.jsonreport)
+    elif 'kill' == args.command:
+        kill_cmd = config.kill_command(args.taskid, args.killall)
+        kill_cfg = config.kill_config(kill_cmd.toJSON())
+        client(socket_addr).send_kill(kill_cfg, args.jsonreport)
 
-elif 'qmp' == args.command:
-    print("args.argsjson={}".format(args.argsjson))
-    argsjson = json.loads(args.argsjson)
-    qmp_cmd = config.qmp_command(args.taskid, args.execute, argsjson)
-    qmp_cfg = config.qmp_config(qmp_cmd.toJSON())
-    client(socket_addr).send_qmp(qmp_cfg, args.jsonreport)
+    elif 'qmp' == args.command:
+        argsjson = {}
+        if args.argsfile and os.path.exists(args.argsfile):
+            with open(args.argsfile, 'r') as txtfile:
+                content = txtfile.read()   
+                argsjson = json.loads(content)                
+        elif args.argsjson:
+            argsjson = json.loads(args.argsjson)
+        else:        
+            pass # this QMP command without argument
+        
+        qmp_cmd = config.qmp_command(args.taskid, args.execute, argsjson)
+        qmp_cfg = config.qmp_config(qmp_cmd.toJSON())
+        client(socket_addr).send_qmp(qmp_cfg, args.jsonreport)
 
-elif 'file' == args.command:
-    file = config.file_command(args.taskid, args.kind, args.filepath, args.savepath, args.newdir, args.config, args.port)
-    file_cfg = config.file_config(file.toJSON())
-    client(socket_addr).send_file(file_cfg, args.jsonreport)
+    elif 'file' == args.command:
+        file = config.file_command(args.taskid, args.kind, args.filepath, args.savepath, args.newdir, args.config, args.port)
+        file_cfg = config.file_config(file.toJSON())
+        client(socket_addr).send_file(file_cfg, args.jsonreport)
 
-elif 'status' == args.command:
-    stat = config.status_command(args.taskid)
-    stat_cfg = config.status_config(stat.toJSON())
-    client(socket_addr).send_status(stat_cfg, args.jsonreport)
+    elif 'status' == args.command:
+        stat = config.status_command(args.taskid)
+        stat_cfg = config.status_config(stat.toJSON())
+        client(socket_addr).send_status(stat_cfg, args.jsonreport)
 
-else:
-    cmdarg.print_help()
+    else:
+        cmdarg.print_help()
+
+except Exception as e:
+    print(e)
+    logging.exception(e)

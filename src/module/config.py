@@ -84,16 +84,27 @@ class server_config(config):
         else:
             self.ssh_login = srv_cfg_def.ssh_login
 
-
-class exec_arguments(config):
-    def __init__(self, program:str, arguments:list):
+class exec_argument(config):
+    def __init__(self, program:str, argument:str):
         self.program = program
-        self.arguments = arguments
+        self.argument = argument
+        
+# class exec_arguments(config):
+#     def __init__(self, program:str, arguments:list):
+#         self.program = program
+#         self.arguments = arguments
 
 class qmp_arguments(config):
     def __init__(self, execute:str, arguments:json):
         self.execute = execute
         self.arguments = arguments
+
+class os_kind:
+    def __init__(self):
+        self.unknown    = "unknown"
+        self.windows    = "windows"
+        self.linux      = "linux"
+        self.macos      = "macos"
 
 class command_kind:
     def __init__(self):
@@ -109,6 +120,7 @@ class command_kind:
 class task_status:
     def __init__(self):
         self.unknown    = "unknown"
+        self.waiting    = "waiting"
         self.creating   = "creating"
         self.connecting = "connecting"
         self.running    = "running"
@@ -183,9 +195,10 @@ class start_reply(config):
         self.errcode = data['errcode']
         self.stderr  = data['stderr']
         self.stdout  = data['stdout']
+        self.cwd     = data['cwd']
+        self.os      = data['os']
         self.fwd_ports = tcp_fwd_ports(data['fwd_ports']['qmp'],
                                        data['fwd_ports']['ssh'])
-
 
 class  start_request(config):
     def __init__(self, command:start_command):
@@ -205,15 +218,15 @@ class start_response(config):
 # Exec
 #
 class exec_command(config):
-    def __init__(self, taskid:int, exec_args:exec_arguments):
+    def __init__(self, taskid:int, exec_arg:exec_argument):
         self.taskid = taskid
-        self.exec_args = exec_args
+        self.exec_arg = exec_arg
 
 class exec_config(config):
     def __init__(self, data:json):
         self.cmd  = exec_command(data['taskid'],
-                                 exec_arguments(data['exec_args']['program'],
-                                                data['exec_args']['arguments']))
+                                 exec_argument(data['exec_arg']['program'],
+                                                data['exec_arg']['argument']))
 
 class exec_reply(config):
     def __init__(self, data:json):
@@ -388,7 +401,7 @@ class status_reply(config):
         self.errcode = data['errcode']
         self.stderr  = data['stderr']
         self.stdout  = data['stdout']
-        
+
         # extra
         self.pid = data['pid']
         self.status = data['status'] # status:task_status
