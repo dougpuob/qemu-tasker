@@ -12,6 +12,8 @@ import subprocess
 import logging
 import socket
 
+from ssh2.session import Session
+
 import psutil
 import subprocess
 
@@ -54,7 +56,11 @@ class qemu_instance:
         self.longlife = start_cmd.longlife * 60
         self.taskid = taskid
 
+        # SSH
         self.conn_ssh = None
+        self.conn_ssh_section = None
+        
+        # QMP
         self.conn_qmp = None    # QEMU Machine Protocol (QMP)
 
         #
@@ -123,54 +129,31 @@ class qemu_instance:
 
     def send_exec(self, exec_arg:config.exec_argument):
         self.clear()
+        
+        if None == self.conn_ssh:
+            return False
 
         cmd_str = exec_arg.program
         if exec_arg.argument:
              cmd_str = cmd_str + " " + exec_arg.argument
+        
+        logging.info("● cmd_str={}".format(cmd_str))                
 
-        retval = False
-        logging.info("● cmd_str={}".format(cmd_str))
-        if self.conn_ssh:
+        try:
+            ssh2help = ssh2_helper(self.conn_ssh_section)            
+            cmdret = ssh2help.execute(cmd_str)
+            
+            self.stdout.extend(cmdret.info_lines)
+            self.stderr.extend(cmdret.error_lines)
+            self.errcode = cmdret.errcode
+        
             retval = True
-
-            stdin, stdout, stderr = self.conn_ssh.exec_command(command=cmd_str)
-
-            stdout_text = ''
-            stderr_text = ''
-
-            try:
-                index = 0
-                while index < 2:
-                    sleep(2)
-                    index = index + 1
-
-                    if len(stdout_text) >= 2048*100 or len(stderr_text) >= 2048*100:
-                        stderr_text = stderr_text + "\r\nOver maximum line number !!!"
-                        retval = False
-                        break
-
-                    if stderr.readable():
-                        stderr_text = stderr_text + stderr.read().decode('utf8')
-
-                    if stdout.readable():
-                        stdout_text = stdout_text + stdout.read().decode('utf8')
-
-                if stderr_text != '':
-                    retval = False                
-
-                stderr_lines = stderr_text.split('\n')
-                for idx, val in enumerate(stderr_lines):
-                    stderr_lines[idx] = val.replace('\n', '').replace('\n', '')
-                self.stderr.extend(stderr_lines)
-                
-                stdout_lines = stdout_text.split('\n')
-                for idx, val in enumerate(stdout_lines):
-                    stdout_lines[idx] = val.replace('\r', '').replace('\n', '')
-                self.stdout.extend(stdout_lines)
-
-            except Exception as e:
-                print("e=" + str(e))
-                logging.exception("e=" + str(e))
+ 
+        except Exception as e:
+            retval = False
+            
+            print("e=" + str(e))
+            logging.exception("e=" + str(e))
 
         return retval
 
@@ -267,10 +250,27 @@ class qemu_instance:
         logging.info("command.py!qemu_machine::thread_wait_ssh_connect()")
         while not self.flag_is_ssh_connected:
             try:
-                self.conn_ssh = paramiko.SSHClient()
-                self.conn_ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-                self.conn_ssh.connect(host_addr, host_port, username, password, banner_timeout=200, timeout=200)
+                
+                #
+                # ssh2-python
+                #   
+                self.conn_ssh = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                if self.conn_ssh:
+                    self.conn_ssh.connect((host_addr, host_port))
+                    self.conn_ssh_section = Session()
+                    self.conn_ssh_section.handshake(self.conn_ssh)
+                    self.conn_ssh_section.userauth_password(username, password)            
+                
+                print("self.conn_ssh={0}".format(self.conn_ssh))        
+                print("self.conn_ssh_section={0}".format(self.conn_ssh_section))    
+                
+                #
+                # paramiko
+                #   
+                # self.conn_ssh = paramiko.SSHClient()
+                # self.conn_ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                # self.conn_ssh.connect(host_addr, host_port, username, password, banner_timeout=200, timeout=200)
+                
 
                 self.flag_is_ssh_connected = True
                 self.status = config.task_status().running
@@ -281,57 +281,40 @@ class qemu_instance:
 
             sleep(1)
 
-        # Detect OS kind.
-        stdin, stdout, stderr = self.conn_ssh.exec_command(command="uname -a")
-        stdout_line = []
-        stderr_line = []
-        if stdout.readable():
-            stdout_line.extend(stdout.readlines())
-        if stderr.readable():
-            stderr_line.extend(stderr.readlines())
 
-        logging.info("{}● 1 stdout_line={}".format("  ", stdout_line))
-        logging.info("{}● 1 stderr_line={}".format("  ", stderr_line))
-
-        if stderr:
-            stdout_line.clear()
-            stderr_line.clear()
-
-            stdin, stdout, stderr = self.conn_ssh.exec_command(command="systeminfo")
-            if stdout.readable():
-                stdout_line.extend(stdout.readlines())
-            if stderr.readable():
-                stderr_line.extend(stderr.readlines())
-
-            logging.info("{}● 2 stdout_line={}".format("  ", stdout_line))
-            logging.info("{}● 2 stderr_line={}".format("  ", stderr_line))
-
-            output_text = ' '.join(stdout_line)
-            if output_text.find("Windows") > 0:
+        stdout_lines = []
+        stderr_lines = []
+        
+        
+        ssh2help = ssh2_helper(self.conn_ssh_section)
+        
+        
+        #
+        # Detect OS kind by trying the `uname` or `systeminfo` commands.
+        # - `uname` for Linux and macOS
+        # - `systeminfo` for Windows
+        #        
+        cmdret = ssh2help.execute('uname -a')
+        if cmdret.errcode == 0:
+            stdout = ''.join(cmdret.info_lines).strip()
+            if stdout.find("Linux") > 0:
+                self.guest_os_kind = config.os_kind().linux
+            if stdout.find("Darwin") > 0:
+                self.guest_os_kind = config.os_kind().macos
+        else:
+            cmdret = ssh2help.execute('systeminfo')
+            if cmdret.errcode == 0:
                 self.guest_os_kind = config.os_kind().windows
 
-        if stdout:
-            output_text = ' '.join(stdout_line)
-            if output_text.find("Linux") > 0:
-                self.guest_os_kind = config.os_kind().linux
-            if output_text.find("Darwin") > 0:
-                self.guest_os_kind = config.os_kind().macos
-
-        # Get guest current working directory path
+        #
+        # Get guest current working directory path        
+        #
         if self.guest_os_kind == config.os_kind().windows:
-            stdin, stdout, stderr = self.conn_ssh.exec_command(command="echo %cd%")
-            stdout_line.clear()
-            if stdout.readable():
-                stdout_line.extend(stdout.readlines())
-                self.guest_os_cwd = ' '.join(stdout_line).strip()
-                logging.info("{}● self.guest_working_directory={}".format("  ", self.guest_os_cwd))
+            cmdret = ssh2help.execute('echo %cd%')
+            self.guest_os_cwd = ''.join(cmdret.info_lines).strip()
         else:
-            stdin, stdout, stderr = self.conn_ssh.exec_command(command='pwd')
-            stdout_line.clear()
-            if stdout.readable():
-                stdout_line.extend(stdout.readlines())
-                self.guest_os_cwd = ' '.join(stdout_line).strip()
-                logging.info("{}● self.guest_working_directory={}".format("  ", self.guest_os_cwd))
+            cmdret = ssh2help.execute('pwd')
+            self.guest_os_cwd = ''.join(cmdret.info_lines).strip()            
 
         print("{}● os_kind={}".format("  ", self.guest_os_kind))
         print("{}● cwd={}".format("  ", self.guest_os_cwd))
@@ -425,4 +408,65 @@ class qemu_instance:
     def decrease_longlife(self):
         self.longlife = self.longlife - 1
 
+class cmd_return:
+    def __init__(self):
+        self.error_lines = []
+        self.info_lines = []
+        self.errcode = -9999
+        
+class ssh2_helper:
+    def __init__(self, ssh_section):
+        self.ssh2_section = ssh_section
+    
+    
+    # if len(stdout_text) >= 2048*100 or len(stderr_text) >= 2048*100:
+    #     stderr_text = stderr_text + "\r\nOver maximum line number !!!"
+    # retval = False
+    # break
+    
+    def execute(self, cmdstr:str):
+        cmdret = cmd_return()        
+        
+        if None == self.ssh2_section:
+            return cmdret
+        
+        ssh_chanl = None
+        
+        try:
+            ssh_chanl = self.ssh2_section.open_session()
+            print("ssh_chanl={0}".format(ssh_chanl))                
+            
+            ssh_chanl.execute(cmdstr)            
+            
+            times = 5
+            while times > 0:
+                                
+                sleep(0.5)
+                times = times - 1
+                
+                size, data = ssh_chanl.read()
+                lines = [line.decode('utf-8') for line in data.splitlines()]
+                cmdret.info_lines.extend(lines)
+                while size > 0:
+                    size, data = ssh_chanl.read()
+                    lines = [line.decode('utf-8') for line in data.splitlines()]
+                    cmdret.info_lines.extend(lines)
+                
+                size, data = ssh_chanl.read_stderr()
+                lines = [line.decode('utf-8') for line in data.splitlines()]
+                cmdret.error_lines.extend(lines)
+                while size > 0:
+                    size, data = ssh_chanl.read_stderr()
+                    cmdret.error_lines.extend(lines)
 
+            cmdret.errcode = ssh_chanl.get_exit_status()
+        
+        except Exception as e:
+            print(e)
+            logging.exception(e)
+
+        finally:
+            if ssh_chanl:
+                ssh_chanl.close()
+
+        return cmdret

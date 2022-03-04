@@ -121,8 +121,8 @@ class server:
                 qemu_inst:qemu.qemu_instance = qemu_inst_obj
                 is_alive = qemu_inst.is_proc_alive()
                 if not is_alive:
+                    self.qemu_instance_list.remove(qemu_inst)                    
                     qemu_inst.kill()
-                    self.qemu_instance_list.remove(qemu_inst)
 
             time.sleep(1)
 

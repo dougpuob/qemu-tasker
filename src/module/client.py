@@ -5,6 +5,15 @@ import logging
 from time import sleep
 import paramiko
 
+#
+# ssh2-python
+#
+from ssh2.session import Session
+from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR
+
+#
+# Internal modules
+#
 from module import config
 from module.sshclient import SSHClient
 
@@ -29,9 +38,23 @@ class client:
             self.conn_ssh = None
 
     def connect_sftp(self):
-        self.conn_sftp = paramiko.SSHClient()
-        self.conn_sftp.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
+        #
+        # ssh2-python
+        #
+        self.conn_ssh = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if self.conn_ssh:
+            self.conn_ssh.connect((self.host_addr, self.host_addr.port))
+            self.conn_ssh_section = Session()
+            self.conn_ssh_section.handshake(self.conn_ssh)
+            self.conn_ssh_section.userauth_password(self.start_cfg.cmd.ssh_login.username,
+                                                    self.start_cfg.cmd.ssh_login.password)
+            self.conn_sftp = self.conn_ssh.sftp_init()
+            
+        #
+        # paramiko
+        #
+        # self.conn_sftp = paramiko.SSHClient()
+        # self.conn_sftp.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
             self.conn_sftp.connect(self.host_addr.addr,
                                 self.host_addr.port,
