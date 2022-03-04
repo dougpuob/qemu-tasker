@@ -64,9 +64,11 @@ try:
         client(socket_addr).send_qmp(qmp_cfg, args.jsonreport)
 
     elif 'file' == args.command:
-        file = config.file_command(args.taskid, args.kind, args.filepath, args.savepath, args.newdir, args.config, args.port)
+        file = config.file_command(args.taskid, args.sendfrom, args.sendto, args.pathfrom, args.pathto, args.config, args.port)
         file_cfg = config.file_config(file.toJSON())
-        client(socket_addr).send_file(file_cfg, args.jsonreport)
+        start_cfg = config.start_config(json.load(open(args.config)))
+        ssh_info = config.ssh_conn_info(args.host, args.port, start_cfg.cmd.ssh_login.username, start_cfg.cmd.ssh_login.password)
+        client(socket_addr).send_file(file_cfg, ssh_info, args.jsonreport)
 
     elif 'status' == args.command:
         stat = config.status_command(args.taskid)

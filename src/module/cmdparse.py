@@ -45,15 +45,24 @@ class cmdargs():
         parser_exec.add_argument('-F', '--argsfile')
 
         # subcommand file
+        # parser_file = subparsers.add_parser('file', parents = [parent_parser], help='transfer files between client and guest, or server and guest')
+        # parser_file.add_argument('-T', '--taskid', type=int, required=True)
+        # parser_file.add_argument('-K', '--kind', type=str, required=True, choices=['c2g_upload',
+        #                                                                            'c2g_download',
+        #                                                                            's2g_upload',
+        #                                                                            's2g_download'])
+        # parser_file.add_argument('-F', '--filepath', type=str, required=True)
+        # parser_file.add_argument('-S', '--savepath', type=str, required=True)
+        # parser_file.add_argument('-N', '--newdir', type=str)
+        # parser_file.add_argument('-C', '--config', type=str)
+        # parser_file.add_argument('-P', '--port', type=int)
+
         parser_file = subparsers.add_parser('file', parents = [parent_parser], help='transfer files between client and guest, or server and guest')
         parser_file.add_argument('-T', '--taskid', type=int, required=True)
-        parser_file.add_argument('-K', '--kind', type=str, required=True, choices=['c2g_upload',
-                                                                                   'c2g_download',
-                                                                                   's2g_upload',
-                                                                                   's2g_download'])
-        parser_file.add_argument('-F', '--filepath', type=str, required=True)
-        parser_file.add_argument('-S', '--savepath', type=str, required=True)
-        parser_file.add_argument('-N', '--newdir', type=str)
+        parser_file.add_argument('-SF', '--sendfrom', type=str, required=True, choices=['client','server','guest'])
+        parser_file.add_argument('-ST', '--sendto', type=str, required=True, choices=['client','server','guest'])
+        parser_file.add_argument('-PF', '--pathfrom', type=str, required=True)
+        parser_file.add_argument('-PT', '--pathto', type=str, required=True)
         parser_file.add_argument('-C', '--config', type=str)
         parser_file.add_argument('-P', '--port', type=int)
 

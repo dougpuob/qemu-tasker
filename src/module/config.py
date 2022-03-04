@@ -49,24 +49,13 @@ class server_config_default(config):
         self.qemu_longlife = qemu_longlife(10, 10)
         self.ssh_login = ssh_login("dougpuob", "dougpuob")
 
+class ssh_conn_info(config):
+    def __init__(self, host_addr, host_port, username, password):
+        self.host = socket_address(host_addr, host_port)
+        self.account = ssh_login(username, password)
+
 class server_config(config):
     def __init__(self, json_data):
-        """
-        json_data = {
-            "socket_address": {
-                "addr": "localhost",
-                "port": 12801
-            },
-            "qemu_longlife": {
-                "instance_maximum": 10,
-                "longlife_minutes": 10
-            },
-            "ssh_login": {
-                "username": "dougpuob",
-                "password": "dougpuob"
-            }
-        }
-        """
         srv_cfg_def = server_config_default()
 
         if json_data.get('socket_address'):
@@ -88,11 +77,6 @@ class exec_argument(config):
     def __init__(self, program:str, argument:str):
         self.program = program
         self.argument = argument
-        
-# class exec_arguments(config):
-#     def __init__(self, program:str, arguments:list):
-#         self.program = program
-#         self.arguments = arguments
 
 class qmp_arguments(config):
     def __init__(self, execute:str, arguments:json):
@@ -340,20 +324,26 @@ class direction_kind(Enum):
     c2g_download = 2
     s2g_upload   = 3
     s2g_download = 4
+    
+class target_kind(Enum):
+    unknown = 0
+    client  = 1
+    server  = 2
+    guest = 3
 
 class file_command(config):
-    def __init__(self, taskid:int, kind:direction_kind, filepath:str, savepath:str, newdir:str, config:str, port:int):
-        self.taskid = taskid
-        self.kind = kind
-        self.filepath = filepath
-        self.savepath = savepath
-        self.newdir = newdir
-        self.config = config
-        self.port = port
+    def __init__(self, taskid:int, sendfrom:str, sendto:str, pathfrom:str, pathto:str, config:str, port:int):
+        self.taskid   = taskid
+        self.sendfrom = sendfrom
+        self.sendto   = sendto
+        self.pathfrom = pathfrom
+        self.pathto   = pathto
+        self.config   = config
+        self.port     = port
 
 class file_config(config):
     def __init__(self, data:json):
-        self.cmd  = file_command(data['taskid'], data['kind'], data['filepath'], data['savepath'], data['newdir'], data['config'], data['port'])
+        self.cmd  = file_command(data['taskid'], data['sendfrom'], data['sendto'], data['pathfrom'], data['pathto'], data['config'], data['port'])
 
 class file_reply(config):
     def __init__(self, data:json):
