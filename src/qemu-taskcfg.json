@@ -1,5 +1,5 @@
 {
-  "longlife": 10,  
+  "longlife": 100,  
   "program": "qemu-system-x86_64",
   "arguments": [
     "-m",

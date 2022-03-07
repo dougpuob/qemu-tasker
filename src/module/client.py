@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-import socket
-import json
-import logging
-from time import sleep
-import paramiko
 import os
+import json
+import socket
+import logging
+
+from time import sleep
 from datetime import datetime
 
 #
@@ -21,7 +21,7 @@ from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 # Internal modules
 #
 from module import config
-from module.sshclient import SSHClient
+from module.sshclient import ssh_link
 
 
 class client:
@@ -32,39 +32,11 @@ class client:
         self.start_cfg:config.start_config = None
 
         self.flag_is_ssh_connected = False
-        self.conn_tcp = None
-        self.conn_ssh = None
-        self.conn_sftp = None
+        self.ssh_link = None
 
 
     def __del__(self):
-        if self.conn_tcp:
-            self.conn_tcp.close()
-            self.conn_tcp = None
-
-        if self.conn_ssh:
-            self.conn_ssh.close()
-            self.conn_ssh = None
-
-
-    def connect_sftp(self, ssh_info:config.ssh_conn_info):
-        try:            
-            #
-            # ssh2-python
-            #
-            self.conn_ssh = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            if self.conn_ssh:
-                self.conn_ssh.connect((ssh_info.host.addr, ssh_info.host.port))
-                self.conn_ssh_section = Session()
-                self.conn_ssh_section.handshake(self.conn_ssh)
-                self.conn_ssh_section.userauth_password(ssh_info.account.username, ssh_info.account.password)
-                self.conn_sftp = self.conn_ssh_section.sftp_init()
-                self.flag_is_ssh_connected = True
-
-        except Exception as e:
-            text = str(e)
-            print(text)
-            logging.exception(text)
+        pass
 
 
     def send(self, mesg:str) -> str:
@@ -170,75 +142,65 @@ class client:
         file_resp_text = None
         
         #
-        # Target PCs (from)
+        # Target PCs
         #
-        pc_from = config.target_kind.unknown        
-        sendfrom = file_cfg.cmd.sendfrom.lower()        
-        if sendfrom.startswith('s'):
-            pc_from = config.target_kind.server
-        elif sendfrom.startswith('c'):
-            pc_from = config.target_kind.client
-        elif sendfrom.startswith('g'):
-            pc_from = config.target_kind.guest
-        else:
-            pass
-            
-                
-        #
-        # Target PCs (to)
-        #        
-        pc_to  = config.target_kind.unknown
-        sendto = file_cfg.cmd.sendto.lower()
-        if sendto.startswith('s'):
-            pc_to = config.target_kind.server
-        elif sendto.startswith('c'):
-            pc_to = config.target_kind.client
-        elif sendto.startswith('g'):
-            pc_to = config.target_kind.guest
-        else:
-            pass
-        
+        pc_from = file_cfg.cmd.sendfrom 
+        pc_to  = file_cfg.cmd.sendto
         
         #
-        # File pathes
+        # Local <--> Server
+        # Local <--> Guest (direct)
         #
-        file_from_stat = None
-        if os.path.exists(file_cfg.cmd.pathfrom):
-            file_from_stat = os.stat(file_cfg.cmd.pathfrom)
-        
-        
-        #
-        # client <--> server
-        # client <--> guest (direct)
-        #
+        cmdret = config.cmd_return()
         file_resp = None
         try:
-            # client <--> server
-            if (pc_from==config.target_kind.client and pc_to==config.target_kind.server) or \
-               (pc_from==config.target_kind.server and pc_to==config.target_kind.client):
+            # Local <--> Server (Request by the `file` command)
+            if (pc_from==config.target_kind.local  and pc_to==config.target_kind.server) or \
+               (pc_from==config.target_kind.server and pc_to==config.target_kind.local):
                    
-                logging.info("Transfer file by SFTP (client <--> server)")                
+                logging.info("Transfer file by TCP (Local <--> Server)")
                 file_req = config.file_request(file_cfg.cmd)
                 file_resp_text = self.send(file_req.toTEXT())
+                self.conn_tcp.recvfrom()
                 logging.info("● file_resp_text={}".format(file_resp_text))
                 file_resp = config.digest_file_response(json.loads(file_resp_text))
 
-            # client <--> guest (direct)
-            elif (pc_from==config.target_kind.client and pc_to==config.target_kind.guest) or \
-                 (pc_from==config.target_kind.guest  and pc_to==config.target_kind.client):
+            # Local <--> Guest (Connect directly)
+            elif pc_from==config.target_kind.local and pc_to==config.target_kind.guest or \
+                 pc_from==config.target_kind.guest and pc_to==config.target_kind.local:
                 
-                # Connect to from client to client.
-                self.connect_sftp(ssh_info)
-                     
-                logging.info("Transfer file by SFTP (client <--> guest (direct))")
-                file_reply = config.file_reply(self.send_file_direct(file_cfg))                
+                logging.info("Transfer file by SFTP (Local <--> Guest)")
+                
+                self.link_ssh = ssh_link()
+                is_connected = self.link_ssh.connect(ssh_info.host.addr,
+                                                     ssh_info.host.port,
+                                                     ssh_info.account.username,
+                                                     ssh_info.account.password)                
+                if is_connected:
+                    # upload
+                    if pc_from==config.target_kind.local and pc_to==config.target_kind.guest:
+                        cmdret = self.ssh_link.upload(file_cfg.cmd.pathfrom, file_cfg.cmd.pathto)
+                    
+                    # download
+                    elif pc_from==config.target_kind.guest and pc_to==config.target_kind.local:
+                        cmdret = self.ssh_link.download(file_cfg.cmd.pathfrom, file_cfg.cmd.pathto)
+                    
+                reply_data = {
+                    "taskid"  : file_cfg.cmd.taskid,
+                    "result"  : (0 == cmdret.errcode),
+                    "errcode" : cmdret.errcode,
+                    "stderr"  : cmdret.error_lines,
+                    "stdout"  : cmdret.info_lines,
+                }
+
+                file_reply = config.file_reply(reply_data)
                 file_resp = config.file_response(file_reply)
                 file_resp_json = file_resp.toJSON()
                 file_resp_text = file_resp.toTEXT()
                 logging.info("● file_resp_text={}".format(file_resp_text))
                 file_resp = config.digest_file_response(file_resp_json)
-                                
-            else:            
+            
+            else:
                 assert(False)
             
             if is_json_report:
@@ -247,7 +209,9 @@ class client:
                 print("[qemu-tasker] command result: {}".format(file_resp.reply.result))
 
         except Exception as e:
-            print("[qemu-tasker] {}".format(e))
+            text = str(e)
+            print(text)
+            print("[qemu-tasker] {}".format(text))
 
 
     def send_status(self, stat_cfg:config.status_config, is_json_report:bool=False):
@@ -273,55 +237,80 @@ class client:
             print("[qemu-tasker] command result: {}".format(stat_resp.reply.result))
 
 
-    def send_file_direct(self, file_cfg:config.file_config):
-        file_from = file_cfg.cmd.pathfrom
-        file_to   = file_cfg.cmd.pathto
+    # def send_file_direct(self, file_cfg:config.file_config):
+    #     file_from = file_cfg.cmd.pathfrom
+    #     file_to   = file_cfg.cmd.pathto
         
-        mode = LIBSSH2_SFTP_S_IRUSR | \
-               LIBSSH2_SFTP_S_IWUSR | \
-               LIBSSH2_SFTP_S_IRGRP | \
-               LIBSSH2_SFTP_S_IROTH
+    #     mode = LIBSSH2_SFTP_S_IRUSR | \
+    #            LIBSSH2_SFTP_S_IWUSR | \
+    #            LIBSSH2_SFTP_S_IRGRP | \
+    #            LIBSSH2_SFTP_S_IROTH
         
-        f_flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE
+    #     f_flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE
         
-        result = False
-        errcode = -1
-        stderr = ''
-        stdout = ''
+    #     result = False
+    #     errcode = -1
+    #     stderr = ''
+    #     stdout = ''
         
-        finfo  = None
-        before = datetime.now()
+    #     rate = 0
+    #     before = datetime.now()
         
-        try:
-            buf_size = 1024 * 1024
-            finfo = os.stat(file_from)
-            with open(file_from, 'rb', buf_size) as local_fh, \
-                self.conn_sftp.open(file_to, f_flags, mode) as remote_fh:
-                data = local_fh.read(buf_size)        
-                while data:
-                    remote_fh.write(data)
-                    data = local_fh.read(buf_size)
+    #     try:
+    #         buf_size = 1024 * 1024 * 5
+    #         file_stat = None
+    #         realpath = ''
+                        
+    #         if file_cfg.cmd.sendfrom == config.target_kind.local:
+    #             file_stat = os.stat(file_from)
+    #             with open(file_from, 'rb', buf_size) as fh_src, \
+    #                 self.conn_sftp.open(file_to, f_flags, mode) as fh_dst:
+    #                 data = fh_src.read(buf_size)        
+    #                 while data:
+    #                     fh_dst.write(data)
+    #                     data = fh_src.read(buf_size)
 
-            errcode = 0
-            result = True
-            after = datetime.now() - before
+    #             diff = (datetime.now()-before)
+    #             rate = (file_stat.st_size / 1024000.0) / diff.total_seconds()
+                        
+    #         elif file_cfg.cmd.sendfrom == config.target_kind.server:
+    #             assert False , "Local <--> Server cannot NOT transfer directly"
+    #             pass
+                
+    #         elif file_cfg.cmd.sendfrom == config.target_kind.guest:
+    #             file_from = self.conn_sftp.realpath(file_from)
+    #             if file_from.find(':') > 0 and file_from.startswith('/'):
+    #                 file_from = file_from[1:].replace('/', '\\')
+    #             file_stat = self.conn_sftp.stat(file_from)
+    #             with self.conn_sftp.open(file_from, LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as fh_src, \
+    #                 open(file_to, 'wb') as fh_dst:
+    #                 for size, data in fh_src:
+    #                     fh_dst.write(data)
+
+    #             diff = (datetime.now()-before)                
+    #             rate = (file_stat.filesize / 1024000.0) / diff.total_seconds()
+                
+    #         else:
+    #             assert False , "switch-case missed, wrong path !!!"
+    #             pass
+
+    #         errcode = 0
+    #         result = True
             
-        except Exception as e:
-            result = False
-            stderr = "exception={0}".format(str(e))
-            print(stderr)
-            logging.info(stderr)
+    #     except Exception as e:
+    #         result = False
+    #         stderr = "exception={0}".format(str(e))
+    #         print(stderr)
+    #         logging.info(stderr)
 
-        finally:
-            diff = (datetime.now()-before)
-            rate = (finfo.st_size / 1024000.0) / diff.total_seconds()            
-            stdout = ("Finished writing remote file in {0}, transfer rate {1} MB/s".format(diff, rate))
+    #     finally:
+    #         stdout = ("Finished writing remote file in {0}, transfer rate {1} MB/s".format(diff, rate))
     
-            reply_data = {
-                "taskid"  : file_cfg.cmd.taskid,
-                "result"  : result,
-                "errcode" : errcode,
-                "stderr"  : [stderr],
-                "stdout"  : [stdout],
-            }
-            return reply_data
+    #         reply_data = {
+    #             "taskid"  : file_cfg.cmd.taskid,
+    #             "result"  : result,
+    #             "errcode" : errcode,
+    #             "stderr"  : [stderr],
+    #             "stdout"  : [stdout],
+    #         }
+    #         return reply_data

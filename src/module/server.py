@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from ast import Or
 from email import message
+import os
 import socket
 import threading
 import time
@@ -20,6 +21,7 @@ class server:
 
         # Resource
         self.occupied_ports = []
+        self.filepool_basepath = ""
 
         # Status
         self.is_started = True
@@ -58,7 +60,8 @@ class server:
         print("STOP!!!")
         self.is_started = False
 
-    def start(self):
+    def start(self, task_filepool:str):        
+        self.filepool_basepath = os.path.normpath(task_filepool)
 
         # Check and count longlife.
         self.thread_task = threading.Thread(target = self.thread_routine_checking_longlife)
@@ -96,13 +99,14 @@ class server:
                 if qemu_inst.longlife > 0:
                     is_qmp_connected = self.get_bool(qemu_inst.is_qmp_connected())
                     is_ssh_connected = self.get_bool(qemu_inst.is_ssh_connected())
-
-                    print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} SSH:{} Longlife:{}(s) {}'.format(
+                    
+                    print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} SSH:{} OS:{}  Longlife:{}(s) {}'.format(
                             qemu_inst.taskid,
                             qemu_inst.pid,
                             qemu_inst.fwd_ports.toJSON(),
                             is_qmp_connected,
                             is_ssh_connected,
+                            qemu_inst.guest_os_kind,
                             qemu_inst.longlife,
                             qemu_inst.status))
 
@@ -266,24 +270,14 @@ class server:
         if not qemu_inst.is_ssh_connected():
             return self.get_ssh_not_ready_reply_data(file_cmd.taskid)
         else:
-            recv_text = qemu_inst.send_file(file_cmd)
-
-            result  = len(qemu_inst.stderr) == 0
-            errcode = qemu_inst.errcode
-            stderr  = qemu_inst.stderr
-
-            if recv_text and isinstance(recv_text, str):
-                if  0 == len(recv_text):
-                    result  = False
-                    errcode = -1
-                    stderr  = ["no return"]
+            ret_cmd = qemu_inst.send_file(file_cmd)
 
             reply_data = {
                 "taskid"    : file_cmd.taskid,
-                "result"    : result,
-                "errcode"   : errcode,
-                "stderr"    : stderr,
-                "stdout"    : recv_text,
+                "result"    : (0 == ret_cmd.errcode),
+                "errcode"   : ret_cmd.errcode,
+                "stderr"    : ret_cmd.error_lines,
+                "stdout"    : ret_cmd.info_lines,
             }
             return reply_data
 

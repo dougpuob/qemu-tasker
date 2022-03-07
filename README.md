@@ -18,7 +18,8 @@ The `server` command to start a daemon as a server manage all QEMU instances and
 
 
 ``` bash
-pipe install psutil
+pip3 install psutil
+pip3 install ssh2-python
 ```
 
 ----------

@@ -9,6 +9,14 @@ from os import kill
 
 from enum import Enum
 
+
+class cmd_return:
+    def __init__(self):
+        self.error_lines = []
+        self.info_lines = []
+        self.errcode = -9999
+
+
 class config():
     def _try(self, o):
         try:
@@ -327,15 +335,43 @@ class direction_kind(Enum):
     
 class target_kind(Enum):
     unknown = 0
-    client  = 1
+    local   = 1
     server  = 2
-    guest = 3
+    guest   = 3
 
 class file_command(config):
     def __init__(self, taskid:int, sendfrom:str, sendto:str, pathfrom:str, pathto:str, config:str, port:int):
         self.taskid   = taskid
-        self.sendfrom = sendfrom
-        self.sendto   = sendto
+        
+        self.sendfrom:target_kind = sendfrom
+        self.sendto:target_kind   = sendto
+            
+        from_text = ''
+        if   isinstance(sendfrom, str):
+            from_text = sendfrom.lower()
+        elif isinstance(sendfrom, dict):
+            from_text = sendfrom["_name_"].lower()            
+        
+        if   from_text.startswith('l'):
+            self.sendfrom =  target_kind.local
+        elif from_text.startswith('s'):
+            self.sendfrom =  target_kind.server
+        elif from_text.startswith('g'):
+            self.sendfrom =  target_kind.guest
+            
+        to_text = ''            
+        if   isinstance(sendto, str):
+            to_text = sendto.lower()
+        elif isinstance(sendto, dict):
+            to_text = sendto["_name_"].lower()
+        
+        if   to_text.startswith('l'):
+            self.sendto =  target_kind.local
+        elif to_text.startswith('s'):
+            self.sendto =  target_kind.server
+        elif to_text.startswith('g'):
+            self.sendto =  target_kind.guest
+        
         self.pathfrom = pathfrom
         self.pathto   = pathto
         self.config   = config

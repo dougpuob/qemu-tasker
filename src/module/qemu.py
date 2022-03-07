@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from array import array
-from ast import arg
+from ast import Break, arg
 from asyncio.subprocess import PIPE
 import json
 from socket import timeout
@@ -21,7 +21,7 @@ from time import sleep
 
 from datetime import datetime
 from module import config
-from module.sshclient import SSHClient
+from module.sshclient import ssh_link
 from module.qmp import QEMUMonitorProtocol
 
 
@@ -33,7 +33,8 @@ class qemu_instance:
         self.is_alive = True
         self.is_ready = False
         self.guest_os_cwd = None
-        self.guest_os_kind = config.os_kind().unknown
+        self.guest_os_kind = config.os_kind().unknown                
+        self.filepool_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
 
         # qemu base args
         self.base_args = []
@@ -57,8 +58,7 @@ class qemu_instance:
         self.taskid = taskid
 
         # SSH
-        self.conn_ssh = None
-        self.conn_ssh_section = None
+        self.ssh_link = ssh_link()
         
         # QMP
         self.conn_qmp = None    # QEMU Machine Protocol (QMP)
@@ -130,7 +130,7 @@ class qemu_instance:
     def send_exec(self, exec_arg:config.exec_argument):
         self.clear()
         
-        if None == self.conn_ssh:
+        if None == self.ssh_link.tcp_socket:
             return False
 
         cmd_str = exec_arg.program
@@ -140,8 +140,7 @@ class qemu_instance:
         logging.info("● cmd_str={}".format(cmd_str))                
 
         try:
-            ssh2help = ssh2_helper(self.conn_ssh_section)            
-            cmdret = ssh2help.execute(cmd_str)
+            cmdret = self.ssh_link.execute(cmd_str)
             
             self.stdout.extend(cmdret.info_lines)
             self.stderr.extend(cmdret.error_lines)
@@ -163,38 +162,25 @@ class qemu_instance:
             return self.conn_qmp.cmd(qmp_cmd.execute, args=qmp_cmd.argsjson)
         return ""
 
+    # Local <--> Server
     def send_file(self, file_cmd:config.file_command):
         self.clear()
-
-        print("● send_file")
-        print("file_cmd.taskid={}".format(file_cmd.taskid))
-        print("file_cmd.kind={}".format(file_cmd.kind))
-        print("file_cmd.filepath={}".format(file_cmd.filepath))
-        print("file_cmd.savepath={}".format(file_cmd.savepath))
-        print("file_cmd.newdir={}".format(file_cmd.newdir))
-
-        logging.info("● send_file")
-        logging.info("file_cmd={}".format(file_cmd.toJSON()))
-        logging.info("file_cmd.taskid={}".format(file_cmd.taskid))
-        logging.info("file_cmd.kind={}".format(file_cmd.kind))
-        logging.info("file_cmd.filepath={}".format(file_cmd.filepath))
-        logging.info("file_cmd.savepath={}".format(file_cmd.savepath))
-        logging.info("file_cmd.newdir={}".format(file_cmd.newdir))
-
-        print("config.direction_kind.s2g_upload={}".format(config.direction_kind.s2g_upload))
-        print("config.direction_kind.s2g_download={}".format(config.direction_kind.s2g_download))
-
-        sshclient = SSHClient()
-        sftp = sshclient.open_sftp_over_ssh(self.conn_ssh)
-
-        file_reply_json = sshclient.cmd_dispatch(file_cmd)
-        self.errcode = file_reply_json["errcode"]
-        self.stderr  = file_reply_json["stderr"]
-        self.stdout  = file_reply_json["stdout"]
-        sftp.close()
-
-        result  = file_reply_json["result"]
-        return result
+        
+        cmdret = config.cmd_return()
+        
+        pc_from = file_cmd.sendfrom
+        pc_to = file_cmd.sendto
+                        
+        if self.flag_is_ssh_connected:
+            # upload
+            if pc_from==config.target_kind.local and pc_to==config.target_kind.server:
+                cmdret = self.ssh_link.upload(file_cmd.pathfrom, file_cmd.pathto)
+            
+            # download
+            elif pc_from==config.target_kind.server and pc_to==config.target_kind.local:
+                cmdret = self.ssh_link.download(file_cmd.pathfrom, file_cmd.pathto)
+            
+        return cmdret
 
     def is_qmp_connected(self):
         return self.flag_is_qmp_connected
@@ -248,53 +234,26 @@ class qemu_instance:
 
     def thread_ssh_try_connect(self, host_addr, host_port, username, password):
         logging.info("command.py!qemu_machine::thread_wait_ssh_connect()")
+        
         while not self.flag_is_ssh_connected:
             try:
-                
-                #
-                # ssh2-python
-                #   
-                self.conn_ssh = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                if self.conn_ssh:
-                    self.conn_ssh.connect((host_addr, host_port))
-                    self.conn_ssh_section = Session()
-                    self.conn_ssh_section.handshake(self.conn_ssh)
-                    self.conn_ssh_section.userauth_password(username, password)            
-                
-                print("self.conn_ssh={0}".format(self.conn_ssh))        
-                print("self.conn_ssh_section={0}".format(self.conn_ssh_section))    
-                
-                #
-                # paramiko
-                #   
-                # self.conn_ssh = paramiko.SSHClient()
-                # self.conn_ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                # self.conn_ssh.connect(host_addr, host_port, username, password, banner_timeout=200, timeout=200)
-                
-
-                self.flag_is_ssh_connected = True
-                self.status = config.task_status().running
-                break
+                self.ssh_link.connect(host_addr, host_port,username,password)
+                if self.ssh_link.tcp_socket and self.ssh_link.conn_ssh_session:
+                    self.flag_is_ssh_connected = True
+                    self.status = config.task_status().running
+                    Break
 
             except Exception as e:
                 logging.exception("e=" + str(e))
 
             sleep(1)
-
-
-        stdout_lines = []
-        stderr_lines = []
-        
-        
-        ssh2help = ssh2_helper(self.conn_ssh_section)
-        
         
         #
         # Detect OS kind by trying the `uname` or `systeminfo` commands.
         # - `uname` for Linux and macOS
         # - `systeminfo` for Windows
         #        
-        cmdret = ssh2help.execute('uname -a')
+        cmdret = self.ssh_link.execute('uname -a')
         if cmdret.errcode == 0:
             stdout = ''.join(cmdret.info_lines).strip()
             if stdout.find("Linux") > 0:
@@ -302,7 +261,7 @@ class qemu_instance:
             if stdout.find("Darwin") > 0:
                 self.guest_os_kind = config.os_kind().macos
         else:
-            cmdret = ssh2help.execute('systeminfo')
+            cmdret = self.ssh_link.execute('systeminfo')
             if cmdret.errcode == 0:
                 self.guest_os_kind = config.os_kind().windows
 
@@ -310,12 +269,16 @@ class qemu_instance:
         # Get guest current working directory path        
         #
         if self.guest_os_kind == config.os_kind().windows:
-            cmdret = ssh2help.execute('echo %cd%')
+            cmdret = self.ssh_link.execute('echo %cd%')
             self.guest_os_cwd = ''.join(cmdret.info_lines).strip()
         else:
-            cmdret = ssh2help.execute('pwd')
+            cmdret = self.ssh_link.execute('pwd')
             self.guest_os_cwd = ''.join(cmdret.info_lines).strip()            
 
+        # Create filepool directory.
+        self.filepool_basepath = os.path.join(self.guest_os_cwd, "filepool")
+        cmdret = self.ssh_link.execute('mkdir ' + self.filepool_basepath)
+        
         print("{}● os_kind={}".format("  ", self.guest_os_kind))
         print("{}● cwd={}".format("  ", self.guest_os_cwd))
 
@@ -327,7 +290,7 @@ class qemu_instance:
         if self.flag_is_ssh_connected:
             return
 
-        if not self.conn_ssh:
+        if not self.ssh_link.tcp_socket:
             wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_addr.addr,
                                                                                            self.fwd_ports.ssh,
                                                                                            self.start_cmd.ssh_login.username,
@@ -385,7 +348,7 @@ class qemu_instance:
             self.conn_qmp.close()
 
         if self.conn_ssh:
-            self.conn_ssh.close()
+            self.ssh_link.tcp_socket.close()
 
         # waiting for it to die
         retry = 0
@@ -408,65 +371,60 @@ class qemu_instance:
     def decrease_longlife(self):
         self.longlife = self.longlife - 1
 
-class cmd_return:
-    def __init__(self):
-        self.error_lines = []
-        self.info_lines = []
-        self.errcode = -9999
         
-class ssh2_helper:
-    def __init__(self, ssh_section):
-        self.ssh2_section = ssh_section
+# class ssh2_helper:
+#     def __init__(self, ssh_section):
+#         self.ssh2_section = ssh_section
     
     
-    # if len(stdout_text) >= 2048*100 or len(stderr_text) >= 2048*100:
-    #     stderr_text = stderr_text + "\r\nOver maximum line number !!!"
-    # retval = False
-    # break
+#     # if len(stdout_text) >= 2048*100 or len(stderr_text) >= 2048*100:
+#     #     stderr_text = stderr_text + "\r\nOver maximum line number !!!"
+#     # retval = False
+#     # break
     
-    def execute(self, cmdstr:str):
-        cmdret = cmd_return()        
+#     def execute(self, cmdstr:str):
+#         cmdret = config.cmd_return()
         
-        if None == self.ssh2_section:
-            return cmdret
+#         if None == self.ssh2_section:
+#             return cmdret
         
-        ssh_chanl = None
+#         ssh_chanl = None
         
-        try:
-            ssh_chanl = self.ssh2_section.open_session()
-            print("ssh_chanl={0}".format(ssh_chanl))                
+#         try:
+#             ssh_chanl = self.ssh2_section.open_session()
+#             print("ssh_chanl={0}".format(ssh_chanl))                
             
-            ssh_chanl.execute(cmdstr)            
+#             ssh_chanl.execute(cmdstr)            
             
-            times = 5
-            while times > 0:
+#             times = 5
+#             while times > 0:
                                 
-                sleep(0.5)
-                times = times - 1
+#                 sleep(0.5)
+#                 times = times - 1
                 
-                size, data = ssh_chanl.read()
-                lines = [line.decode('utf-8') for line in data.splitlines()]
-                cmdret.info_lines.extend(lines)
-                while size > 0:
-                    size, data = ssh_chanl.read()
-                    lines = [line.decode('utf-8') for line in data.splitlines()]
-                    cmdret.info_lines.extend(lines)
+#                 size, data = ssh_chanl.read()
+#                 lines = [line.decode('utf-8') for line in data.splitlines()]
+#                 cmdret.info_lines.extend(lines)
+#                 while size > 0:
+#                     size, data = ssh_chanl.read()
+#                     lines = [line.decode('utf-8') for line in data.splitlines()]
+#                     cmdret.info_lines.extend(lines)
                 
-                size, data = ssh_chanl.read_stderr()
-                lines = [line.decode('utf-8') for line in data.splitlines()]
-                cmdret.error_lines.extend(lines)
-                while size > 0:
-                    size, data = ssh_chanl.read_stderr()
-                    cmdret.error_lines.extend(lines)
+#                 size, data = ssh_chanl.read_stderr()
+#                 lines = [line.decode('utf-8') for line in data.splitlines()]
+#                 cmdret.error_lines.extend(lines)
+#                 while size > 0:
+#                     size, data = ssh_chanl.read_stderr()
+#                     cmdret.error_lines.extend(lines)
 
-            cmdret.errcode = ssh_chanl.get_exit_status()
+#             cmdret.errcode = ssh_chanl.get_exit_status()
         
-        except Exception as e:
-            print(e)
-            logging.exception(e)
+#         except Exception as e:
+#             print(e)
+#             logging.exception(e)
 
-        finally:
-            if ssh_chanl:
-                ssh_chanl.close()
+#         finally:
+#             if ssh_chanl:
+#                 ssh_chanl.close()
 
-        return cmdret
+#         return cmdret

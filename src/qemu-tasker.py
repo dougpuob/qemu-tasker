@@ -29,7 +29,7 @@ socket_addr = config.socket_address(args.host, args.port)
 
 try:
     if 'server' == args.command:
-        server(socket_addr).start()
+        server(socket_addr).start(args.filepool)
 
     elif 'start' == args.command:
         assert args.config, "Please specific a config file !!!"

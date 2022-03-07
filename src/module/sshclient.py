@@ -1,114 +1,181 @@
 # -*- coding: utf-8 -*-
+from ast import Raise
 import os
-import paramiko
+from re import L
+import socket
+import logging
+import errno
+
+from time import sleep
+
 
 from module import config
+from datetime import datetime
 
+#
+# ssh2-python
+#
+from ssh2.session import Session
+from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR
+from ssh2.session import Session
+from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
+    LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, LIBSSH2_SFTP_S_IWUSR, \
+    LIBSSH2_SFTP_S_IROTH
+    
+    
 
-class SSHClient:
+class ssh_link:
     def __init__(self) -> None:
-        self.conn_ssh = None
+        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)        
         self.conn_sftp = None
+        self.conn_ssh_session = None
 
-    def __del__(self):
-        pass
+    
+    def connect(self, addr:str, port:int, username:str, password:str):
+        if self.tcp_socket:
+            self.tcp_socket.connect((addr, port))
+            self.conn_ssh_session = Session()
+            self.conn_ssh_session.handshake(self.tcp_socket)
+            self.conn_ssh_session.userauth_password(username, password)
+            self.conn_sftp = self.conn_ssh_session.sftp_init()
+            self.flag_is_ssh_connected = True
+            return True
+        return False
 
-    def close(self):
-        self.close_sftp()
 
-        if self.conn_ssh:
-            self.conn_ssh.close()
-            self.conn_ssh = None
-
-    def close_sftp(self):
-        if self.conn_sftp:
-            self.conn_sftp.close()
-            self.conn_sftp = None
-
-    def open_sftp_over_ssh(self, ssh_conn):
+    def remote_stat(self, file_path:str):        
+        if not self.conn_sftp:
+            raise ConnectionError()
+        
+        file_stat = None
         try:
-            self.conn_sftp = ssh_conn.open_sftp()
-            return self.conn_sftp
+            file_stat = self.conn_sftp.stat(file_path)            
+        except Exception as e:
+              pass
+        finally:            
+            if file_stat:
+                return file_stat
+            else:
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), "remote:" + file_path)
 
+
+    def execute(self, cmdstr:str):
+        cmdret = config.cmd_return()
+        
+        if None == self.conn_ssh_session:
+            return cmdret
+        
+        ssh_chanl = None
+        
+        try:
+            ssh_chanl = self.conn_ssh_session.open_session()
+            print("ssh_chanl={0}".format(ssh_chanl))                
+            
+            ssh_chanl.execute(cmdstr)            
+            
+            times = 5
+            while times > 0:
+                                
+                sleep(0.5)
+                times = times - 1
+                
+                size, data = ssh_chanl.read()
+                lines = [line.decode('utf-8') for line in data.splitlines()]
+                cmdret.info_lines.extend(lines)
+                while size > 0:
+                    size, data = ssh_chanl.read()
+                    lines = [line.decode('utf-8') for line in data.splitlines()]
+                    cmdret.info_lines.extend(lines)
+                
+                size, data = ssh_chanl.read_stderr()
+                lines = [line.decode('utf-8') for line in data.splitlines()]
+                cmdret.error_lines.extend(lines)
+                while size > 0:
+                    size, data = ssh_chanl.read_stderr()
+                    cmdret.error_lines.extend(lines)
+
+            cmdret.errcode = ssh_chanl.get_exit_status()
+        
         except Exception as e:
             print(e)
+            logging.exception(e)
 
-        return None
+        finally:
+            if ssh_chanl:
+                ssh_chanl.close()
 
-    def open(self, addr:str, port:int, username:str, password:str, enable_sftp:bool=True):
+        return cmdret
+
+    def download(self, file_from:str, file_to:str):
+        cmdret = config.cmd_return()
+        
+        cmdret.info_lines.append("file_to={0}".format(file_to))
+        cmdret.info_lines.append("file_from={0}".format(file_from))
+        
         try:
-            self.conn_ssh = paramiko.SSHClient()
-            self.conn_ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            self.conn_ssh.connect(addr, port, username, password, banner_timeout=200, timeout=200)
+            before = datetime.now()
+            
+            file_from = self.conn_sftp.realpath(file_from)
+            cmdret.info_lines.append("file_from(realpath)={0}".format(file_from))
+            if file_from.find(':') > 0 and file_from.startswith('/'):
+                file_from = file_from[1:].replace('/', '\\')            
+            cmdret.info_lines.append("file_from(normalization)={0}".format(file_from))                        
+            file_stat = self.remote_stat(file_from)
+            with self.conn_sftp.open(file_from, LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as fh_src, \
+                open(file_to, 'wb') as fh_dst:
+                for size, data in fh_src:
+                    fh_dst.write(data)
 
-            if enable_sftp:
-                self.open_sftp_over_ssh(self.conn_ssh)
-                return self.conn_ssh, self.conn_sftp
-            else:
-                return self.conn_ssh
-
+            diff = (datetime.now()-before)                
+            rate = (file_stat.filesize / 1024000.0) / diff.total_seconds()            
+            
+            cmdret.info_lines.append("Finished writing remote file in {0}, transfer rate {1} MB/s".format(diff, rate))
+            cmdret.errcode = 0
+            
         except Exception as e:
-            print(e)
+            errmsg = ("exception={0}".format(e))
+            cmdret.error_lines.append(errmsg)
+            cmdret.errcode = -1
 
-        return None
+        finally:            
+            return cmdret
 
-    def mkdir_p(self, remote, is_dir=False):
-
-        dirs_ = []
-        if is_dir:
-            dir_ = remote
-        else:
-            dir_, basename = os.path.split(remote)
-        while len(dir_) > 1:
-            dirs_.append(dir_)
-            dir_, _  = os.path.split(dir_)
-
-        if len(dir_) == 1 and not dir_.startswith("/"):
-            dirs_.append(dir_) # For a remote path like y/x.txt
-
-        while len(dirs_):
-            dir_ = dirs_.pop()
-            try:
-                self.conn_sftp.stat(dir_)
-            except:
-                self.conn_sftp.mkdir(dir_)
-
-
-    def cmd_dispatch(self, file_cmd:config.file_command):
-        result = False
-        stdout = []
-        stderr = []
-        errcode = 0
-
+    def upload(self, file_from:str, file_to:str):
+        
+        cmdret = config.cmd_return()
+        
+        mode = LIBSSH2_SFTP_S_IRUSR | \
+               LIBSSH2_SFTP_S_IWUSR | \
+               LIBSSH2_SFTP_S_IRGRP | \
+               LIBSSH2_SFTP_S_IROTH
+        
+        f_flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE
+        
         try:
-            if file_cmd.kind == "s2g_upload" or file_cmd.kind == "c2g_upload":
-                if file_cmd.newdir:
-                    self.mkdir_p(file_cmd.newdir, True)
-                self.conn_sftp.put(file_cmd.filepath, file_cmd.savepath)
-                result = True
+            before = datetime.now()
+            
+            buf_size = 1024 * 1024 * 5
+            file_stat = None
+                        
+            file_stat = os.stat(file_from)            
+            
+            with open(file_from, 'rb', buf_size) as fh_src, \
+                self.conn_sftp.open(file_to, f_flags, mode) as fh_dst:
+                data = fh_src.read(buf_size)        
+                while data:
+                    fh_dst.write(data)
+                    data = fh_src.read(buf_size)
 
-            elif file_cmd.kind == "s2g_download" or file_cmd.kind == "c2g_download":
-                self.conn_sftp.get(file_cmd.filepath, file_cmd.savepath)
-                result = True
-
-            else:
-                result = False
-                self.stderr = ["Unsupport direction kind !!!"]
-                self.errcode = -2
-
-
+            diff = (datetime.now()-before)
+            rate = (file_stat.st_size / 1024000.0) / diff.total_seconds()
+    
+            cmdret.info_lines.append("Finished writing remote file in {0}, transfer rate {1} MB/s".format(diff, rate))
+            cmdret.errcode = 0
+            
         except Exception as e:
-            result = False
-            stderr = [str(e)]
-            errcode = -1
+            errmsg = "exception={0}".format(str(e))            
+            cmdret.error_lines.append(errmsg)
+            cmdret.errcode = -1
 
-
-        reply_data = {
-                "taskid"    : file_cmd.taskid,
-                "result"    : result,
-                "errcode"   : errcode,
-                "stderr"    : stderr,
-                "stdout"    : stdout,
-            }
-
-        return reply_data
+        finally:
+            return cmdret
