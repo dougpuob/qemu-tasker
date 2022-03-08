@@ -165,27 +165,6 @@ class qemu_instance:
         if self.conn_qmp:
             return self.conn_qmp.cmd(qmp_cmd.execute, args=qmp_cmd.argsjson)
         return ""
-
-    # Local <--> Server
-    def send_file(self, file_cmd:config.file_command):
-        self.clear()
-        
-        cmdret = config.cmd_return()
-        
-        pc_from = file_cmd.sendfrom
-        pc_to = file_cmd.sendto
-                        
-        if self.flag_is_ssh_connected:
-            # upload
-            if pc_from==config.target_kind.local and pc_to==config.target_kind.server:
-                cmdret = self.ssh_link.upload(file_cmd.pathfrom, file_cmd.pathto)
-            
-            # download
-            elif pc_from==config.target_kind.server and pc_to==config.target_kind.local:
-                cmdret = self.ssh_link.download(file_cmd.pathfrom, file_cmd.pathto)
-            
-        return cmdret
-    
     
     def send_push(self, push_cmd:config.push_command):
         self.clear()

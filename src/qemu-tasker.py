@@ -62,13 +62,6 @@ try:
         qmp_cmd = config.qmp_command(args.taskid, args.execute, argsjson)
         qmp_cfg = config.qmp_config(qmp_cmd.toJSON())
         client(socket_addr).send_qmp(qmp_cfg, args.jsonreport)
-
-    elif 'file' == args.command:
-        file = config.file_command(args.taskid, args.sendfrom, args.sendto, args.pathfrom, args.pathto, args.config, args.port)
-        file_cfg = config.file_config(file.toJSON())
-        start_cfg = config.start_config(json.load(open(args.config)))
-        ssh_info = config.ssh_conn_info(args.host, args.port, start_cfg.cmd.ssh_login.username, start_cfg.cmd.ssh_login.password)
-        client(socket_addr).send_file(file_cfg, ssh_info, args.jsonreport)
         
     elif 'list' == args.command:
         list_cmd = config.list_command(args.taskid, args.dirpath)

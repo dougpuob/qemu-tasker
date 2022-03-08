@@ -264,25 +264,6 @@ class server:
             return reply_data
 
 
-    def command_to_file(self, file_cmd:config.file_command):
-        qemu_inst = self.find_target_instance(file_cmd.taskid)
-        if None == qemu_inst:
-            return self.get_wrong_taskid_reply_data(file_cmd.taskid)
-        if not qemu_inst.is_ssh_connected():
-            return self.get_ssh_not_ready_reply_data(file_cmd.taskid)
-        else:
-            ret_cmd = qemu_inst.send_file(file_cmd)
-
-            reply_data = {
-                "taskid"    : file_cmd.taskid,
-                "result"    : (0 == ret_cmd.errcode),
-                "errcode"   : ret_cmd.errcode,
-                "stderr"    : ret_cmd.error_lines,
-                "stdout"    : ret_cmd.info_lines,
-            }
-            return reply_data
-    
-    
     def command_to_push(self, push_cmd:config.push_command):
         qemu_inst = self.find_target_instance(push_cmd.taskid)
         if None == qemu_inst:
@@ -440,15 +421,6 @@ class server:
                     print("{}● command_kind={}".format("  ", client_data['request']['command']))
                     file_cfg = config.qmp_config(client_data['request']['data'])
                     reply_data = self.command_to_qmp(file_cfg.cmd)
-                    default_r = config.default_reply(reply_data)
-                    default_resp = config.default_response(client_data['request']['command'], default_r)
-                    resp_text = default_resp.toTEXT()
-
-                # file
-                elif config.command_kind().file == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
-                    file_cfg = config.file_config(client_data['request']['data'])
-                    reply_data = self.command_to_file(file_cfg.cmd)
                     default_r = config.default_reply(reply_data)
                     default_resp = config.default_response(client_data['request']['command'], default_r)
                     resp_text = default_resp.toTEXT()
