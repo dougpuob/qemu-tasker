@@ -15,6 +15,7 @@ class cmd_return:
         self.error_lines = []
         self.info_lines = []
         self.errcode = -9999
+        self.data = None
 
 
 class config():
@@ -114,6 +115,7 @@ class command_kind:
         self.exec     = "exec"
         self.qmp      = "qmp"
         self.file     = "file"
+        self.list     = "list"
         self.download = "download"
         self.upload   = "upload"
         self.status   = "status"
@@ -418,23 +420,60 @@ class digest_file_response(config):
         
 
 #
+# List
+#
+class list_command(config):
+    def __init__(self, taskid:int, dirpath:str):
+        self.taskid = taskid        
+        self.dirpath = dirpath
+
+class list_config(config):
+    def __init__(self, data:json):
+        self.cmd  = list_command(data['taskid'], data['dirpath'])
+
+class list_reply(config):
+    def __init__(self, data:json):
+        self.taskid  = data['taskid']
+        self.result  = data['result']
+        self.errcode = data['errcode']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
+        
+        # extra data
+        self.readdir = data['readdir']
+
+class list_request(config):
+    def __init__(self, command:list_command):
+        self.request = request(command_kind().list, command.toJSON())
+
+class digest_list_request(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = list_reply(req['response']['data'])
+
+class list_response(config):
+    def __init__(self, reply:list_reply):
+        self.response = response(command_kind().list, reply.toJSON())
+
+class digest_list_response(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = list_reply(req['response']['data'])
+
+
+#
 # Download
 #
-class transfer_kind(Enum):
-    unknown  = 0
-    upload   = 1
-    download = 2
-
 class download_command(config):
-    def __init__(self, taskid:int, files:list, saveto:str):
-        self.taskid   = taskid
+    def __init__(self, taskid:int, files:list, dirpath:str):
+        self.taskid = taskid
         
         self.files = files
-        self.saveto   = saveto
+        self.dirpath = dirpath
 
 class download_config(config):
     def __init__(self, data:json):
-        self.cmd  = download_command(data['taskid'], data['files'], data['saveto'])
+        self.cmd  = download_command(data['taskid'], data['files'], data['dirpath'])
 
 class download_reply(config):
     def __init__(self, data:json):
@@ -467,15 +506,15 @@ class digest_download_response(config):
 # Upload
 #
 class upload_command(config):
-    def __init__(self, taskid:int, files:list, saveto:str):
+    def __init__(self, taskid:int, files:list, dirpath:str):
         self.taskid   = taskid
         
         self.files = files
-        self.saveto   = saveto
+        self.dirpath = dirpath
 
 class upload_config(config):
     def __init__(self, data:json):
-        self.cmd  = upload_command(data['taskid'], data['files'], data['saveto'])
+        self.cmd  = upload_command(data['taskid'], data['files'], data['dirpath'])
 
 class upload_reply(config):
     def __init__(self, data:json):

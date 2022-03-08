@@ -55,17 +55,22 @@ class cmdargs():
         parser_file.add_argument('-C', '--config', type=str)
         parser_file.add_argument('-P', '--port', type=int)
         
+        # subcommand `list`
+        parser_list = subparsers.add_parser('list', parents = [parent_parser], help='list files from local to guest')
+        parser_list.add_argument('-T', '--taskid', type=int, required=True)        
+        parser_list.add_argument('-S', '--dirpath', type=str, default="qemu-tasker")
+        
         # subcommand `download`
         parser_download = subparsers.add_parser('download', parents = [parent_parser], help='download files from guest to local')
         parser_download.add_argument('-T', '--taskid', type=int, required=True)
         parser_download.add_argument('-F', '--files', required=True, nargs="+")
-        parser_download.add_argument('-S', '--saveto', type=str, required=True)
+        parser_download.add_argument('-S', '--dirpath', type=str, default="qemu-tasker")
 
         # subcommand `upload`
         parser_upload = subparsers.add_parser('upload', parents = [parent_parser], help='upload files from local to guest')
         parser_upload.add_argument('-T', '--taskid', type=int, required=True)
         parser_upload.add_argument('-F', '--files', required=True, nargs="+")
-        parser_upload.add_argument('-S', '--saveto', type=str, required=True)
+        parser_upload.add_argument('-S', '--dirpath', type=str, default="qemu-tasker")
 
         # subcommand status
         parser_exec = subparsers.add_parser('status', parents = [parent_parser], help='query a specific QEMU status')

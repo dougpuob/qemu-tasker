@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ast import Raise
+from ast import Raise, Subscript
 import os
 from re import L
 import socket
@@ -20,8 +20,9 @@ from ssh2.sftp import LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR
 from ssh2.session import Session
 from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
     LIBSSH2_SFTP_S_IRUSR, LIBSSH2_SFTP_S_IRGRP, LIBSSH2_SFTP_S_IWUSR, \
-    LIBSSH2_SFTP_S_IROTH
-    
+    LIBSSH2_SFTP_S_IROTH, LIBSSH2_SFTP_S_IXUSR, SFTP, \
+    LIBSSH2_SFTP_S_IWUSR, LIBSSH2_SFTP_S_IWGRP, LIBSSH2_SFTP_S_IWOTH, \
+    LIBSSH2_SFTP_ATTR_PERMISSIONS
     
 
 class ssh_link:
@@ -103,6 +104,77 @@ class ssh_link:
                 ssh_chanl.close()
 
         return cmdret
+    
+    
+    def readdir(self, subdir:str):
+        
+        cmdret = config.cmd_return()
+        
+        try:            
+            splitor = '/'
+            homedir = self.conn_sftp.realpath('.')
+            
+            expandpath = homedir + splitor + subdir
+            readdir = []
+            with self.conn_sftp.opendir(expandpath) as fh:                
+                readdir = list(fh.readdir())
+
+            dir_list = []
+            for dir in readdir:
+                dir_list.append(dir[1].decode("utf-8"))
+            
+            cmdret.errcode = 0
+            cmdret.data = dir_list
+            
+        except Exception as e:
+            errmsg = ("exception={0}".format(e))
+            cmdret.error_lines.append(errmsg)
+            cmdret.errcode = -1
+
+        finally:
+            return cmdret
+    
+    def mkdir(self, subdir:str):
+
+        mode = LIBSSH2_SFTP_S_IRUSR | \
+               LIBSSH2_SFTP_S_IWUSR | \
+               LIBSSH2_SFTP_S_IRGRP | \
+               LIBSSH2_SFTP_S_IROTH | \
+               LIBSSH2_SFTP_S_IXUSR               
+               
+        cmdret = config.cmd_return()       
+        
+        try:
+            
+            path_list = []
+            
+            splitor = '/'
+            homedir = self.conn_sftp.realpath('.')
+            path_list.extend(subdir.split(splitor))
+            
+            expandpath = homedir
+            for sub_path in path_list:
+                with self.conn_sftp.opendir(expandpath) as fh:                
+                    readdir = list(fh.readdir())
+                    
+                    dir_list = []
+                    for dir in readdir:
+                        dir_list.append(dir[1].decode("utf-8"))            
+                    
+                    expandpath = expandpath + splitor + sub_path
+                    found = sub_path in dir_list
+                    if not found:
+                        self.conn_sftp.mkdir(expandpath, mode)
+          
+            cmdret.errcode = 0
+            
+        except Exception as e:
+            errmsg = ("exception={0}".format(e))
+            cmdret.error_lines.append(errmsg)
+            cmdret.errcode = -1
+
+        finally:
+            return cmdret
 
     def download(self, file_from:str, file_to:str):
         cmdret = config.cmd_return()
@@ -116,7 +188,7 @@ class ssh_link:
                 file_from = file_from[1:].replace('/', '\\')
 
             cmdret.info_lines.append("from={0}".format(file_from))
-            cmdret.info_lines.append("  to={0}".format(file_to))
+            cmdret.info_lines.append("to={0}".format(file_to))
         
             file_stat = self.remote_stat(file_from)
             
@@ -126,7 +198,7 @@ class ssh_link:
                     fh_dst.write(data)
 
             diff = (datetime.now()-before)            
-            cmdret.info_lines.append("time={}".format(diff))
+            cmdret.info_lines.append("consumed_time={}".format(diff))
             cmdret.errcode = 0
             
         except Exception as e:
@@ -157,7 +229,7 @@ class ssh_link:
             file_stat = os.stat(file_from)            
             
             cmdret.info_lines.append("from={0}".format(file_from))
-            cmdret.info_lines.append("  to={0}".format(file_to))
+            cmdret.info_lines.append("to={0}".format(file_to))
             
             with open(file_from, 'rb', buf_size) as fh_src, \
                 self.conn_sftp.open(file_to, f_flags, mode) as fh_dst:
@@ -167,7 +239,7 @@ class ssh_link:
                     data = fh_src.read(buf_size)
 
             diff = (datetime.now()-before)            
-            cmdret.info_lines.append("time={}".format(diff))
+            cmdret.info_lines.append("consumed_time={}".format(diff))
             cmdret.errcode = 0
             
         except Exception as e:

@@ -70,15 +70,20 @@ try:
         ssh_info = config.ssh_conn_info(args.host, args.port, start_cfg.cmd.ssh_login.username, start_cfg.cmd.ssh_login.password)
         client(socket_addr).send_file(file_cfg, ssh_info, args.jsonreport)
         
+    elif 'list' == args.command:
+        list_cmd = config.list_command(args.taskid, args.dirpath)
+        list_cfg = config.list_config(list_cmd.toJSON())
+        client(socket_addr).list_file(list_cfg, args.jsonreport)
+
     elif 'download' == args.command:
-        dwload = config.download_command(args.taskid, args.files, args.saveto)
-        dwload_cfg = config.download_config(dwload.toJSON())
-        client(socket_addr).transfer_file(config.transfer_kind.download, dwload_cfg, args.jsonreport)
+        list_cmd = config.download_command(args.taskid, args.files, args.dirpath)
+        list_cfg = config.download_config(list_cmd.toJSON())
+        client(socket_addr).download_file(list_cfg, args.jsonreport)
 
     elif 'upload' == args.command:
-        upload = config.upload_command(args.taskid, args.files, args.saveto)
+        upload = config.upload_command(args.taskid, args.files, args.dirpath)
         upload_cfg = config.upload_config(upload.toJSON())
-        client(socket_addr).transfer_file(config.transfer_kind.upload, upload_cfg, args.jsonreport)
+        client(socket_addr).upload_file(upload_cfg, args.jsonreport)
 
     elif 'status' == args.command:
         stat = config.status_command(args.taskid)
