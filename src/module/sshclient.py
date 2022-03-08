@@ -68,9 +68,7 @@ class ssh_link:
         ssh_chanl = None
         
         try:
-            ssh_chanl = self.conn_ssh_session.open_session()
-            print("ssh_chanl={0}".format(ssh_chanl))                
-            
+            ssh_chanl = self.conn_ssh_session.open_session()            
             ssh_chanl.execute(cmdstr)            
             
             times = 5
@@ -109,27 +107,26 @@ class ssh_link:
     def download(self, file_from:str, file_to:str):
         cmdret = config.cmd_return()
         
-        cmdret.info_lines.append("file_to={0}".format(file_to))
-        cmdret.info_lines.append("file_from={0}".format(file_from))
-        
         try:
             before = datetime.now()
             
+            cmdret.info_lines.append("from={0}".format(file_from))
             file_from = self.conn_sftp.realpath(file_from)
-            cmdret.info_lines.append("file_from(realpath)={0}".format(file_from))
             if file_from.find(':') > 0 and file_from.startswith('/'):
-                file_from = file_from[1:].replace('/', '\\')            
-            cmdret.info_lines.append("file_from(normalization)={0}".format(file_from))                        
+                file_from = file_from[1:].replace('/', '\\')
+                        
+            cmdret.info_lines.append("from={0}".format(file_from))
+            cmdret.info_lines.append("  to={0}".format(file_to))
+        
             file_stat = self.remote_stat(file_from)
+            
             with self.conn_sftp.open(file_from, LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as fh_src, \
                 open(file_to, 'wb') as fh_dst:
                 for size, data in fh_src:
                     fh_dst.write(data)
 
-            diff = (datetime.now()-before)                
-            rate = (file_stat.filesize / 1024000.0) / diff.total_seconds()            
-            
-            cmdret.info_lines.append("Finished writing remote file in {0}, transfer rate {1} MB/s".format(diff, rate))
+            diff = (datetime.now()-before)            
+            cmdret.info_lines.append("time={}".format(diff))
             cmdret.errcode = 0
             
         except Exception as e:
@@ -137,7 +134,7 @@ class ssh_link:
             cmdret.error_lines.append(errmsg)
             cmdret.errcode = -1
 
-        finally:            
+        finally:
             return cmdret
 
     def upload(self, file_from:str, file_to:str):

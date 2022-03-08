@@ -233,14 +233,13 @@ class qemu_instance:
             self.flag_is_qmp_connected = True
 
     def thread_ssh_try_connect(self, host_addr, host_port, username, password):
-        logging.info("command.py!qemu_machine::thread_wait_ssh_connect()")
-        
+        logging.info("command.py!qemu_machine::thread_wait_ssh_connect()")        
         while not self.flag_is_ssh_connected:
             try:
                 self.ssh_link.connect(host_addr, host_port,username,password)
-                if self.ssh_link.tcp_socket and self.ssh_link.conn_ssh_session:
+                if self.ssh_link.tcp_socket and self.ssh_link.conn_ssh_session:                    
                     self.flag_is_ssh_connected = True
-                    self.status = config.task_status().running
+                    self.status = config.task_status().connecting2                    
                     Break
 
             except Exception as e:
@@ -264,6 +263,9 @@ class qemu_instance:
             cmdret = self.ssh_link.execute('systeminfo')
             if cmdret.errcode == 0:
                 self.guest_os_kind = config.os_kind().windows
+
+        if self.guest_os_kind != config.os_kind().unknown:
+            self.status = config.task_status().running
 
         #
         # Get guest current working directory path        
@@ -290,13 +292,13 @@ class qemu_instance:
         if self.flag_is_ssh_connected:
             return
 
-        if not self.ssh_link.tcp_socket:
-            wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_addr.addr,
-                                                                                           self.fwd_ports.ssh,
-                                                                                           self.start_cmd.ssh_login.username,
-                                                                                           self.start_cmd.ssh_login.password))
-            wait_ssh_thread.setDaemon(True)
-            wait_ssh_thread.start()
+        wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_addr.addr,
+                                                                                       self.fwd_ports.ssh,
+                                                                                       self.start_cmd.ssh_login.username,
+                                                                                       self.start_cmd.ssh_login.password))
+        wait_ssh_thread.setDaemon(True)
+        wait_ssh_thread.start()
+        
 
     def connect_qmp(self):
         if self.flag_is_qmp_connected:
@@ -324,7 +326,7 @@ class qemu_instance:
         self.qemu_proc = subprocess.Popen(qemu_cmdargs, shell=False, close_fds=True)
         self.pid = self.qemu_proc.pid
 
-        self.status = config.task_status().connecting
+        self.status = config.task_status().connecting1
         if self.is_qemu_device_attached_nic:
             self.connect_ssh()
 

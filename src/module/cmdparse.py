@@ -20,7 +20,7 @@ class cmdargs():
         # subcommand start
         parser_server = subparsers.add_parser('server', parents = [parent_parser], help='start a server daemon')
         parser_server.add_argument('-L', '--longlife', type=int, default=30)
-        parser_server.add_argument('-F', '--filepool', type=str, default="filepool")        
+        parser_server.add_argument('-F', '--filepool', type=str, default="./filepool")        
 
         # subcommand start
         parser_start = subparsers.add_parser('start', parents = [parent_parser], help='launch a QEMU achine instance')
@@ -54,6 +54,18 @@ class cmdargs():
         parser_file.add_argument('-PT', '--pathto', type=str, required=True)
         parser_file.add_argument('-C', '--config', type=str)
         parser_file.add_argument('-P', '--port', type=int)
+        
+        # subcommand `download`
+        parser_download = subparsers.add_parser('download', parents = [parent_parser], help='download files from guest to local')
+        parser_download.add_argument('-T', '--taskid', type=int, required=True)
+        parser_download.add_argument('-F', '--files', required=True, nargs="+")
+        parser_download.add_argument('-S', '--saveto', type=str, required=True)
+
+        # # subcommand `upload`
+        # parser_upload = subparsers.add_parser('upload', parents = [parent_parser], help='upload files from local to guest')
+        # parser_upload.add_argument('-T', '--taskid', type=int, required=True)
+        # parser_upload.add_argument('-F', '--files', type=str, required=True, nargs="?")
+        # parser_upload.add_argument('-S', '--saveto', type=str, required=True)
 
         # subcommand status
         parser_exec = subparsers.add_parser('status', parents = [parent_parser], help='query a specific QEMU status')

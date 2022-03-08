@@ -39,7 +39,12 @@ class test_status(unittest.TestCase):
                       "status"  : task_status().running,
                       "pid"     : 12345,
                       "fwd_ports" : { "qmp" : 1,
-                                      "ssh" : 2 },
+                                      "ssh" : 2 },                      
+                      "ssh_info" : { "targetaddr" : "192.168.0.1",
+                                     "targetport" : 123,
+                                     "username" : "dougpuob",
+                                     "password" : "dougpuob" },
+                      "filepool" : "filepool",
                       "is_connected_qmp" : True,
                       "is_connected_ssh" : True}
 
@@ -54,6 +59,14 @@ class test_status(unittest.TestCase):
         self.assertEqual(stat_r.status, task_status().running)
         self.assertEqual(stat_r.fwd_ports.qmp, 1)
         self.assertEqual(stat_r.fwd_ports.ssh, 2)
+        
+        self.assertEqual(stat_r.ssh_info.targetaddr, "192.168.0.1")
+        self.assertEqual(stat_r.ssh_info.targetport, 123)
+        self.assertEqual(stat_r.ssh_info.username, "dougpuob")
+        self.assertEqual(stat_r.ssh_info.password, "dougpuob")
+        
+        self.assertEqual(stat_r.filepool, "filepool")
+        
         self.assertEqual(stat_r.is_connected_qmp, True)
         self.assertEqual(stat_r.is_connected_ssh, True)
 
@@ -75,6 +88,11 @@ class test_status(unittest.TestCase):
                       "pid"     : 12345,
                       "fwd_ports" : { "qmp" : 1,
                                       "ssh" : 2 },
+                      "ssh_info" : { "targetaddr" : "192.168.0.1",
+                                     "targetport" : 123,
+                                     "username" : "dougpuob",
+                                     "password" : "dougpuob" },
+                      "filepool" : "filepool",
                       "is_connected_qmp" : True,
                       "is_connected_ssh" : True}
 

@@ -61,7 +61,7 @@ class server:
         self.is_started = False
 
     def start(self, task_filepool:str):        
-        self.filepool_basepath = os.path.normpath(task_filepool)
+        self.filepool_basepath = os.path.realpath(task_filepool)
 
         # Check and count longlife.
         self.thread_task = threading.Thread(target = self.thread_routine_checking_longlife)
@@ -294,12 +294,18 @@ class server:
                 "pid"     : 0,
                 "fwd_ports" : { "qmp" : 0,
                                 "ssh" : 0 },
+                "ssh_info" : { "targetaddr" : "",
+                               "targetport" : 0,
+                               "username" : "",
+                               "password" : ""},
+                "filepool" : "",
                 "is_connected_qmp" : False,
                 "is_connected_ssh" : False
                 }
             return reply_data
 
         else:
+            filepool = os.path.join(qemu_inst.guest_os_cwd, qemu_inst.filepool_name)
             reply_data = {
                     "result"  : True,
                     "taskid"  : qemu_inst.taskid,
@@ -310,6 +316,11 @@ class server:
                     "pid"     : qemu_inst.pid,
                     "fwd_ports" : { "qmp" : qemu_inst.fwd_ports.qmp,
                                     "ssh" : qemu_inst.fwd_ports.ssh },
+                    "ssh_info" : { "targetaddr" : qemu_inst.socket_addr.addr,
+                                   "targetport" : qemu_inst.fwd_ports.ssh,
+                                   "username" : qemu_inst.start_cmd.ssh_login.username,
+                                   "password" : qemu_inst.start_cmd.ssh_login.password},
+                    "filepool" : filepool,
                     "is_connected_qmp" : qemu_inst.is_qmp_connected(),
                     "is_connected_ssh" : qemu_inst.is_ssh_connected()
                     }

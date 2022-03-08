@@ -46,6 +46,13 @@ class qemu_longlife(config):
         self.instance_maximum = instance_maximum
         self.longlife_minutes = longlife_minutes
 
+class ssh_info(config):
+    def __init__(self, targetaddr:str, targetport:int, username:str, password:str):
+        self.targetaddr = targetaddr
+        self.targetport = targetport
+        self.username = username
+        self.password = password
+        
 class ssh_login(config):
     def __init__(self, username:str, password:str):
         self.username = username
@@ -100,21 +107,24 @@ class os_kind:
 
 class command_kind:
     def __init__(self):
-        self.unknown = "unknown"
-        self.server  = "server"
-        self.start   = "start"
-        self.kill    = "kill"
-        self.exec    = "exec"
-        self.qmp     = "qmp"
-        self.file    = "file"
-        self.status  = "status"
+        self.unknown  = "unknown"
+        self.server   = "server"
+        self.start    = "start"
+        self.kill     = "kill"
+        self.exec     = "exec"
+        self.qmp      = "qmp"
+        self.file     = "file"
+        self.download = "download"
+        self.upload   = "upload"
+        self.status   = "status"
 
 class task_status:
     def __init__(self):
         self.unknown    = "unknown"
         self.waiting    = "waiting"
         self.creating   = "creating"
-        self.connecting = "connecting"
+        self.connecting1 = "connecting1"
+        self.connecting2 = "connecting2"
         self.running    = "running"
         self.killing    = "killing"
         self.abandoned  = "abandoned"
@@ -322,9 +332,8 @@ class digest_qmp_response(config):
         self.reply = qmp_reply(req['response']['data'])
 
 
-
 #
-# File2Guest
+# File
 #
 class direction_kind(Enum):
     unknown = 0
@@ -406,6 +415,47 @@ class digest_file_response(config):
     def __init__(self, req:json):
         self.command = req['response']['command']
         self.reply = file_reply(req['response']['data'])
+        
+
+#
+# Download
+#
+class download_command(config):
+    def __init__(self, taskid:int, files:list, saveto:str):
+        self.taskid   = taskid
+        
+        self.files = files
+        self.saveto   = saveto
+
+class download_config(config):
+    def __init__(self, data:json):
+        self.cmd  = download_command(data['taskid'], data['files'], data['saveto'])
+
+class download_reply(config):
+    def __init__(self, data:json):
+        self.taskid  = data['taskid']
+        self.result  = data['result']
+        self.errcode = data['errcode']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
+
+class download_request(config):
+    def __init__(self, command:download_command):
+        self.request = request(command_kind().download, command.toJSON())
+
+class digest_download_request(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = download_reply(req['response']['data'])
+
+class download_response(config):
+    def __init__(self, reply:download_reply):
+        self.response = response(command_kind().download, reply.toJSON())
+
+class digest_download_response(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = download_reply(req['response']['data'])
 
 
 #
@@ -433,6 +483,11 @@ class status_reply(config):
         self.status = data['status'] # status:task_status
         self.fwd_ports = tcp_fwd_ports(data['fwd_ports']['qmp'],
                                        data['fwd_ports']['ssh'])
+        self.ssh_info = ssh_info(data['ssh_info']['targetaddr'],
+                                 data['ssh_info']['targetport'],
+                                 data['ssh_info']['username'],
+                                 data['ssh_info']['password'])
+        self.filepool = data['filepool']
         self.is_connected_qmp = data['is_connected_qmp']
         self.is_connected_ssh = data['is_connected_ssh']
 
