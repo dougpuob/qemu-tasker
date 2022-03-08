@@ -30,7 +30,14 @@ class ssh_link:
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.conn_sftp = None
         self.conn_ssh_session = None
+        self.working_dir = None
+        self.os_kind = config.os_kind().unknown
 
+    def set_working_dir(self, working_dir:str):
+        self.working_dir = working_dir
+        
+    def set_os_kind(self, os_kind:config.os_kind):
+        self.os_kind = os_kind
 
     def connect(self, addr:str, port:int, username:str, password:str):
         if self.tcp_socket:
@@ -69,8 +76,14 @@ class ssh_link:
         ssh_chanl = None
 
         try:
-            ssh_chanl = self.conn_ssh_session.open_session()
-            ssh_chanl.execute(cmdstr)
+            ssh_chanl = self.conn_ssh_session.open_session()            
+            if self.working_dir:
+                if self.os_kind == config.os_kind().windows:
+                    ssh_chanl.execute("cd {} && {}".format(self.working_dir, cmdstr))
+                else:
+                    ssh_chanl.execute("cd {} ; {}".format(self.working_dir, cmdstr))
+            else:
+                ssh_chanl.execute(cmdstr)
 
             times = 5
             while times > 0:
@@ -98,10 +111,67 @@ class ssh_link:
         except Exception as e:
             print(e)
             logging.exception(e)
+            cmdret.error_lines.append(str(e))
 
         finally:
             if ssh_chanl:
                 ssh_chanl.close()
+
+        return cmdret
+
+    def realpath(self, path:str):
+    
+        cmdret = config.cmd_return()
+
+        try:
+            cmdret.info_lines.append("raw_path={}".format(path))
+            
+            real_path = self.conn_sftp.realpath(path)
+            cmdret.info_lines.append("real_path={}".format(real_path))
+            
+            cmdret.errcode = 0
+
+        except Exception as e:
+            cmdret.error_lines.append("exception occured at realpath() function !!!")
+            cmdret.error_lines.append(("exception={0}".format(e)))
+            cmdret.errcode = -1
+
+        finally:
+            return cmdret
+        
+    def stat(self, path:str):
+        
+        cmdret = config.cmd_return()
+
+        try:
+            attrs = self.conn_sftp.stat(path)
+            cmdret.info_lines.append("attrs.uid={}".format(attrs.uid))
+            cmdret.info_lines.append("attrs.gid={}".format(attrs.gid))
+            cmdret.info_lines.append("attrs.permissions={}".format(attrs.permissions))
+            cmdret.info_lines.append("attrs.atime={}".format(attrs.atime ))
+            cmdret.info_lines.append("attrs.mtime={}".format(attrs.mtime ))
+            cmdret.info_lines.append("attrs.flags={}".format(attrs.flags  ))
+            cmdret.info_lines.append("attrs.filesize={}".format(attrs.filesize ))
+            
+            cmdret.errcode = 0
+
+        except Exception as e:
+            cmdret.error_lines.append("exception occured at stat() function !!!")
+            cmdret.error_lines.append(("exception={0}".format(e)))
+            cmdret.errcode = -1
+
+        finally:
+            return cmdret
+
+
+    def exists(self, path:str):
+
+        cmdret = self.realpath(path)
+        if cmdret.errcode == 0:
+            cmdret_stat = self.stat(path)
+            cmdret.errcode = cmdret_stat.errcode
+            cmdret.error_lines.extend(cmdret_stat.error_lines)
+            cmdret.info_lines.extend(cmdret_stat.info_lines)
 
         return cmdret
 
@@ -133,6 +203,7 @@ class ssh_link:
 
         finally:
             return cmdret
+
 
     def mkdir(self, subdir:str):
 
@@ -176,7 +247,8 @@ class ssh_link:
         finally:
             return cmdret
 
-    def download(self, file_from:str, file_to:str):
+
+    def download(self, file_from:str, local_dirpath:str):
         cmdret = config.cmd_return()
 
         try:
@@ -188,12 +260,12 @@ class ssh_link:
                 file_from = file_from[1:].replace('/', '\\')
 
             cmdret.info_lines.append("from={0}".format(file_from))
-            cmdret.info_lines.append("to={0}".format(file_to))
+            cmdret.info_lines.append("to={0}".format(local_dirpath))
 
             file_stat = self.remote_stat(file_from)
 
             with self.conn_sftp.open(file_from, LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as fh_src, \
-                open(file_to, 'wb') as fh_dst:
+                open(local_dirpath, 'wb') as fh_dst:
                 for size, data in fh_src:
                     fh_dst.write(data)
 
@@ -209,6 +281,7 @@ class ssh_link:
         finally:
             return cmdret
 
+
     def upload(self, file_from:str, file_to:str):
 
         cmdret = config.cmd_return()
@@ -219,7 +292,19 @@ class ssh_link:
                LIBSSH2_SFTP_S_IROTH
 
         f_flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE
-
+        
+        if True != os.path.exists(file_from):
+            cmdret.errcode = -1
+            cmdret.error_lines.append("The specific file is not there !!!")
+            cmdret.error_lines.append("file_from={}".format(file_from))
+            return cmdret
+        
+        # cmdret = self.exists(file_to)
+        # if cmdret.errcode != 0:
+        #     cmdret.error_lines.append("The specific file is not there !!!")
+        #     cmdret.error_lines.append("file_to={}".format(file_to))
+        #     return cmdret
+        
         try:
             before = datetime.now()
 

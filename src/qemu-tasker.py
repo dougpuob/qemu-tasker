@@ -4,6 +4,7 @@ import pathlib
 import logging
 import json
 import os
+import base64
 
 from module import config
 from module.server import server
@@ -37,9 +38,9 @@ try:
         start_cfg = config.start_config(client_cfg)
         client(socket_addr).send_start(start_cfg, args.jsonreport)
 
-    elif 'exec' == args.command:
+    elif 'exec' == args.command:                
         exec_arg = config.exec_argument(args.program, args.argument)
-        exec_cmd = config.exec_command(args.taskid, exec_arg)
+        exec_cmd = config.exec_command(args.taskid, exec_arg, args.base64)
         exec_cfg = config.exec_config(exec_cmd.toJSON())
         client(socket_addr).send_exec(exec_cfg, args.jsonreport)
 
@@ -49,34 +50,9 @@ try:
         client(socket_addr).send_kill(kill_cfg, args.jsonreport)
 
     elif 'qmp' == args.command:
-        argsjson = {}
-        if args.argsfile and os.path.exists(args.argsfile):
-            with open(args.argsfile, 'r') as txtfile:
-                content = txtfile.read()
-                argsjson = json.loads(content)
-        elif args.argsjson:
-            argsjson = json.loads(args.argsjson)
-        else:
-            pass # this QMP command without argument
-
-        qmp_cmd = config.qmp_command(args.taskid, args.execute, argsjson)
+        qmp_cmd = config.qmp_command(args.taskid, args.execute, args.argsjson, args.base64)
         qmp_cfg = config.qmp_config(qmp_cmd.toJSON())
         client(socket_addr).send_qmp(qmp_cfg, args.jsonreport)
-
-    elif 'list' == args.command:
-        list_cmd = config.list_command(args.taskid, args.dirpath)
-        list_cfg = config.list_config(list_cmd.toJSON())
-        client(socket_addr).list_file(list_cfg, args.jsonreport)
-
-    elif 'download' == args.command:
-        list_cmd = config.download_command(args.taskid, args.files, args.dirpath)
-        list_cfg = config.download_config(list_cmd.toJSON())
-        client(socket_addr).download_file(list_cfg, args.jsonreport)
-
-    elif 'upload' == args.command:
-        upload = config.upload_command(args.taskid, args.files, args.dirpath)
-        upload_cfg = config.upload_config(upload.toJSON())
-        client(socket_addr).upload_file(upload_cfg, args.jsonreport)
 
     elif 'push' == args.command:
         push_cmd = config.push_command(args.taskid)
@@ -87,6 +63,21 @@ try:
         stat = config.status_command(args.taskid)
         stat_cfg = config.status_config(stat.toJSON())
         client(socket_addr).send_status(stat_cfg, args.jsonreport)
+
+    elif 'list' == args.command:
+        list_cmd = config.list_command(args.taskid, args.dirpath)
+        list_cfg = config.list_config(list_cmd.toJSON())
+        client(socket_addr).run_list(list_cfg, args.jsonreport)
+
+    elif 'download' == args.command:
+        list_cmd = config.download_command(args.taskid, args.files, args.dirpath)
+        list_cfg = config.download_config(list_cmd.toJSON())
+        client(socket_addr).run_download(list_cfg, args.jsonreport)
+
+    elif 'upload' == args.command:
+        upload = config.upload_command(args.taskid, args.files, args.dirpath)
+        upload_cfg = config.upload_config(upload.toJSON())
+        client(socket_addr).run_upload(upload_cfg, args.jsonreport)
 
     else:
         cmdarg.print_help()

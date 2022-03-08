@@ -193,7 +193,9 @@ class server:
             print("{}● get_ssh_not_ready_reply_data{}".format("  ", " !!!"))
             return self.get_ssh_not_ready_reply_data(command.taskid)
         else:
-            result = qemu_inst.send_exec(command.exec_arg)
+            
+            result = qemu_inst.send_exec(command.exec_arg, command.is_base64)
+            
             reply_data = {
                 "taskid"    : command.taskid,
                 "result"    : result,
@@ -300,14 +302,23 @@ class server:
                                "targetport" : 0,
                                "username" : "",
                                "password" : ""},
-                "filepool" : "",
+                "host_pushpool" : "",
+                "guest_os_kind" : "",
+                "guest_pushpool" : "",
+                "guest_work_dir" : "",
                 "is_connected_qmp" : False,
                 "is_connected_ssh" : False
                 }
             return reply_data
 
         else:
-            filepool = os.path.join(qemu_inst.guest_os_cwd, qemu_inst.pushdir_name)
+            filepool = ''
+            if qemu_inst.guest_os_work_dir:
+                filepool = os.path.join(qemu_inst.guest_os_work_dir, qemu_inst.pushdir_name)
+                
+                if filepool.find(':') > 0:
+                    filepool = filepool.replace('/', '\\')                
+                    
             reply_data = {
                     "result"  : True,
                     "taskid"  : qemu_inst.taskid,
@@ -322,7 +333,10 @@ class server:
                                    "targetport" : qemu_inst.fwd_ports.ssh,
                                    "username" : qemu_inst.start_cmd.ssh_login.username,
                                    "password" : qemu_inst.start_cmd.ssh_login.password},
-                    "filepool" : filepool,
+                    "host_pushpool" : qemu_inst.host_pushdir_path,
+                    "guest_os_kind" : qemu_inst.guest_os_kind,
+                    "guest_pushpool" : qemu_inst.guest_os_pushpool_dir,
+                    "guest_work_dir" : qemu_inst.guest_os_work_dir,
                     "is_connected_qmp" : qemu_inst.is_qmp_connected(),
                     "is_connected_ssh" : qemu_inst.is_ssh_connected()
                     }
@@ -385,7 +399,7 @@ class server:
                         "errcode"   : qemu_inst.errcode,
                         "stderr"    : qemu_inst.stderr,
                         "stdout"    : qemu_inst.stdout,
-                        "cwd"       : qemu_inst.guest_os_cwd,
+                        "cwd"       : qemu_inst.guest_os_work_dir,
                         "os"        : qemu_inst.guest_os_kind
                     }
 

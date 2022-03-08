@@ -17,9 +17,9 @@ class cmdargs():
         self.parser.add_argument('-J', '--jsonreport', action='store_true', default=False)
         self.parser.add_argument('-V', '--verbose', action='store_true')
 
-        # subcommand start
+        # subcommand server
         parser_server = subparsers.add_parser('server', parents = [parent_parser], help='start a server daemon')
-        parser_server.add_argument('-L', '--longlife', type=int, default=30)
+        parser_server.add_argument('-L', '--longlife', type=int, default=30)        
         parser_server.add_argument('-F', '--filepool', type=str, default="./filepool")
 
         # subcommand start
@@ -37,40 +37,31 @@ class cmdargs():
         parser_exec.add_argument('-T', '--taskid', type=int, required=True)
         parser_exec.add_argument('-P', '--program', required=True)
         parser_exec.add_argument('-A', '--argument')
+        parser_exec.add_argument('-B64', '--base64', action='store_true')
 
         # subcommand qmp
         parser_exec = subparsers.add_parser('qmp', parents = [parent_parser], help='execute a specific QMP command')
         parser_exec.add_argument('-T', '--taskid', type=int, required=True)
         parser_exec.add_argument('-E', '--execute', required=True)
         parser_exec.add_argument('-J', '--argsjson')
-        parser_exec.add_argument('-F', '--argsfile')
-
-        # subcommand file
-        parser_file = subparsers.add_parser('file', parents = [parent_parser], help='transfer files between local and guest, or server and guest')
-        parser_file.add_argument('-T', '--taskid', type=int, required=True)
-        parser_file.add_argument('-SF', '--sendfrom', type=str, required=True, choices=['local','server','guest'])
-        parser_file.add_argument('-ST', '--sendto', type=str, required=True, choices=['local','server','guest'])
-        parser_file.add_argument('-PF', '--pathfrom', type=str, required=True)
-        parser_file.add_argument('-PT', '--pathto', type=str, required=True)
-        parser_file.add_argument('-C', '--config', type=str)
-        parser_file.add_argument('-P', '--port', type=int)
+        parser_exec.add_argument('-B64', '--base64', action='store_true')
 
         # subcommand `list`
         parser_list = subparsers.add_parser('list', parents = [parent_parser], help='list files from local to guest')
         parser_list.add_argument('-T', '--taskid', type=int, required=True)
-        parser_list.add_argument('-S', '--dirpath', type=str, default="qemu-tasker")
+        parser_list.add_argument('-S', '--dirpath', type=str)
 
         # subcommand `download`
         parser_download = subparsers.add_parser('download', parents = [parent_parser], help='download files from guest to local')
         parser_download.add_argument('-T', '--taskid', type=int, required=True)
         parser_download.add_argument('-F', '--files', required=True, nargs="+")
-        parser_download.add_argument('-S', '--dirpath', type=str, default="qemu-tasker")
+        parser_download.add_argument('-S', '--dirpath', type=str)
 
         # subcommand `upload`
         parser_upload = subparsers.add_parser('upload', parents = [parent_parser], help='upload files from local to guest')
         parser_upload.add_argument('-T', '--taskid', type=int, required=True)
         parser_upload.add_argument('-F', '--files', required=True, nargs="+")
-        parser_upload.add_argument('-S', '--dirpath', type=str, default="qemu-tasker")
+        parser_upload.add_argument('-S', '--dirpath', type=str)
 
         # subcommand `push`
         parser_push = subparsers.add_parser('push', parents = [parent_parser], help='update files from local to guest')

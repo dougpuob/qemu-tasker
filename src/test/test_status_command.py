@@ -36,7 +36,7 @@ class test_status(unittest.TestCase):
                       "errcode" : 0,
                       "stdout"  : [],
                       "stderr"  : [],
-                      "status"  : task_status().running,
+                      "status"  : task_status().processing,
                       "pid"     : 12345,
                       "fwd_ports" : { "qmp" : 1,
                                       "ssh" : 2 },                      
@@ -44,7 +44,10 @@ class test_status(unittest.TestCase):
                                      "targetport" : 123,
                                      "username" : "dougpuob",
                                      "password" : "dougpuob" },
-                      "filepool" : "filepool",
+                      "guest_work_dir" : "",
+                      "host_pushpool" : "",
+                      "guest_pushpool" : "",
+                      "guest_os_kind" : "",
                       "is_connected_qmp" : True,
                       "is_connected_ssh" : True}
 
@@ -56,7 +59,7 @@ class test_status(unittest.TestCase):
         self.assertEqual(stat_r.stdout, [])
         self.assertEqual(stat_r.stderr, [])
         self.assertEqual(stat_r.pid, 12345)
-        self.assertEqual(stat_r.status, task_status().running)
+        self.assertEqual(stat_r.status, task_status().processing)
         self.assertEqual(stat_r.fwd_ports.qmp, 1)
         self.assertEqual(stat_r.fwd_ports.ssh, 2)
         
@@ -65,7 +68,7 @@ class test_status(unittest.TestCase):
         self.assertEqual(stat_r.ssh_info.username, "dougpuob")
         self.assertEqual(stat_r.ssh_info.password, "dougpuob")
         
-        self.assertEqual(stat_r.filepool, "filepool")
+        self.assertEqual(stat_r.guest_work_dir, "")
         
         self.assertEqual(stat_r.is_connected_qmp, True)
         self.assertEqual(stat_r.is_connected_ssh, True)
@@ -84,7 +87,7 @@ class test_status(unittest.TestCase):
                       "errcode" : 0,
                       "stdout"  : [],
                       "stderr"  : [],
-                      "status"  : task_status().running,
+                      "status"  : task_status().processing,
                       "pid"     : 12345,
                       "fwd_ports" : { "qmp" : 1,
                                       "ssh" : 2 },
@@ -92,7 +95,10 @@ class test_status(unittest.TestCase):
                                      "targetport" : 123,
                                      "username" : "dougpuob",
                                      "password" : "dougpuob" },
-                      "filepool" : "filepool",
+                      "guest_work_dir" : "",
+                      "host_pushpool" : "",
+                      "guest_pushpool" : "",
+                      "guest_os_kind" : "",
                       "is_connected_qmp" : True,
                       "is_connected_ssh" : True}
 

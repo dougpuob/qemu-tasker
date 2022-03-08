@@ -22,14 +22,14 @@ class test_qmp(unittest.TestCase):
         super().__init__(methodName)        
 
     def test_qmp_command(self):        
-        qmp_cmd = qmp_command(10010, "human-monitor-command", self.cmdline_json)
+        qmp_cmd = qmp_command(10010, "human-monitor-command", self.cmdline_json, False)
                 
         self.assertEqual(qmp_cmd.taskid, 10010)
         self.assertEqual(qmp_cmd.execute, "human-monitor-command")
         self.assertEqual(qmp_cmd.argsjson, self.cmdline_json)
         
     def test_qmp_config(self):
-        qmp_cmd = qmp_command(10010, "human-monitor-command", self.cmdline_json)
+        qmp_cmd = qmp_command(10010, "human-monitor-command", self.cmdline_json, False)
         qmp_cfg = qmp_config(qmp_cmd.toJSON())
                 
         self.assertEqual(qmp_cfg.cmd.taskid, 10010)

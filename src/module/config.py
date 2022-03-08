@@ -126,11 +126,11 @@ class task_status:
         self.unknown    = "unknown"
         self.waiting    = "waiting"
         self.creating   = "creating"
-        self.connecting1 = "connecting1"
-        self.connecting2 = "connecting2"
-        self.running    = "running"
+        self.connecting = "connecting"
+        self.querying   = "querying"
+        self.ready      = "ready"
+        self.processing = "processing"
         self.killing    = "killing"
-        self.abandoned  = "abandoned"
 
 class request(config):
     def __init__(self, command:str, data:json):
@@ -223,15 +223,17 @@ class start_response(config):
 # Exec
 #
 class exec_command(config):
-    def __init__(self, taskid:int, exec_arg:exec_argument):
+    def __init__(self, taskid:int, exec_arg:exec_argument, is_base64:bool):
         self.taskid = taskid
         self.exec_arg = exec_arg
+        self.is_base64 = is_base64
 
 class exec_config(config):
     def __init__(self, data:json):
         self.cmd  = exec_command(data['taskid'],
                                  exec_argument(data['exec_arg']['program'],
-                                                data['exec_arg']['argument']))
+                                                data['exec_arg']['argument']),
+                                 data['is_base64'])
 
 class exec_reply(config):
     def __init__(self, data:json):
@@ -302,16 +304,18 @@ class digest_kill_response(config):
 # QMP
 #
 class qmp_command(config):
-    def __init__(self, taskid:int, execute:str, argsjson:json):
+    def __init__(self, taskid:int, execute:str, argsjson:json, is_base64:bool):
         self.taskid = taskid
         self.execute = execute
         self.argsjson = argsjson
+        self.is_base64 = is_base64
 
 class qmp_config(config):
     def __init__(self, data:json):
         self.cmd  = qmp_command(data['taskid'],
                                 data['execute'],
-                                data['argsjson'])
+                                data['argsjson'],
+                                data['is_base64'])
 
 class qmp_reply(config):
     def __init__(self, data:json):
@@ -524,7 +528,10 @@ class status_reply(config):
                                  data['ssh_info']['targetport'],
                                  data['ssh_info']['username'],
                                  data['ssh_info']['password'])
-        self.filepool = data['filepool']
+        self.host_pushpool = data['host_pushpool']
+        self.guest_pushpool = data['guest_pushpool']
+        self.guest_work_dir = data['guest_work_dir']        
+        self.guest_os_kind = data['guest_os_kind']        
         self.is_connected_qmp = data['is_connected_qmp']
         self.is_connected_ssh = data['is_connected_ssh']
 

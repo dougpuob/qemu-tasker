@@ -38,6 +38,22 @@ class client:
     def __del__(self):
         pass
 
+    def normpath(self, path:str, os_kind:config.os_kind):
+        new_path = None
+        if os_kind == config.os_kind().windows:
+            new_path = path.replace('/', '\\')
+        elif os_kind == config.os_kind().linux or \
+             os_kind == config.os_kind().macos:
+            new_path = path.replace('\\', '/')        
+        else:
+            new_path = path
+        return new_path
+
+
+    #==========================================================================
+    #==========================================================================
+    #==========================================================================
+
 
     def send(self, mesg:str) -> str:
         self.conn_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -138,181 +154,6 @@ class client:
             print("[qemu-tasker] command result: {}".format(qmp_resp.reply.result))
 
 
-    def list_file(self, list_cfg:config.list_config, is_json_report:bool=False):
-
-        stat_resp = None
-        stat_cmd = config.status_command(list_cfg.cmd.taskid)
-        stat_req = config.status_request(stat_cmd)
-        stat_resp_text = self.send(stat_req.toTEXT())
-        stat_resp = config.digest_status_response(json.loads(stat_resp_text))
-
-        try:
-            mysshlink = ssh_link()
-            is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
-                                             stat_resp.reply.ssh_info.targetport,
-                                             stat_resp.reply.ssh_info.username,
-                                             stat_resp.reply.ssh_info.password)
-
-            cmdret = config.cmd_return()
-            if is_connected:
-                dirpath = list_cfg.cmd.dirpath
-                cmdret = mysshlink.readdir(dirpath)
-
-            reply_data = {
-                "taskid"  : list_cfg.cmd.taskid,
-                "result"  : (0 == cmdret.errcode),
-                "errcode" : cmdret.errcode,
-                "stderr"  : cmdret.error_lines,
-                "stdout"  : cmdret.info_lines,
-                "readdir" : cmdret.data,
-            }
-
-            list_reply = config.list_reply(reply_data)
-            list_resp = config.list_response(list_reply)
-            list_resp_text = list_resp.toTEXT()
-            logging.info("● file_resp_text={}".format(list_resp_text))
-            if is_json_report:
-                print(json.dumps(json.loads(list_resp_text), indent=2, sort_keys=True))
-            else:
-                print("[qemu-tasker] command result: {}".format(list_resp_text.reply.result))
-
-        except Exception as e:
-            text = str(e)
-            print(text)
-            print("[qemu-tasker] {}".format(text))
-
-
-    def download_file(self, download_cfg:config.download_config, is_json_report:bool=False):
-
-        stat_resp = None
-        stat_cmd = config.status_command(download_cfg.cmd.taskid)
-        stat_req = config.status_request(stat_cmd)
-        stat_resp_text = self.send(stat_req.toTEXT())
-        stat_resp = config.digest_status_response(json.loads(stat_resp_text))
-
-        cmdret = config.cmd_return()
-        file_resp = None
-
-        try:
-            mysshlink = ssh_link()
-            is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
-                                             stat_resp.reply.ssh_info.targetport,
-                                             stat_resp.reply.ssh_info.username,
-                                             stat_resp.reply.ssh_info.password)
-            final_cmdret = config.cmd_return()
-
-            is_path_there = False
-
-            if is_connected:
-                dirpath = download_cfg.cmd.dirpath
-                retcmd = mysshlink.mkdir(dirpath)
-                is_path_there = (0 == retcmd.errcode)
-                final_cmdret.info_lines.extend(retcmd.info_lines)
-
-            if is_connected and is_path_there:
-                for file_path in download_cfg.cmd.files:
-                    basename = os.path.basename(file_path)
-                    target_path = os.path.join(download_cfg.cmd.dirpath, basename)
-
-                    cmdret = mysshlink.download(file_path, target_path)
-
-                    final_cmdret.errcode = cmdret.errcode
-                    final_cmdret.info_lines.append('--------------------------------------------------')
-                    final_cmdret.info_lines.extend(cmdret.info_lines)
-                    final_cmdret.error_lines.append('--------------------------------------------------')
-                    final_cmdret.error_lines.extend(cmdret.error_lines)
-
-                    if cmdret.errcode != 0:
-                        break
-
-            reply_data = {
-                "taskid"  : download_cfg.cmd.taskid,
-                "result"  : (0 == cmdret.errcode),
-                "errcode" : final_cmdret.errcode,
-                "stderr"  : final_cmdret.error_lines,
-                "stdout"  : final_cmdret.info_lines,
-            }
-
-            dload_reply = config.download_reply(reply_data)
-            dload_resp = config.download_response(dload_reply)
-            dload_resp_text = dload_resp.toTEXT()
-            logging.info("● file_resp_text={}".format(dload_resp_text))
-            if is_json_report:
-                print(json.dumps(json.loads(dload_resp_text), indent=2, sort_keys=True))
-            else:
-                print("[qemu-tasker] command result: {}".format(dload_resp_text.reply.result))
-
-        except Exception as e:
-            text = str(e)
-            print(text)
-            print("[qemu-tasker] {}".format(text))
-
-    def upload_file(self, upload_cfg:config.upload_config, is_json_report:bool=False):
-
-        stat_resp = None
-        stat_cmd = config.status_command(upload_cfg.cmd.taskid)
-        stat_req = config.status_request(stat_cmd)
-        stat_resp_text = self.send(stat_req.toTEXT())
-        stat_resp = config.digest_status_response(json.loads(stat_resp_text))
-
-        cmdret = config.cmd_return()
-        file_resp = None
-
-        try:
-            mysshlink = ssh_link()
-            is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
-                                             stat_resp.reply.ssh_info.targetport,
-                                             stat_resp.reply.ssh_info.username,
-                                             stat_resp.reply.ssh_info.password)
-            final_cmdret = config.cmd_return()
-
-            is_path_there = False
-
-            if is_connected:
-                dirpath = upload_cfg.cmd.dirpath
-                retcmd = mysshlink.mkdir(dirpath)
-                is_path_there = (0 == retcmd.errcode)
-                final_cmdret.info_lines.extend(retcmd.info_lines)
-
-            if is_connected and is_path_there:
-                for file_path in upload_cfg.cmd.files:
-                    basename = os.path.basename(file_path)
-                    target_path = os.path.join(upload_cfg.cmd.dirpath, basename)
-
-                    cmdret = mysshlink.upload(file_path, target_path)
-
-                    final_cmdret.errcode = cmdret.errcode
-                    final_cmdret.info_lines.append('--------------------------------------------------')
-                    final_cmdret.info_lines.extend(cmdret.info_lines)
-                    final_cmdret.error_lines.append('--------------------------------------------------')
-                    final_cmdret.error_lines.extend(cmdret.error_lines)
-
-                    if cmdret.errcode != 0:
-                        break
-
-            reply_data = {
-                "taskid"  : upload_cfg.cmd.taskid,
-                "result"  : (0 == cmdret.errcode),
-                "errcode" : final_cmdret.errcode,
-                "stderr"  : final_cmdret.error_lines,
-                "stdout"  : final_cmdret.info_lines,
-            }
-
-            dload_reply = config.upload_reply(reply_data)
-            dload_resp = config.upload_response(dload_reply)
-            dload_resp_text = dload_resp.toTEXT()
-            logging.info("● file_resp_text={}".format(dload_resp_text))
-            if is_json_report:
-                print(json.dumps(json.loads(dload_resp_text), indent=2, sort_keys=True))
-            else:
-                print("[qemu-tasker] command result: {}".format(dload_resp_text.reply.result))
-
-        except Exception as e:
-            text = str(e)
-            print(text)
-            print("[qemu-tasker] {}".format(text))
-
-
     def send_push(self, push_cfg:config.push_config, is_json_report:bool=False):
         push_resp = None
         push_req = config.push_request(push_cfg.cmd)
@@ -357,3 +198,202 @@ class client:
             print(json.dumps(json.loads(stat_resp_text), indent=2, sort_keys=True))
         else:
             print("[qemu-tasker] command result: {}".format(stat_resp.reply.result))
+
+
+    #==========================================================================
+    #==========================================================================
+    #==========================================================================
+
+
+    def run_list(self, list_cfg:config.list_config, is_json_report:bool=False):
+
+        stat_resp = None
+        stat_cmd = config.status_command(list_cfg.cmd.taskid)
+        stat_req = config.status_request(stat_cmd)
+        stat_resp_text = self.send(stat_req.toTEXT())
+        stat_resp = config.digest_status_response(json.loads(stat_resp_text))
+
+        try:
+            mysshlink = ssh_link()
+            is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
+                                             stat_resp.reply.ssh_info.targetport,
+                                             stat_resp.reply.ssh_info.username,
+                                             stat_resp.reply.ssh_info.password)
+
+            cmdret = config.cmd_return()
+            
+            if is_connected:
+                dirpath = list_cfg.cmd.dirpath
+                cmdret = mysshlink.exists(dirpath)
+                if cmdret.errcode == 0:
+                    cmdret = mysshlink.readdir(dirpath)
+
+            reply_data = {
+                "taskid"  : list_cfg.cmd.taskid,
+                "result"  : (0 == cmdret.errcode),
+                "errcode" : cmdret.errcode,
+                "stderr"  : cmdret.error_lines,
+                "stdout"  : cmdret.info_lines,
+                "readdir" : cmdret.data,
+            }
+
+            list_reply = config.list_reply(reply_data)
+            list_resp = config.list_response(list_reply)
+            list_resp_text = list_resp.toTEXT()
+            logging.info("● file_resp_text={}".format(list_resp_text))
+            if is_json_report:
+                print(json.dumps(json.loads(list_resp_text), indent=2, sort_keys=True))
+            else:
+                print("[qemu-tasker] command result: {}".format(list_resp.response.data['result']))
+
+        except Exception as e:
+            text = str(e)
+            print(text)
+            print("[qemu-tasker] {}".format(text))
+
+
+    def run_download(self, download_cfg:config.download_config, is_json_report:bool=False):
+        
+        final_cmdret = config.cmd_return()
+        
+        is_exist = os.path.exists(download_cfg.cmd.dirpath)
+        if not is_exist:
+            final_cmdret.errcode = -1
+            final_cmdret.error_lines.append("The specific local directory is not there !!!")
+            final_cmdret.error_lines.append("dirpath={}".format(download_cfg.cmd.dirpath))
+        else:
+            final_cmdret.errcode = 0
+
+        stat_resp = None
+        stat_cmd = config.status_command(download_cfg.cmd.taskid)
+        stat_req = config.status_request(stat_cmd)
+        stat_resp_text = self.send(stat_req.toTEXT())
+        stat_resp = config.digest_status_response(json.loads(stat_resp_text))
+
+        try:
+            mysshlink = ssh_link()
+            is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
+                                             stat_resp.reply.ssh_info.targetport,
+                                             stat_resp.reply.ssh_info.username,
+                                             stat_resp.reply.ssh_info.password)
+            
+            if is_connected and (0 == final_cmdret.errcode):
+                for file_path in download_cfg.cmd.files:
+                    file_path = file_path.replace('\\', '/')
+                    basename = os.path.basename(file_path)
+                    target_path = os.path.join(download_cfg.cmd.dirpath, basename)
+
+                    cmdret_exist = mysshlink.exists(file_path)
+                    final_cmdret.errcode = cmdret_exist.errcode
+                    final_cmdret.info_lines.extend(cmdret_exist.info_lines)
+                    final_cmdret.info_lines.extend(cmdret_exist.info_lines)
+                    if 0 == cmdret_exist.errcode:
+                        cmdret = mysshlink.download(file_path, target_path)
+                        final_cmdret.errcode = cmdret.errcode
+                        final_cmdret.info_lines.append('--------------------------------------------------')
+                        final_cmdret.info_lines.extend(cmdret.info_lines)
+                        final_cmdret.error_lines.append('--------------------------------------------------')
+                        final_cmdret.error_lines.extend(cmdret.error_lines)
+
+                    if final_cmdret.errcode != 0:
+                        break
+
+            reply_data = {
+                "taskid"  : download_cfg.cmd.taskid,
+                "result"  : (0 == final_cmdret.errcode),
+                "errcode" : final_cmdret.errcode,
+                "stderr"  : final_cmdret.error_lines,
+                "stdout"  : final_cmdret.info_lines,
+            }
+
+            dload_reply = config.download_reply(reply_data)
+            dload_resp = config.download_response(dload_reply)
+            dload_resp_text = dload_resp.toTEXT()
+            logging.info("● file_resp_text={}".format(dload_resp_text))
+            if is_json_report:
+                print(json.dumps(json.loads(dload_resp_text), indent=2, sort_keys=True))
+            else:                
+                print("[qemu-tasker] command result: {}".format(dload_resp.response.data['result']))
+
+        except Exception as e:
+            text = str(e)
+            print(text)
+            print("[qemu-tasker] {}".format(text))
+
+    def run_upload(self, upload_cfg:config.upload_config, is_json_report:bool=False):
+
+        stat_cmd = config.status_command(upload_cfg.cmd.taskid)
+        stat_req = config.status_request(stat_cmd)
+        stat_resp_text = self.send(stat_req.toTEXT())
+        stat_resp = config.digest_status_response(json.loads(stat_resp_text))
+
+        try:
+            mysshlink = ssh_link()
+            is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
+                                             stat_resp.reply.ssh_info.targetport,
+                                             stat_resp.reply.ssh_info.username,
+                                             stat_resp.reply.ssh_info.password)            
+            final_cmdret = config.cmd_return()
+            final_cmdret.errcode = 0
+
+            if is_connected and upload_cfg.cmd.dirpath:
+                dirpath = upload_cfg.cmd.dirpath
+                retcmd = mysshlink.mkdir(dirpath)
+                final_cmdret.errcode = retcmd.errcode
+                final_cmdret.error_lines.extend(retcmd.error_lines)
+                final_cmdret.info_lines.extend(retcmd.info_lines)
+
+            if is_connected and ( 0 == final_cmdret.errcode):
+                for file_path in upload_cfg.cmd.files:
+                                        
+                    file_path =  self.normpath(file_path, config.os_kind().linux)
+                    basename = os.path.basename(file_path)
+
+                    guest_work_dir = stat_resp.reply.guest_work_dir
+                    guest_dirpath = upload_cfg.cmd.dirpath
+                    
+                    guest_os_kind = stat_resp.reply.guest_os_kind                    
+                    
+                    subdir = ''                    
+                    if upload_cfg.cmd.dirpath:
+                        subdir = '/' + guest_dirpath
+                    
+                    target_path = guest_work_dir + subdir + '/' + basename                    
+                    target_path = self.normpath(target_path, guest_os_kind)
+                    
+                    cmdret = mysshlink.upload(file_path, target_path)
+
+                    final_cmdret.errcode = cmdret.errcode
+                    final_cmdret.info_lines.append('--------------------------------------------------')
+                    final_cmdret.info_lines.extend(cmdret.info_lines)
+                    final_cmdret.error_lines.append('--------------------------------------------------')
+                    final_cmdret.error_lines.extend(cmdret.error_lines)
+
+                    if cmdret.errcode != 0:
+                        break
+
+            reply_data = {
+                "taskid"  : upload_cfg.cmd.taskid,
+                "result"  : (0 == cmdret.errcode),
+                "errcode" : final_cmdret.errcode,
+                "stderr"  : final_cmdret.error_lines,
+                "stdout"  : final_cmdret.info_lines,
+            }
+
+            dload_reply = config.upload_reply(reply_data)
+            dload_resp = config.upload_response(dload_reply)
+            dload_resp_text = dload_resp.toTEXT()
+            logging.info("● file_resp_text={}".format(dload_resp_text))
+            if is_json_report:
+                print(json.dumps(json.loads(dload_resp_text), indent=2, sort_keys=True))
+            else:
+                print("[qemu-tasker] command result: {}".format(dload_resp.response.data['result']))
+
+        except Exception as e:
+            text = str(e)
+            print(text)
+            print("[qemu-tasker] {}".format(text))
+
+    #==========================================================================
+    #==========================================================================
+    #==========================================================================

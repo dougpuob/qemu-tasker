@@ -54,36 +54,7 @@ class test_cmdparse(unittest.TestCase):
         self.assertEqual(args.command, "qmp")        
         self.assertEqual(args.execute, "human-monitor-command")
         self.assertEqual(args.argsjson, json.dumps(argsjson))
-        
-    def test_qmp_argsfile1(self):       
-        FILE_NAME = 'aabbccddeeff.json'
-        
-        if os.path.exists(FILE_NAME):
-            os.remove(FILE_NAME)
-            
-        with open(FILE_NAME, 'w') as txtfile:
-            argsjson = {"command-line" : "info version" }
-            txtfile.write(json.dumps(argsjson))
-    
-        sys.argv = ['qemu-tasker.py', 
-                    'qmp', 
-                    '--taskid', '10010', 
-                    '--execute', 'human-monitor-command',
-                    '--argsfile', FILE_NAME]
 
-        args = cmdargs().get_parsed_args()
-
-        self.assertEqual(args.taskid, 10010)
-        self.assertEqual(args.command, "qmp")        
-        self.assertEqual(args.execute, "human-monitor-command")
-        self.assertEqual(args.argsfile, FILE_NAME)
-        
-        with open(FILE_NAME, 'r') as txtfile:
-            content = txtfile.read()   
-            self.assertEqual(content, json.dumps(argsjson))        
-        
-        if os.path.exists(FILE_NAME):
-            os.remove(FILE_NAME)
             
 if __name__ == '__main__':
     unittest.main()
