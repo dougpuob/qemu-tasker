@@ -72,6 +72,10 @@ class cmdargs():
         parser_upload.add_argument('-F', '--files', required=True, nargs="+")
         parser_upload.add_argument('-S', '--dirpath', type=str, default="qemu-tasker")
 
+        # subcommand `push`
+        parser_push = subparsers.add_parser('push', parents = [parent_parser], help='update files from local to guest')
+        parser_push.add_argument('-T', '--taskid', type=int, required=True)
+        
         # subcommand status
         parser_exec = subparsers.add_parser('status', parents = [parent_parser], help='query a specific QEMU status')
         parser_exec.add_argument('-T', '--taskid', type=int, required=True)

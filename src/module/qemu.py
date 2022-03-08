@@ -34,7 +34,11 @@ class qemu_instance:
         self.is_ready = False
         self.guest_os_cwd = None
         self.guest_os_kind = config.os_kind().unknown                
-        self.filepool_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
+        self.guest_os_pushdir = 'qemu-tasker/pushpool'
+        
+        self.pushdir_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
+        self.host_pushdir_path = os.path.realpath(os.path.join("pushpool", self.pushdir_name))
+        print(self.host_pushdir_path)
 
         # qemu base args
         self.base_args = []
@@ -181,6 +185,37 @@ class qemu_instance:
                 cmdret = self.ssh_link.download(file_cmd.pathfrom, file_cmd.pathto)
             
         return cmdret
+    
+    
+    def send_push(self, push_cmd:config.push_command):
+        self.clear()
+        
+        final_cmdret = config.cmd_return()        
+        selected_files = []
+        #selected_files = push_cmd.files
+        
+        dirlist = os.listdir(self.host_pushdir_path)
+        for file_from in dirlist:
+            fullpath = os.path.join(self.host_pushdir_path, file_from)
+            if os.path.exists(fullpath):
+                selected_files.append(fullpath)
+            else:
+                print("Path not found ({})".format(fullpath))
+            
+                        
+        if self.flag_is_ssh_connected:
+            for file_from in selected_files:
+                basename = os.path.basename(file_from)
+                file_to = os.path.join(self.guest_os_pushdir, basename)
+                cmdret = self.ssh_link.upload(file_from, file_to)
+                final_cmdret.info_lines.extend(cmdret.info_lines)
+                final_cmdret.error_lines.extend(cmdret.error_lines)
+                final_cmdret.errcode = cmdret.errcode
+                if 0 != cmdret.errcode:
+                    break
+                            
+        return final_cmdret
+
 
     def is_qmp_connected(self):
         return self.flag_is_qmp_connected
@@ -278,8 +313,7 @@ class qemu_instance:
             self.guest_os_cwd = ''.join(cmdret.info_lines).strip()            
 
         # Create filepool directory.
-        self.filepool_basepath = os.path.join(self.guest_os_cwd, "filepool")
-        cmdret = self.ssh_link.execute('mkdir ' + self.filepool_basepath)
+        cmdret = self.ssh_link.mkdir(self.guest_os_pushdir)
         
         print("{}● os_kind={}".format("  ", self.guest_os_kind))
         print("{}● cwd={}".format("  ", self.guest_os_cwd))
@@ -318,6 +352,8 @@ class qemu_instance:
         qemu_cmdargs.extend(self.start_cmd.arguments)
         qemu_cmdargs.extend(self.base_args)
         logging.info("{}● qemu_cmdargs={}".format("  ", qemu_cmdargs))
+        
+        os.makedirs(self.host_pushdir_path)
 
         # Make a QMP server so connect before launching QEMU process.
         if self.is_qemu_device_attached_qmp:

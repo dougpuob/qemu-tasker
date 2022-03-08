@@ -118,6 +118,7 @@ class command_kind:
         self.list     = "list"
         self.download = "download"
         self.upload   = "upload"
+        self.push     = "push"
         self.status   = "status"
 
 class task_status:
@@ -542,6 +543,43 @@ class digest_upload_response(config):
         self.command = req['response']['command']
         self.reply = upload_reply(req['response']['data'])
 
+
+#
+# Push
+#
+class push_command(config):
+    def __init__(self, taskid:int):
+        self.taskid   = taskid
+        
+class push_config(config):
+    def __init__(self, data:json):
+        self.cmd  = push_command(data['taskid'])
+
+class push_reply(config):
+    def __init__(self, data:json):
+        self.taskid  = data['taskid']
+        self.result  = data['result']
+        self.errcode = data['errcode']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
+
+class push_request(config):
+    def __init__(self, command:push_command):
+        self.request = request(command_kind().push, command.toJSON())
+
+class digest_push_request(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = push_reply(req['response']['data'])
+
+class push_response(config):
+    def __init__(self, reply:push_reply):
+        self.response = response(command_kind().push, reply.toJSON())
+
+class digest_push_response(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = push_reply(req['response']['data'])
 
 #
 # Status

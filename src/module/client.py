@@ -458,6 +458,30 @@ class client:
             print(text)
             print("[qemu-tasker] {}".format(text))
 
+
+    def send_push(self, push_cfg:config.push_config, is_json_report:bool=False):
+        push_resp = None
+        push_req = config.push_request(push_cfg.cmd)
+        push_resp_text = self.send(push_req.toTEXT())
+
+        logging.info("● push_resp_text={}".format(push_resp_text))
+        try:
+            qmp_resp = config.digest_push_response(json.loads(push_resp_text))
+        except Exception as e:
+            exception_text = "push_resp_text={}".format(push_resp_text)
+            print(exception_text)
+            logging.info(exception_text)
+
+            exception_text = "exception={}".format(str(e))
+            print(exception_text)
+            logging.info(exception_text)
+
+        if is_json_report:
+            print(json.dumps(json.loads(push_resp_text), indent=2, sort_keys=True))
+        else:
+            print("[qemu-tasker] command result: {}".format(qmp_resp.reply.result))
+
+
     def send_status(self, stat_cfg:config.status_config, is_json_report:bool=False):
         stat_resp = None
         stat_req = config.status_request(stat_cfg.cmd)

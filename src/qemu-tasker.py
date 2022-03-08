@@ -84,6 +84,11 @@ try:
         upload = config.upload_command(args.taskid, args.files, args.dirpath)
         upload_cfg = config.upload_config(upload.toJSON())
         client(socket_addr).upload_file(upload_cfg, args.jsonreport)
+        
+    elif 'push' == args.command:
+        push_cmd = config.push_command(args.taskid)
+        push_cfg = config.push_config(push_cmd.toJSON())
+        client(socket_addr).send_push(push_cfg, args.jsonreport)
 
     elif 'status' == args.command:
         stat = config.status_command(args.taskid)

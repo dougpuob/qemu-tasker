@@ -223,11 +223,7 @@ class ssh_link:
         try:
             before = datetime.now()
             
-            buf_size = 1024 * 1024 * 5
-            file_stat = None
-                        
-            file_stat = os.stat(file_from)            
-            
+            buf_size = 1024 * 1024 * 5            
             cmdret.info_lines.append("from={0}".format(file_from))
             cmdret.info_lines.append("to={0}".format(file_to))
             
