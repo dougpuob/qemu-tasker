@@ -25,8 +25,8 @@ from module.sshclient import ssh_link
 
 
 class client:
-    
-    
+
+
     def __init__(self, host_addr:config.socket_address):
         self.host_addr = host_addr
         self.start_cfg:config.start_config = None
@@ -139,25 +139,25 @@ class client:
 
 
     def list_file(self, list_cfg:config.list_config, is_json_report:bool=False):
-      
+
         stat_resp = None
         stat_cmd = config.status_command(list_cfg.cmd.taskid)
         stat_req = config.status_request(stat_cmd)
         stat_resp_text = self.send(stat_req.toTEXT())
         stat_resp = config.digest_status_response(json.loads(stat_resp_text))
-      
+
         try:
-            mysshlink = ssh_link()            
+            mysshlink = ssh_link()
             is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
                                              stat_resp.reply.ssh_info.targetport,
                                              stat_resp.reply.ssh_info.username,
-                                             stat_resp.reply.ssh_info.password)            
-      
-            cmdret = config.cmd_return()      
-            if is_connected:                
+                                             stat_resp.reply.ssh_info.password)
+
+            cmdret = config.cmd_return()
+            if is_connected:
                 dirpath = list_cfg.cmd.dirpath
                 cmdret = mysshlink.readdir(dirpath)
-            
+
             reply_data = {
                 "taskid"  : list_cfg.cmd.taskid,
                 "result"  : (0 == cmdret.errcode),
@@ -183,48 +183,48 @@ class client:
 
 
     def download_file(self, download_cfg:config.download_config, is_json_report:bool=False):
-      
+
         stat_resp = None
         stat_cmd = config.status_command(download_cfg.cmd.taskid)
         stat_req = config.status_request(stat_cmd)
         stat_resp_text = self.send(stat_req.toTEXT())
         stat_resp = config.digest_status_response(json.loads(stat_resp_text))
-      
+
         cmdret = config.cmd_return()
         file_resp = None
-        
+
         try:
-            mysshlink = ssh_link()            
+            mysshlink = ssh_link()
             is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
                                              stat_resp.reply.ssh_info.targetport,
                                              stat_resp.reply.ssh_info.username,
-                                             stat_resp.reply.ssh_info.password)            
+                                             stat_resp.reply.ssh_info.password)
             final_cmdret = config.cmd_return()
-            
+
             is_path_there = False
 
-            if is_connected:                
+            if is_connected:
                 dirpath = download_cfg.cmd.dirpath
                 retcmd = mysshlink.mkdir(dirpath)
                 is_path_there = (0 == retcmd.errcode)
                 final_cmdret.info_lines.extend(retcmd.info_lines)
-            
+
             if is_connected and is_path_there:
                 for file_path in download_cfg.cmd.files:
                     basename = os.path.basename(file_path)
                     target_path = os.path.join(download_cfg.cmd.dirpath, basename)
-                    
+
                     cmdret = mysshlink.download(file_path, target_path)
-                                        
-                    final_cmdret.errcode = cmdret.errcode                    
-                    final_cmdret.info_lines.append('--------------------------------------------------')                    
-                    final_cmdret.info_lines.extend(cmdret.info_lines)                    
+
+                    final_cmdret.errcode = cmdret.errcode
+                    final_cmdret.info_lines.append('--------------------------------------------------')
+                    final_cmdret.info_lines.extend(cmdret.info_lines)
                     final_cmdret.error_lines.append('--------------------------------------------------')
                     final_cmdret.error_lines.extend(cmdret.error_lines)
-                                        
+
                     if cmdret.errcode != 0:
                         break
-            
+
             reply_data = {
                 "taskid"  : download_cfg.cmd.taskid,
                 "result"  : (0 == cmdret.errcode),
@@ -248,24 +248,24 @@ class client:
             print("[qemu-tasker] {}".format(text))
 
     def upload_file(self, upload_cfg:config.upload_config, is_json_report:bool=False):
-          
+
         stat_resp = None
         stat_cmd = config.status_command(upload_cfg.cmd.taskid)
         stat_req = config.status_request(stat_cmd)
         stat_resp_text = self.send(stat_req.toTEXT())
         stat_resp = config.digest_status_response(json.loads(stat_resp_text))
-      
+
         cmdret = config.cmd_return()
         file_resp = None
-        
+
         try:
-            mysshlink = ssh_link()            
+            mysshlink = ssh_link()
             is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
                                              stat_resp.reply.ssh_info.targetport,
                                              stat_resp.reply.ssh_info.username,
                                              stat_resp.reply.ssh_info.password)
             final_cmdret = config.cmd_return()
-            
+
             is_path_there = False
 
             if is_connected:
@@ -273,23 +273,23 @@ class client:
                 retcmd = mysshlink.mkdir(dirpath)
                 is_path_there = (0 == retcmd.errcode)
                 final_cmdret.info_lines.extend(retcmd.info_lines)
-            
-            if is_connected and is_path_there:                
+
+            if is_connected and is_path_there:
                 for file_path in upload_cfg.cmd.files:
                     basename = os.path.basename(file_path)
                     target_path = os.path.join(upload_cfg.cmd.dirpath, basename)
-                    
+
                     cmdret = mysshlink.upload(file_path, target_path)
-                                        
-                    final_cmdret.errcode = cmdret.errcode                    
-                    final_cmdret.info_lines.append('--------------------------------------------------')                    
-                    final_cmdret.info_lines.extend(cmdret.info_lines)                    
+
+                    final_cmdret.errcode = cmdret.errcode
+                    final_cmdret.info_lines.append('--------------------------------------------------')
+                    final_cmdret.info_lines.extend(cmdret.info_lines)
                     final_cmdret.error_lines.append('--------------------------------------------------')
                     final_cmdret.error_lines.extend(cmdret.error_lines)
-                                        
+
                     if cmdret.errcode != 0:
                         break
-            
+
             reply_data = {
                 "taskid"  : upload_cfg.cmd.taskid,
                 "result"  : (0 == cmdret.errcode),

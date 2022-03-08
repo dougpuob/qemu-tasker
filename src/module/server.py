@@ -60,7 +60,7 @@ class server:
         print("STOP!!!")
         self.is_started = False
 
-    def start(self, task_filepool:str):        
+    def start(self, task_filepool:str):
         self.filepool_basepath = os.path.realpath(task_filepool)
 
         # Check and count longlife.
@@ -99,7 +99,7 @@ class server:
                 if qemu_inst.longlife > 0:
                     is_qmp_connected = self.get_bool(qemu_inst.is_qmp_connected())
                     is_ssh_connected = self.get_bool(qemu_inst.is_ssh_connected())
-                    
+
                     print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} SSH:{} OS:{}  Longlife:{}(s) {}'.format(
                             qemu_inst.taskid,
                             qemu_inst.pid,
@@ -125,7 +125,7 @@ class server:
                 qemu_inst:qemu.qemu_instance = qemu_inst_obj
                 is_alive = qemu_inst.is_proc_alive()
                 if not is_alive:
-                    self.qemu_instance_list.remove(qemu_inst)                    
+                    self.qemu_instance_list.remove(qemu_inst)
                     qemu_inst.kill()
 
             time.sleep(1)
@@ -281,7 +281,7 @@ class server:
                 "stdout"    : ret_cmd.info_lines,
             }
             return reply_data
-        
+
 
     def command_to_status(self, stat_cmd:config.status_command):
         qemu_inst:qemu.qemu_instance  = self.find_target_instance(stat_cmd.taskid)
@@ -433,7 +433,7 @@ class server:
                     push_r = config.push_reply(reply_data)
                     push_resp = config.push_response(push_r)
                     resp_text = push_resp.toTEXT()
-                    
+
                 # status
                 elif config.command_kind().status == client_data['request']['command']:
                     print("{}● command_kind={}".format("  ", client_data['request']['command']))

@@ -52,17 +52,17 @@ try:
         argsjson = {}
         if args.argsfile and os.path.exists(args.argsfile):
             with open(args.argsfile, 'r') as txtfile:
-                content = txtfile.read()   
-                argsjson = json.loads(content)                
+                content = txtfile.read()
+                argsjson = json.loads(content)
         elif args.argsjson:
             argsjson = json.loads(args.argsjson)
-        else:        
+        else:
             pass # this QMP command without argument
-        
+
         qmp_cmd = config.qmp_command(args.taskid, args.execute, argsjson)
         qmp_cfg = config.qmp_config(qmp_cmd.toJSON())
         client(socket_addr).send_qmp(qmp_cfg, args.jsonreport)
-        
+
     elif 'list' == args.command:
         list_cmd = config.list_command(args.taskid, args.dirpath)
         list_cfg = config.list_config(list_cmd.toJSON())
@@ -77,7 +77,7 @@ try:
         upload = config.upload_command(args.taskid, args.files, args.dirpath)
         upload_cfg = config.upload_config(upload.toJSON())
         client(socket_addr).upload_file(upload_cfg, args.jsonreport)
-        
+
     elif 'push' == args.command:
         push_cmd = config.push_command(args.taskid)
         push_cfg = config.push_config(push_cmd.toJSON())

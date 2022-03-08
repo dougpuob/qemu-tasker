@@ -53,7 +53,7 @@ class ssh_info(config):
         self.targetport = targetport
         self.username = username
         self.password = password
-        
+
 class ssh_login(config):
     def __init__(self, username:str, password:str):
         self.username = username
@@ -339,7 +339,7 @@ class digest_qmp_response(config):
 #
 class list_command(config):
     def __init__(self, taskid:int, dirpath:str):
-        self.taskid = taskid        
+        self.taskid = taskid
         self.dirpath = dirpath
 
 class list_config(config):
@@ -353,7 +353,7 @@ class list_reply(config):
         self.errcode = data['errcode']
         self.stderr  = data['stderr']
         self.stdout  = data['stdout']
-        
+
         # extra data
         self.readdir = data['readdir']
 
@@ -382,7 +382,7 @@ class digest_list_response(config):
 class download_command(config):
     def __init__(self, taskid:int, files:list, dirpath:str):
         self.taskid = taskid
-        
+
         self.files = files
         self.dirpath = dirpath
 
@@ -423,7 +423,7 @@ class digest_download_response(config):
 class upload_command(config):
     def __init__(self, taskid:int, files:list, dirpath:str):
         self.taskid   = taskid
-        
+
         self.files = files
         self.dirpath = dirpath
 
@@ -464,7 +464,7 @@ class digest_upload_response(config):
 class push_command(config):
     def __init__(self, taskid:int):
         self.taskid   = taskid
-        
+
 class push_config(config):
     def __init__(self, data:json):
         self.cmd  = push_command(data['taskid'])
