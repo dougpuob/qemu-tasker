@@ -420,6 +420,11 @@ class digest_file_response(config):
 #
 # Download
 #
+class transfer_kind(Enum):
+    unknown  = 0
+    upload   = 1
+    download = 2
+
 class download_command(config):
     def __init__(self, taskid:int, files:list, saveto:str):
         self.taskid   = taskid
@@ -456,6 +461,47 @@ class digest_download_response(config):
     def __init__(self, req:json):
         self.command = req['response']['command']
         self.reply = download_reply(req['response']['data'])
+
+
+#
+# Upload
+#
+class upload_command(config):
+    def __init__(self, taskid:int, files:list, saveto:str):
+        self.taskid   = taskid
+        
+        self.files = files
+        self.saveto   = saveto
+
+class upload_config(config):
+    def __init__(self, data:json):
+        self.cmd  = upload_command(data['taskid'], data['files'], data['saveto'])
+
+class upload_reply(config):
+    def __init__(self, data:json):
+        self.taskid  = data['taskid']
+        self.result  = data['result']
+        self.errcode = data['errcode']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
+
+class upload_request(config):
+    def __init__(self, command:upload_command):
+        self.request = request(command_kind().upload, command.toJSON())
+
+class digest_upload_request(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = upload_reply(req['response']['data'])
+
+class upload_response(config):
+    def __init__(self, reply:upload_reply):
+        self.response = response(command_kind().upload, reply.toJSON())
+
+class digest_upload_response(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = upload_reply(req['response']['data'])
 
 
 #

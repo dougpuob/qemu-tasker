@@ -73,14 +73,12 @@ try:
     elif 'download' == args.command:
         dwload = config.download_command(args.taskid, args.files, args.saveto)
         dwload_cfg = config.download_config(dwload.toJSON())
-        client(socket_addr).download_file(dwload_cfg, args.jsonreport)
+        client(socket_addr).transfer_file(config.transfer_kind.download, dwload_cfg, args.jsonreport)
 
-    # elif 'upload' == args.command:
-    #     file = config.file_command(args.taskid, args.sendfrom, args.sendto, args.pathfrom, args.pathto, args.config, args.port)
-    #     file_cfg = config.file_config(file.toJSON())
-    #     start_cfg = config.start_config(json.load(open(args.config)))
-    #     ssh_info = config.ssh_conn_info(args.host, args.port, start_cfg.cmd.ssh_login.username, start_cfg.cmd.ssh_login.password)
-    #     client(socket_addr).send_file(file_cfg, ssh_info, args.jsonreport)
+    elif 'upload' == args.command:
+        upload = config.upload_command(args.taskid, args.files, args.saveto)
+        upload_cfg = config.upload_config(upload.toJSON())
+        client(socket_addr).transfer_file(config.transfer_kind.upload, upload_cfg, args.jsonreport)
 
     elif 'status' == args.command:
         stat = config.status_command(args.taskid)

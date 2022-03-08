@@ -214,7 +214,7 @@ class client:
             print("[qemu-tasker] {}".format(text))
 
 
-    def download_file(self, download_cfg:config.download_config, is_json_report:bool=False):
+    def transfer_file(self, tfx_ind:config.transfer_kind, download_cfg:config.download_config, is_json_report:bool=False):
       
         stat_resp = None
         stat_cmd = config.status_command(download_cfg.cmd.taskid)
@@ -230,20 +230,20 @@ class client:
             is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
                                              stat_resp.reply.ssh_info.targetport,
                                              stat_resp.reply.ssh_info.username,
-                                             stat_resp.reply.ssh_info.password)
-            print("is_connected={}".format(is_connected))
-            
-            stdout_lines = []
-            stderr_lines = []
-            
+                                             stat_resp.reply.ssh_info.password)            
             final_cmdret = config.cmd_return()
             if is_connected:
                 for file_path in download_cfg.cmd.files:
                     basename = os.path.basename(file_path)
                     target_path = os.path.join(download_cfg.cmd.saveto, basename)
                     
-                    cmdret = mysshlink.download(file_path, target_path)
-                                        
+                    if   tfx_ind == config.transfer_kind.upload:
+                        cmdret = mysshlink.upload(file_path, target_path)
+                    elif tfx_ind == config.transfer_kind.download:
+                        cmdret = mysshlink.download(file_path, target_path)
+                    else:
+                        assert False, "wrong transfer kind !!!"
+                            
                     final_cmdret.errcode = cmdret.errcode                    
                     final_cmdret.info_lines.append('--------------------------------------------------')                    
                     final_cmdret.info_lines.extend(cmdret.info_lines)                    
@@ -275,6 +275,117 @@ class client:
             print(text)
             print("[qemu-tasker] {}".format(text))
 
+    # def download_file(self, download_cfg:config.download_config, is_json_report:bool=False):
+      
+    #     stat_resp = None
+    #     stat_cmd = config.status_command(download_cfg.cmd.taskid)
+    #     stat_req = config.status_request(stat_cmd)
+    #     stat_resp_text = self.send(stat_req.toTEXT())
+    #     stat_resp = config.digest_status_response(json.loads(stat_resp_text))
+      
+    #     cmdret = config.cmd_return()
+    #     file_resp = None
+        
+    #     try:
+    #         mysshlink = ssh_link()            
+    #         is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
+    #                                          stat_resp.reply.ssh_info.targetport,
+    #                                          stat_resp.reply.ssh_info.username,
+    #                                          stat_resp.reply.ssh_info.password)            
+    #         final_cmdret = config.cmd_return()
+    #         if is_connected:
+    #             for file_path in download_cfg.cmd.files:
+    #                 basename = os.path.basename(file_path)
+    #                 target_path = os.path.join(download_cfg.cmd.saveto, basename)
+                    
+    #                 cmdret = mysshlink.download(file_path, target_path)
+                                        
+    #                 final_cmdret.errcode = cmdret.errcode                    
+    #                 final_cmdret.info_lines.append('--------------------------------------------------')                    
+    #                 final_cmdret.info_lines.extend(cmdret.info_lines)                    
+    #                 final_cmdret.error_lines.append('--------------------------------------------------')
+    #                 final_cmdret.error_lines.extend(cmdret.error_lines)
+                                        
+    #                 if cmdret.errcode != 0:
+    #                     break
+            
+    #         reply_data = {
+    #             "taskid"  : download_cfg.cmd.taskid,
+    #             "result"  : (0 == cmdret.errcode),
+    #             "errcode" : final_cmdret.errcode,
+    #             "stderr"  : final_cmdret.error_lines,
+    #             "stdout"  : final_cmdret.info_lines,
+    #         }
+
+    #         dload_reply = config.download_reply(reply_data)
+    #         dload_resp = config.download_response(dload_reply)
+    #         dload_resp_text = dload_resp.toTEXT()
+    #         logging.info("● file_resp_text={}".format(dload_resp_text))
+    #         if is_json_report:
+    #             print(json.dumps(json.loads(dload_resp_text), indent=2, sort_keys=True))
+    #         else:
+    #             print("[qemu-tasker] command result: {}".format(dload_resp_text.reply.result))
+
+    #     except Exception as e:
+    #         text = str(e)
+    #         print(text)
+    #         print("[qemu-tasker] {}".format(text))
+
+    # def upload_file(self, upload_cfg:config.upload_config, is_json_report:bool=False):
+          
+    #     stat_resp = None
+    #     stat_cmd = config.status_command(upload_cfg.cmd.taskid)
+    #     stat_req = config.status_request(stat_cmd)
+    #     stat_resp_text = self.send(stat_req.toTEXT())
+    #     stat_resp = config.digest_status_response(json.loads(stat_resp_text))
+      
+    #     cmdret = config.cmd_return()
+    #     file_resp = None
+        
+    #     try:
+    #         mysshlink = ssh_link()            
+    #         is_connected = mysshlink.connect(stat_resp.reply.ssh_info.targetaddr,
+    #                                          stat_resp.reply.ssh_info.targetport,
+    #                                          stat_resp.reply.ssh_info.username,
+    #                                          stat_resp.reply.ssh_info.password)
+    #         final_cmdret = config.cmd_return()
+    #         if is_connected:
+    #             for file_path in upload_cfg.cmd.files:
+    #                 basename = os.path.basename(file_path)
+    #                 target_path = os.path.join(upload_cfg.cmd.saveto, basename)
+                    
+    #                 cmdret = mysshlink.upload(file_path, target_path)
+                                        
+    #                 final_cmdret.errcode = cmdret.errcode                    
+    #                 final_cmdret.info_lines.append('--------------------------------------------------')                    
+    #                 final_cmdret.info_lines.extend(cmdret.info_lines)                    
+    #                 final_cmdret.error_lines.append('--------------------------------------------------')
+    #                 final_cmdret.error_lines.extend(cmdret.error_lines)
+                                        
+    #                 if cmdret.errcode != 0:
+    #                     break
+            
+    #         reply_data = {
+    #             "taskid"  : upload_cfg.cmd.taskid,
+    #             "result"  : (0 == cmdret.errcode),
+    #             "errcode" : final_cmdret.errcode,
+    #             "stderr"  : final_cmdret.error_lines,
+    #             "stdout"  : final_cmdret.info_lines,
+    #         }
+
+    #         dload_reply = config.upload_reply(reply_data)
+    #         dload_resp = config.upload_response(dload_reply)
+    #         dload_resp_text = dload_resp.toTEXT()
+    #         logging.info("● file_resp_text={}".format(dload_resp_text))
+    #         if is_json_report:
+    #             print(json.dumps(json.loads(dload_resp_text), indent=2, sort_keys=True))
+    #         else:
+    #             print("[qemu-tasker] command result: {}".format(dload_resp_text.reply.result))
+
+    #     except Exception as e:
+    #         text = str(e)
+    #         print(text)
+    #         print("[qemu-tasker] {}".format(text))
 
     def send_status(self, stat_cfg:config.status_config, is_json_report:bool=False):
         stat_resp = None

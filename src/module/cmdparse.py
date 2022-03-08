@@ -61,11 +61,11 @@ class cmdargs():
         parser_download.add_argument('-F', '--files', required=True, nargs="+")
         parser_download.add_argument('-S', '--saveto', type=str, required=True)
 
-        # # subcommand `upload`
-        # parser_upload = subparsers.add_parser('upload', parents = [parent_parser], help='upload files from local to guest')
-        # parser_upload.add_argument('-T', '--taskid', type=int, required=True)
-        # parser_upload.add_argument('-F', '--files', type=str, required=True, nargs="?")
-        # parser_upload.add_argument('-S', '--saveto', type=str, required=True)
+        # subcommand `upload`
+        parser_upload = subparsers.add_parser('upload', parents = [parent_parser], help='upload files from local to guest')
+        parser_upload.add_argument('-T', '--taskid', type=int, required=True)
+        parser_upload.add_argument('-F', '--files', required=True, nargs="+")
+        parser_upload.add_argument('-S', '--saveto', type=str, required=True)
 
         # subcommand status
         parser_exec = subparsers.add_parser('status', parents = [parent_parser], help='query a specific QEMU status')

@@ -114,7 +114,7 @@ class ssh_link:
             file_from = self.conn_sftp.realpath(file_from)
             if file_from.find(':') > 0 and file_from.startswith('/'):
                 file_from = file_from[1:].replace('/', '\\')
-                        
+
             cmdret.info_lines.append("from={0}".format(file_from))
             cmdret.info_lines.append("  to={0}".format(file_to))
         
@@ -156,6 +156,9 @@ class ssh_link:
                         
             file_stat = os.stat(file_from)            
             
+            cmdret.info_lines.append("from={0}".format(file_from))
+            cmdret.info_lines.append("  to={0}".format(file_to))
+            
             with open(file_from, 'rb', buf_size) as fh_src, \
                 self.conn_sftp.open(file_to, f_flags, mode) as fh_dst:
                 data = fh_src.read(buf_size)        
@@ -163,10 +166,8 @@ class ssh_link:
                     fh_dst.write(data)
                     data = fh_src.read(buf_size)
 
-            diff = (datetime.now()-before)
-            rate = (file_stat.st_size / 1024000.0) / diff.total_seconds()
-    
-            cmdret.info_lines.append("Finished writing remote file in {0}, transfer rate {1} MB/s".format(diff, rate))
+            diff = (datetime.now()-before)            
+            cmdret.info_lines.append("time={}".format(diff))
             cmdret.errcode = 0
             
         except Exception as e:
