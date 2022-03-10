@@ -11,6 +11,7 @@ from module.server import server
 from module.client import client
 from module.cmdparse import cmdargs
 
+
 cmdarg = cmdargs()
 args = cmdarg.get_parsed_args()
 
