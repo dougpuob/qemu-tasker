@@ -8,9 +8,10 @@ import errno
 
 from time import sleep
 
-
+from module.path import OsdpPath
 from module import config
 from datetime import datetime
+
 
 #
 # ssh2-python
@@ -26,7 +27,10 @@ from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 
 
 class ssh_link:
+    
+    
     def __init__(self) -> None:
+        self.path = OsdpPath()
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.conn_sftp = None
         self.conn_ssh_session = None
@@ -214,14 +218,23 @@ class ssh_link:
                LIBSSH2_SFTP_S_IXUSR
 
         cmdret = config.cmd_return()
+        if self.path.is_abs(subdir):    
+            cmdret.errcode = -1    
+            cmdret.error_lines.append('Absolute path is not allowed !!!')
+            cmdret.error_lines.append('subdir={}'.format(subdir))
+            return cmdret
 
-        try:
-
-            path_list = []
-
-            splitor = '/'
+        try:            
             homedir = self.conn_sftp.realpath('.')
-            path_list.extend(subdir.split(splitor))
+            
+            splitor = ''
+            path_list = []
+            if config.os_kind().windows == self.os_kind:
+                path_list.extend(subdir.split('\\'))
+                splitor = '\\'
+            else:
+                path_list.extend(subdir.split('/'))
+                splitor = '/'
 
             expandpath = homedir
             for sub_path in path_list:

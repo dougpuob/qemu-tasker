@@ -6,6 +6,8 @@ import platform
 from module import config
 
 class OsdpPath():
+    
+    
     def __init__(self) -> None:
         pass
             
@@ -40,7 +42,13 @@ class OsdpPath():
             return path
 
 
-    def normpath(self, path:str) -> str:        
+    def normpath(self, path:str, os_kind=None) -> str:
+        if os_kind != None:
+            if os_kind == config.os_kind().windows:
+                return self.normpath_windows(path)
+            else:
+                return self.normpath_posix(path)        
+        
         aa = path.find(':')
         is_root_win = (path.find(':') >= 0)
         is_root_unix = path.startswith('/')
@@ -98,7 +106,39 @@ class OsdpPath():
         is_root = (new_path.find(':') !=  -1)
         new_path = self.remove_dot_path(new_path, is_root, '\\')
         return new_path
+
+
+    def realpath(self, path:str) -> str:
+        new_path = os.path.realpath(path)
+        new_path = self.normpath(new_path)
+        return new_path
+    
+    
+    def realpath_windows(self, path:str) -> str:
+        new_path = os.path.realpath(path)
+        return self.normpath_windows(new_path)
         
 
-        
-        
+    def realpath_posix(self, path:str) -> str:
+        new_path = os.path.realpath(path)
+        return self.normpath_posix(new_path)
+    
+    
+    def relpath(self, path1:str, path2:str) -> str:
+        path1 = self.realpath(path1)
+        path2 = self.realpath(path2)
+        short = ''
+        long = ''
+        ret = ''
+        if len(path1) > len(path2):
+            short = path2
+            long = path1
+            ret = long.replace(short, '')
+        elif len(path1) < len(path2):
+            short = path1
+            long = path2            
+            ret = long.replace(short, '')
+        else:
+            pass
+            
+        return ret        

@@ -23,25 +23,27 @@ from time import sleep
 from datetime import datetime
 from module import config
 from module.sshclient import ssh_link
+from module.path import OsdpPath
 from module.qmp import QEMUMonitorProtocol
 
 
 class qemu_instance:
     def __init__(self, socket_addr:config.socket_address, taskid:int, start_cmd:config.start_command):
+        
+        self.path = OsdpPath()
 
         # Resource definition
         self.BUFF_SIZE = 2048
         self.is_alive = True
         self.is_ready = False
         self.workdir_name = "qemu-tasker"
-        self.guest_os_cwd_raw = None
-        self.guest_os_work_dir = None
+        self.guest_os_cwd_raw = None        
         self.guest_os_kind = config.os_kind().unknown
+        self.guest_os_work_dir = "qemu-tasker"
         self.guest_os_pushpool_dir = None
 
         self.pushdir_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
-        self.host_pushdir_path = os.path.realpath(os.path.join("pushpool", self.pushdir_name))
-        print(self.host_pushdir_path)
+        self.host_pushdir_path = self.path.realpath(os.path.join("pushpool", self.pushdir_name))
 
         # qemu base args
         self.base_args = []
@@ -212,7 +214,7 @@ class qemu_instance:
         dirlist = os.listdir(self.host_pushdir_path)
         for file_from in dirlist:            
             fullpath = os.path.join(self.host_pushdir_path, file_from)
-            fullpath = self.normpath_unix(fullpath)
+            fullpath = self.path.normpath_posix(fullpath)
             
             if os.path.exists(fullpath):
                 selected_files.append(fullpath)
@@ -223,7 +225,7 @@ class qemu_instance:
             for file_from in selected_files:
                 basename = os.path.basename(file_from)
                 file_to = os.path.join(self.guest_os_pushpool_dir, basename)
-                file_to = self.normpath(file_to)
+                file_to = self.path.normpath(file_to)
                 
                 cmdret = self.ssh_link.upload(file_from, file_to)
                 final_cmdret.info_lines.extend(cmdret.info_lines)
@@ -336,23 +338,18 @@ class qemu_instance:
         else:
             cmdret = self.ssh_link.execute('pwd')
             self.guest_os_cwd_raw = ''.join(cmdret.info_lines).strip()
+        
 
-
+        # Set working directory.
+        self.guest_os_pushpool_dir = self.path.normpath(os.path.join(self.guest_os_work_dir, "pushpool"), self.guest_os_kind)
+        self.ssh_link.set_working_dir(self.guest_os_work_dir)        
+        self.ssh_link.set_os_kind(self.guest_os_kind)
+        print("self.guest_os_pushpool_dir={}".format(self.guest_os_pushpool_dir))
+        
+        
         # Create filepool directory.
         cmdret = self.ssh_link.mkdir(self.guest_os_pushpool_dir)
         
-        # Set working directory.
-        if config.os_kind().windows == self.guest_os_kind:
-            self.guest_os_work_dir = self.guest_os_cwd_raw + "\\" + self.workdir_name
-            self.guest_os_pushpool_dir = self.guest_os_work_dir + "\\pushpool"
-        else:
-            self.guest_os_work_dir = self.guest_os_cwd_raw + "/" + self.workdir_name
-            self.guest_os_pushpool_dir = self.guest_os_work_dir + "/pushpool"
-            
-
-        self.ssh_link.set_working_dir(self.guest_os_work_dir)        
-        self.ssh_link.set_os_kind(self.guest_os_kind)
-
         
         if self.guest_os_kind != config.os_kind().unknown:
             self.status = config.task_status().ready

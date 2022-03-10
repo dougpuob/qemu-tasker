@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import json
+import platform
 import socket
 import logging
 
@@ -21,6 +22,7 @@ from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 # Internal modules
 #
 from module import config
+from module.path import OsdpPath
 from module.sshclient import ssh_link
 
 
@@ -28,6 +30,9 @@ class client:
 
 
     def __init__(self, host_addr:config.socket_address):
+        
+        self.path = OsdpPath()
+        
         self.host_addr = host_addr
         self.start_cfg:config.start_config = None
 
@@ -37,17 +42,6 @@ class client:
 
     def __del__(self):
         pass
-
-    def normpath(self, path:str, os_kind:config.os_kind):
-        new_path = None
-        if os_kind == config.os_kind().windows:
-            new_path = path.replace('/', '\\')
-        elif os_kind == config.os_kind().linux or \
-             os_kind == config.os_kind().macos:
-            new_path = path.replace('\\', '/')        
-        else:
-            new_path = path
-        return new_path
 
 
     #==========================================================================
@@ -255,15 +249,20 @@ class client:
     def run_download(self, download_cfg:config.download_config, is_json_report:bool=False):
         
         final_cmdret = config.cmd_return()
+        final_cmdret.errcode = 0
         
-        is_exist = os.path.exists(download_cfg.cmd.dirpath)
-        if not is_exist:
-            final_cmdret.errcode = -1
-            final_cmdret.error_lines.append("The specific local directory is not there !!!")
-            final_cmdret.error_lines.append("dirpath={}".format(download_cfg.cmd.dirpath))
-        else:
-            final_cmdret.errcode = 0
 
+        if None == download_cfg.cmd.dirpath:
+            final_cmdret.errcode = -1
+            final_cmdret.error_lines.append("The specific dirpath cannot be EMPTY !!!")
+            return final_cmdret
+            
+        if not os.path.exists(download_cfg.cmd.dirpath):
+            final_cmdret.errcode = -2
+            final_cmdret.error_lines.append("The specific dirpath directory is not there !!!")
+            final_cmdret.error_lines.append("dirpath={}".format(download_cfg.cmd.dirpath))
+            return final_cmdret
+        
         stat_resp = None
         stat_cmd = config.status_command(download_cfg.cmd.taskid)
         stat_req = config.status_request(stat_cmd)
@@ -279,9 +278,11 @@ class client:
             
             if is_connected and (0 == final_cmdret.errcode):
                 for file_path in download_cfg.cmd.files:
-                    file_path = file_path.replace('\\', '/')
-                    basename = os.path.basename(file_path)
+                    file_path = self.path.normpath(file_path)
+                    basename = self.path.basename(file_path)
+                    
                     target_path = os.path.join(download_cfg.cmd.dirpath, basename)
+                    target_path = self.path.normpath(target_path)
 
                     cmdret_exist = mysshlink.exists(file_path)
                     final_cmdret.errcode = cmdret_exist.errcode
@@ -336,30 +337,45 @@ class client:
             final_cmdret = config.cmd_return()
             final_cmdret.errcode = 0
 
-            if is_connected and upload_cfg.cmd.dirpath:
-                dirpath = upload_cfg.cmd.dirpath
-                retcmd = mysshlink.mkdir(dirpath)
-                final_cmdret.errcode = retcmd.errcode
-                final_cmdret.error_lines.extend(retcmd.error_lines)
-                final_cmdret.info_lines.extend(retcmd.info_lines)
-
-            if is_connected and ( 0 == final_cmdret.errcode):
+            guest_os_kind = stat_resp.reply.guest_os_kind
+            guest_work_dir = stat_resp.reply.guest_work_dir
+            
+            
+            guest_dirpath = guest_work_dir
+            if upload_cfg.cmd.dirpath:
+                guest_dirpath = os.path.join(guest_work_dir, upload_cfg.cmd.dirpath)    
+                            
+            
+            final_cmdret.info_lines.append('guest_dirpath={}'.format(guest_dirpath))            
+            retcmd = mysshlink.mkdir(guest_dirpath)
+            final_cmdret.errcode = retcmd.errcode
+            final_cmdret.error_lines.extend(retcmd.error_lines)
+            final_cmdret.info_lines.extend(retcmd.info_lines)           
+            
+            # cmdret = mysshlink.exists(guest_dirpath)
+            # final_cmdret.errcode = cmdret.errcode
+            # final_cmdret.info_lines.extend(cmdret.info_lines)
+            # final_cmdret.error_lines.extend(cmdret.error_lines)
+                    
+            if is_connected and ( 0 == final_cmdret.errcode):                    
                 for file_path in upload_cfg.cmd.files:
+                    
+                    if platform.system() == 'Windows':
+                        file_path = self.path.normpath_windows(file_path)
+                    else:
+                        file_path = self.path.normpath_posix(file_path)
+                    basename = self.path.basename(file_path)                                        
                                         
-                    file_path =  self.normpath(file_path, config.os_kind().linux)
-                    basename = os.path.basename(file_path)
-
-                    guest_work_dir = stat_resp.reply.guest_work_dir
-                    guest_dirpath = upload_cfg.cmd.dirpath
+                    final_cmdret.info_lines.append('--------------------------------------------------')
+                    final_cmdret.info_lines.append('guest_os_kind={}'.format(guest_os_kind))
                     
-                    guest_os_kind = stat_resp.reply.guest_os_kind                    
+                    final_cmdret.info_lines.append('file_path={}'.format(file_path))
                     
-                    subdir = ''                    
-                    if upload_cfg.cmd.dirpath:
-                        subdir = '/' + guest_dirpath
+                    target_path = os.path.join(guest_dirpath, basename)
+                    final_cmdret.info_lines.append('1 target_path={}'.format(target_path))
                     
-                    target_path = guest_work_dir + subdir + '/' + basename                    
-                    target_path = self.normpath(target_path, guest_os_kind)
+                    target_path = self.path.normpath(target_path, guest_os_kind)
+                    final_cmdret.info_lines.append('2 target_path={}'.format(target_path))
                     
                     cmdret = mysshlink.upload(file_path, target_path)
 

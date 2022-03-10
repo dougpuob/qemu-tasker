@@ -10,9 +10,13 @@ import json
 
 from module import qemu
 from module import config
+from module.path import OsdpPath
+
 
 class server:
     def __init__(self, socket_addr:config.socket_address):
+        
+        self.path = OsdpPath()
 
         # Connection
         self.socket_addr = socket_addr
@@ -36,6 +40,7 @@ class server:
         self.thread_postpone  = None
         self.thread_tcp = None
 
+
     def __del__(self):
         print("DEL!!!")
 
@@ -45,6 +50,7 @@ class server:
         self.thread_tcp = None
         self.thread_task = None
         self.thread_postpone = None
+
 
     def terminate(self):
         print("TERMINATE!!!")
@@ -56,12 +62,14 @@ class server:
         if self.listen_tcp_conn:
             self.listen_tcp_conn.close()
 
+
     def stop(self):
         print("STOP!!!")
         self.is_started = False
 
+
     def start(self, task_filepool:str):
-        self.filepool_basepath = os.path.realpath(task_filepool)
+        self.filepool_basepath = self.path.realpath(task_filepool)
 
         # Check and count longlife.
         self.thread_task = threading.Thread(target = self.thread_routine_checking_longlife)
@@ -79,11 +87,13 @@ class server:
         self.thread_tcp.start()
         self.thread_tcp.join()
 
+
     def get_bool(self, result):
         if result:
             return "True "
         else:
             return "False"
+
 
     def thread_routine_checking_longlife(self):
         print("{}● thread_routine_longlife_counting{}".format("", " ..."))
@@ -116,6 +126,7 @@ class server:
                     qemu_inst.kill()
                     self.qemu_instance_list.remove(qemu_inst)
 
+
     def thread_routine_killing_waiting(self):
         print("{}● thread_routine_killing_waiting{}".format("", " ..."))
 
@@ -130,11 +141,13 @@ class server:
 
             time.sleep(1)
 
+
     def get_new_taskid(self):
         logging.info("socker.py!server::get_new_taskid()")
 
         self.task_index = self.task_index + 1
         return self.task_base_id + (self.task_index * 10)
+
 
     def find_target_instance(self, taskid) -> qemu.qemu_instance:
         target_qemu_inst = None
@@ -143,6 +156,7 @@ class server:
                 target_qemu_inst = qemu_inst
                 break
         return target_qemu_inst
+
 
     def get_wrong_taskid_reply_data(self, taskid):
         reply_data = {
@@ -154,6 +168,7 @@ class server:
         }
         return reply_data
 
+
     def get_ssh_not_ready_reply_data(self, taskid):
         reply_data = {
             "taskid"    : taskid,
@@ -163,6 +178,7 @@ class server:
             "stdout"    : ""
         }
         return reply_data
+
 
     def get_qmp_not_ready_reply_data(self, taskid):
         reply_data = {
@@ -174,6 +190,7 @@ class server:
         }
         return reply_data
 
+
     def get_unsupported_reply_data(self, taskid):
         reply_data = {
             "taskid"    : taskid,
@@ -183,6 +200,7 @@ class server:
             "stdout"    : ""
         }
         return reply_data
+
 
     def command_to_exec(self, command:config.exec_command):
         qemu_inst = self.find_target_instance(command.taskid)
@@ -205,6 +223,7 @@ class server:
             }
             return reply_data
 
+
     def command_to_kill(self, kill_cmd:config.kill_command):
         qemu_inst = self.find_target_instance(kill_cmd.taskid)
         if None == qemu_inst:
@@ -220,6 +239,7 @@ class server:
                 "stdout"    : qemu_inst.stdout
             }
             return reply_data
+
 
     def command_to_kill_all(self, kill_cmd:config.kill_command):
         kill_numb = 0
@@ -237,6 +257,7 @@ class server:
             "stdout"    : "{} QEMU instance was/were killed.".format(kill_numb) }
 
         return reply_data
+
 
     def command_to_qmp(self, qmp_cmd:config.qmp_command):
         qemu_inst = self.find_target_instance(qmp_cmd.taskid)
@@ -315,9 +336,10 @@ class server:
             filepool = ''
             if qemu_inst.guest_os_work_dir:
                 filepool = os.path.join(qemu_inst.guest_os_work_dir, qemu_inst.pushdir_name)
-                
-                if filepool.find(':') > 0:
-                    filepool = filepool.replace('/', '\\')                
+                if qemu_inst.guest_os_kind == config.os_kind().windows:
+                    filepool = self.path.normpath_windows(filepool)
+                else:
+                    filepool = self.path.normpath_posix(filepool)
                     
             reply_data = {
                     "result"  : True,
@@ -369,6 +391,7 @@ class server:
         self.qemu_instance_list.append(qemu_inst)
         qemu_inst.wait_to_create()
         return qemu_inst
+
 
     def thread_routine_processing_command(self, conn:socket.socket):
         print("{}● thread_routine_processing_command{}".format("", " ..."))
