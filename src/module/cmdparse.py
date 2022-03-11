@@ -19,8 +19,8 @@ class cmdargs():
 
         # subcommand server
         parser_server = subparsers.add_parser('server', parents = [parent_parser], help='start a server daemon')
-        parser_server.add_argument('-L', '--longlife', type=int, default=30)        
-        parser_server.add_argument('-F', '--filepool', type=str, default="./filepool")
+        parser_server.add_argument('-L', '--longlife', type=int, default=30)
+        parser_server.add_argument('-C', '--config', type=str, default="./config.json")
 
         # subcommand start
         parser_start = subparsers.add_parser('start', parents = [parent_parser], help='launch a QEMU achine instance')

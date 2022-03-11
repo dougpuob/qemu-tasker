@@ -17,7 +17,8 @@ class server:
     def __init__(self, socket_addr:config.socket_address):
         
         self.path = OsdpPath()
-
+        self.server_variables_dict = {}
+            
         # Connection
         self.socket_addr = socket_addr
         self.listen_tcp_conn = None
@@ -25,7 +26,7 @@ class server:
 
         # Resource
         self.occupied_ports = []
-        self.filepool_basepath = ""
+        self.server_pushpool_dir = ""
 
         # Status
         self.is_started = True
@@ -68,8 +69,20 @@ class server:
         self.is_started = False
 
 
-    def start(self, task_filepool:str):
-        self.filepool_basepath = self.path.realpath(task_filepool)
+    def start(self, config_path:str):
+        print("config_path={}".format(config_path))
+        if os.path.exists(config_path):
+            with open(config_path) as f:
+                config = json.load(f)
+            
+                print("SERVER_PUSHPOOL_DIR    = {}".format(config['SERVER_PUSHPOOL_DIR']))
+                print("SERVER_QCOW2_IMAGE_DIR = {}".format(config['SERVER_QCOW2_IMAGE_DIR']))
+                            
+                self.server_pushpool_dir = self.path.realpath(config['SERVER_PUSHPOOL_DIR'])
+                self.server_variables_dict = config
+                print("self.server_variables_dict={}".format(self.server_variables_dict))
+        else:
+            assert False, 'The config.json not found !!!'
 
         # Check and count longlife.
         self.thread_task = threading.Thread(target = self.thread_routine_checking_longlife)
@@ -387,10 +400,25 @@ class server:
 
 
     def create_qemu_instance(self, taskid:int, start_cfg:config.start_config):
-        qemu_inst = qemu.qemu_instance(self.socket_addr, taskid, start_cfg.cmd)
+        new_start_cfg = self.apply_server_variables(start_cfg.cmd)
+        qemu_inst = qemu.qemu_instance(self.socket_addr, taskid, new_start_cfg)
         self.qemu_instance_list.append(qemu_inst)
         qemu_inst.wait_to_create()
         return qemu_inst
+
+
+    def apply_server_variables(self, start_cmd:config.start_command) -> str:
+        new_start_cmd = start_cmd
+        for idx, val in enumerate(new_start_cmd.arguments):
+            for key in self.server_variables_dict:
+                key_def = "${" + key + "}"
+                if val.find(key_def) != -1:
+                    new_start_cmd.arguments[idx] = val.replace(key_def, self.server_variables_dict[key])
+        return new_start_cmd
+        
+                
+    def verify_arguments(self):
+        pass
 
 
     def thread_routine_processing_command(self, conn:socket.socket):

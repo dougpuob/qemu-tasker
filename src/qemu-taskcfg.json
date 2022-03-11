@@ -12,7 +12,7 @@
     "-device",
     "usb-tablet",
     "-drive",
-    "file=/home/dougpuob/workspace/qemu-runner/windows-10-20h2.qcow2,format=qcow2,snapshot=on"
+    "file=${SERVER_QCOW2_IMAGE_DIR}/windows-10-20h2.qcow2,format=qcow2,snapshot=on"
   ],
   "ssh_login": {
     "username": "dougpuob",
