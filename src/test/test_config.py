@@ -1,10 +1,11 @@
 import unittest
+import platform
 import sys
 import os
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(TEST_DIR, os.pardir))
-sys.path.insert(0, PROJECT_DIR) 
+sys.path.append(PROJECT_DIR)
 
 from module.config import server_config
 from module.config import server_config_default

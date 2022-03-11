@@ -1,7 +1,17 @@
+#
+# Files
+#
 *.log
 *.out
 *.pcap
 *.bak
+*.pyc
+.coverage
+
+
+#
+# Directories
+#
 __pycache__
 .idea
 .vscode

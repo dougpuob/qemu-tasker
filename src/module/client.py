@@ -321,6 +321,7 @@ class client:
             print(text)
             print("[qemu-tasker] {}".format(text))
 
+
     def run_upload(self, upload_cfg:config.upload_config, is_json_report:bool=False):
 
         stat_cmd = config.status_command(upload_cfg.cmd.taskid)
