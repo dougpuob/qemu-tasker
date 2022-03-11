@@ -1,1 +1,1 @@
-python -m pytest -v --cov src/test -W ignore::DeprecationWarning
+python -m pytest -v --cov src/test
