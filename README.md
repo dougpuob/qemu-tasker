@@ -29,9 +29,17 @@ pip3 install ssh2-python
 ### Quick Start
 The server IP is `172.17.100.17`.
 
-1. Start the server `python3 qemu-tasker.py --host 172.17.100.17 server --config config.json` at server side .
-2. Start an QEMU machine `python3 qemu-tasker.py --host 172.17.100.17 --config qemu-taskcfg-01.json` at client side.
+#### Server side:
+1. Start the server.
+   - `python3 qemu-tasker.py --host 172.17.100.17 server --config config.json`
 
+#### Local side:
+1. Query server information.
+   - `python3 qemu-tasker.py --host 172.17.100.17 info`
+1. Start an QEMU machine.
+   - `python3 qemu-tasker.py --host 172.17.100.17 start --config qemu-taskcfg-01.json`
+1. Execute a command on Guest OS.
+   - `python3 qemu-tasker.py --host 172.17.100.17 exec --taskid 10010 --program ipconfig`
 
 ----------
 
