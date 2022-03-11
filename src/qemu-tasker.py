@@ -65,6 +65,11 @@ try:
         stat_cfg = config.status_config(stat.toJSON())
         client(socket_addr).send_status(stat_cfg, args.jsonreport)
 
+    elif 'info' == args.command:
+        info = config.info_command()
+        info_cfg = config.info_config()
+        client(socket_addr).send_info(info_cfg, args.jsonreport)
+        
     elif 'list' == args.command:
         list_cmd = config.list_command(args.taskid, args.dirpath)
         list_cfg = config.list_config(list_cmd.toJSON())

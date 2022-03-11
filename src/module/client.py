@@ -194,6 +194,30 @@ class client:
             print("[qemu-tasker] command result: {}".format(stat_resp.reply.result))
 
 
+    def send_info(self, info_cfg:config.info_config, is_json_report:bool=False):
+        info_resp = None
+        info_req = config.info_request(info_cfg.cmd)
+        info_resp_text = self.send(info_req.toTEXT())
+
+        logging.info("● info_resp_text={}".format(info_resp_text))
+        try:
+            info_resp = config.digest_info_response(json.loads(info_resp_text))
+        except Exception as e:
+            exception_text = "info_resp_text={}".format(info_resp_text)
+            print(exception_text)
+            logging.info(exception_text)
+
+            exception_text = "exception={}".format(str(e))
+            print(exception_text)
+            logging.info(exception_text)
+
+        if is_json_report:
+            print(json.dumps(json.loads(info_resp_text), indent=2, sort_keys=True))
+        else:
+            print("[qemu-tasker] command result: {}".format(info_resp.reply.result))
+
+
+
     #==========================================================================
     #==========================================================================
     #==========================================================================

@@ -70,6 +70,10 @@ class cmdargs():
         # subcommand status
         parser_exec = subparsers.add_parser('status', parents = [parent_parser], help='query a specific QEMU status')
         parser_exec.add_argument('-T', '--taskid', type=int, required=True)
+        
+        # subcommand info
+        parser_info = subparsers.add_parser('info', parents = [parent_parser], help='get server system information')
+
 
     def print_help(self):
         args = self.parser.print_help()

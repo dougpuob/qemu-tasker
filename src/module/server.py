@@ -27,6 +27,7 @@ class server:
         # Resource
         self.occupied_ports = []
         self.server_pushpool_dir = ""
+        self.server_qcow2image_dir = ""
 
         # Status
         self.is_started = True
@@ -79,7 +80,9 @@ class server:
                 print("SERVER_QCOW2_IMAGE_DIR = {}".format(config['SERVER_QCOW2_IMAGE_DIR']))
                             
                 self.server_pushpool_dir = self.path.realpath(config['SERVER_PUSHPOOL_DIR'])
+                self.server_qcow2image_dir = self.path.realpath(config['SERVER_QCOW2_IMAGE_DIR'])
                 self.server_variables_dict = config
+                
                 print("self.server_variables_dict={}".format(self.server_variables_dict))
         else:
             assert False, 'The config.json not found !!!'
@@ -378,6 +381,26 @@ class server:
             return reply_data
 
 
+    def command_to_info(self, info_cmd:config.info_command):
+        qcow2_files = []
+        files = os.listdir(self.server_qcow2image_dir)
+        for file in files:
+            if file.endswith(".qcow2"):
+                qcow2_files.append(file)
+            
+        reply_data = {
+                "result"  : True,
+                "errcode" : 0,
+                "stdout"  : [],
+                "stderr"  : [],
+                "status"  : [],
+                "variables" : self.server_variables_dict,
+                "instances" : "",
+                "images"    : qcow2_files
+            }
+        return reply_data
+
+
     def thread_routine_listening_connections(self):
         print("{}● thread_routine_listening_connections{}".format("", " ..."))
         print("  socket_addr.addr={}".format(self.socket_addr.addr))
@@ -507,6 +530,15 @@ class server:
                     stat_r = config.status_reply(reply_data)
                     stat_resp = config.status_response(stat_r)
                     resp_text = stat_resp.toTEXT()
+
+                # info
+                elif config.command_kind().info == client_data['request']['command']:
+                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                    info_cfg = config.info_config()
+                    reply_data = self.command_to_info(info_cfg.cmd)
+                    info_r = config.info_reply(reply_data)
+                    info_resp = config.info_response(info_r)
+                    resp_text = info_resp.toTEXT()
 
                 # Others
                 else:

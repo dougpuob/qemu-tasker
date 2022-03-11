@@ -120,6 +120,7 @@ class command_kind:
         self.upload   = "upload"
         self.push     = "push"
         self.status   = "status"
+        self.info     = "info"
 
 class task_status:
     def __init__(self):
@@ -552,4 +553,48 @@ class digest_status_response(config):
     def __init__(self, req:json):
         self.command = req['response']['command']
         self.reply = status_reply(req['response']['data'])
+
+
+#
+# Info
+#
+class info_command(config):
+    def __init__(self):
+        pass
+
+class info_config(config):
+    def __init__(self):
+        self.cmd  = info_command()
+
+class info_reply(config):
+    def __init__(self, data:json):
+        # base
+        self.result  = data['result']
+        self.errcode = data['errcode']
+        self.stderr  = data['stderr']
+        self.stdout  = data['stdout']
+
+        # extra
+        self.variables = data['variables']
+        self.instances = data['instances']
+        self.images = data['images']
+        
+
+class info_request(config):
+    def __init__(self, command:info_command):
+        self.request = request(command_kind().info, command.toJSON())
+
+class digest_info_request(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = info_reply(req['response']['data'])
+
+class info_response(config):
+    def __init__(self, reply:info_reply):
+        self.response = response(command_kind().info, reply.toJSON())
+
+class digest_info_response(config):
+    def __init__(self, req:json):
+        self.command = req['response']['command']
+        self.reply = info_reply(req['response']['data'])
 
