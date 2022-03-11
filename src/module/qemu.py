@@ -7,7 +7,6 @@ from socket import timeout
 from sys import stderr, stdout
 import os
 import base64
-import paramiko
 import threading
 import subprocess
 import logging
