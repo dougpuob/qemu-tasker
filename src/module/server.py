@@ -140,7 +140,7 @@ class server:
 
                 else:
                     qemu_inst.kill()
-                    self.qemu_instance_list.remove(qemu_inst)
+                    #self.qemu_instance_list.remove(qemu_inst)
 
 
     def thread_routine_killing_waiting(self):
