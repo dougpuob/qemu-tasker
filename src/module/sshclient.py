@@ -27,8 +27,7 @@ from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 
 
 class ssh_link:
-    
-    
+
     def __init__(self) -> None:
         self.path = OsdpPath()
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -39,7 +38,7 @@ class ssh_link:
 
     def set_working_dir(self, working_dir:str):
         self.working_dir = working_dir
-        
+
     def set_os_kind(self, os_kind:config.os_kind):
         self.os_kind = os_kind
 
@@ -80,7 +79,7 @@ class ssh_link:
         ssh_chanl = None
 
         try:
-            ssh_chanl = self.conn_ssh_session.open_session()            
+            ssh_chanl = self.conn_ssh_session.open_session()
             if self.working_dir:
                 if self.os_kind == config.os_kind().windows:
                     ssh_chanl.execute("cd {} && {}".format(self.working_dir, cmdstr))
@@ -113,9 +112,9 @@ class ssh_link:
             cmdret.errcode = ssh_chanl.get_exit_status()
 
         except Exception as e:
-            print(e)
-            logging.exception(e)
-            cmdret.error_lines.append(str(e))
+            errmsg = ("exception={0}".format(e))
+            logging.exception(errmsg)
+            cmdret.error_lines.append(errmsg)
 
         finally:
             if ssh_chanl:
@@ -124,27 +123,29 @@ class ssh_link:
         return cmdret
 
     def realpath(self, path:str):
-    
+
         cmdret = config.cmd_return()
 
         try:
             cmdret.info_lines.append("raw_path={}".format(path))
-            
+
             real_path = self.conn_sftp.realpath(path)
             cmdret.info_lines.append("real_path={}".format(real_path))
-            
+
             cmdret.errcode = 0
 
         except Exception as e:
+            errmsg = ("exception={0}".format(e))
+            logging.exception(errmsg)
             cmdret.error_lines.append("exception occured at realpath() function !!!")
-            cmdret.error_lines.append(("exception={0}".format(e)))
+            cmdret.error_lines.append(errmsg)
             cmdret.errcode = -1
 
         finally:
             return cmdret
-        
+
     def stat(self, path:str):
-        
+
         cmdret = config.cmd_return()
 
         try:
@@ -156,12 +157,14 @@ class ssh_link:
             cmdret.info_lines.append("attrs.mtime={}".format(attrs.mtime ))
             cmdret.info_lines.append("attrs.flags={}".format(attrs.flags  ))
             cmdret.info_lines.append("attrs.filesize={}".format(attrs.filesize ))
-            
+
             cmdret.errcode = 0
 
         except Exception as e:
+            errmsg = "exception={0}".format(e)
+            logging.exception(errmsg)
             cmdret.error_lines.append("exception occured at stat() function !!!")
-            cmdret.error_lines.append(("exception={0}".format(e)))
+            cmdret.error_lines.append((errmsg))
             cmdret.errcode = -1
 
         finally:
@@ -202,6 +205,7 @@ class ssh_link:
 
         except Exception as e:
             errmsg = ("exception={0}".format(e))
+            logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
             cmdret.errcode = -1
 
@@ -218,15 +222,15 @@ class ssh_link:
                LIBSSH2_SFTP_S_IXUSR
 
         cmdret = config.cmd_return()
-        if self.path.is_abs(subdir):    
-            cmdret.errcode = -1    
+        if self.path.is_abs(subdir):
+            cmdret.errcode = -1
             cmdret.error_lines.append('Absolute path is not allowed !!!')
             cmdret.error_lines.append('subdir={}'.format(subdir))
             return cmdret
 
-        try:            
+        try:
             homedir = self.conn_sftp.realpath('.')
-            
+
             splitor = ''
             path_list = []
             if config.os_kind().windows == self.os_kind:
@@ -254,6 +258,7 @@ class ssh_link:
 
         except Exception as e:
             errmsg = ("exception={0}".format(e))
+            logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
             cmdret.errcode = -1
 
@@ -288,6 +293,7 @@ class ssh_link:
 
         except Exception as e:
             errmsg = ("exception={0}".format(e))
+            logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
             cmdret.errcode = -1
 
@@ -305,19 +311,19 @@ class ssh_link:
                LIBSSH2_SFTP_S_IROTH
 
         f_flags = LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE
-        
+
         if True != os.path.exists(file_from):
             cmdret.errcode = -1
             cmdret.error_lines.append("The specific file is not there !!!")
             cmdret.error_lines.append("file_from={}".format(file_from))
             return cmdret
-        
+
         # cmdret = self.exists(file_to)
         # if cmdret.errcode != 0:
         #     cmdret.error_lines.append("The specific file is not there !!!")
         #     cmdret.error_lines.append("file_to={}".format(file_to))
         #     return cmdret
-        
+
         try:
             before = datetime.now()
 
@@ -338,6 +344,7 @@ class ssh_link:
 
         except Exception as e:
             errmsg = "exception={0}".format(str(e))
+            logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
             cmdret.errcode = -1
 

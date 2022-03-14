@@ -531,8 +531,8 @@ class status_reply(config):
                                  data['ssh_info']['password'])
         self.host_pushpool = data['host_pushpool']
         self.guest_pushpool = data['guest_pushpool']
-        self.guest_work_dir = data['guest_work_dir']        
-        self.guest_os_kind = data['guest_os_kind']        
+        self.guest_work_dir = data['guest_work_dir']
+        self.guest_os_kind = data['guest_os_kind']
         self.is_connected_qmp = data['is_connected_qmp']
         self.is_connected_ssh = data['is_connected_ssh']
 
@@ -578,7 +578,7 @@ class info_reply(config):
         self.variables = data['variables']
         self.instances = data['instances']
         self.images = data['images']
-        
+
 
 class info_request(config):
     def __init__(self, command:info_command):

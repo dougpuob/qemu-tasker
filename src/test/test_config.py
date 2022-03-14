@@ -27,8 +27,8 @@ class test_server_config(unittest.TestCase):
                 "password": "dougpuob"
             }
         }
-        
-        srv_cfg = server_config(json_data)        
+
+        srv_cfg = server_config(json_data)
         self.assertEqual(srv_cfg.toJSON(), json_data)
 
 
@@ -48,9 +48,9 @@ class test_server_config_default(unittest.TestCase):
                 "password": "dougpuob"
             }
         }
-        
-        srv_cfg = server_config_default()        
+
+        srv_cfg = server_config_default()
         self.assertEqual(srv_cfg.toJSON(), json_data)
-        
+
 if __name__ == '__main__':
     unittest.main()

@@ -8,6 +8,7 @@ import time
 import logging
 import json
 
+
 from module import qemu
 from module import config
 from module.path import OsdpPath
@@ -15,10 +16,10 @@ from module.path import OsdpPath
 
 class server:
     def __init__(self, socket_addr:config.socket_address):
-        
+
         self.path = OsdpPath()
         self.server_variables_dict = {}
-            
+
         # Connection
         self.socket_addr = socket_addr
         self.listen_tcp_conn = None
@@ -44,7 +45,7 @@ class server:
 
 
     def __del__(self):
-        print("DEL!!!")
+        logging.info("DEL!!!")
 
         self.terminate()
 
@@ -55,7 +56,7 @@ class server:
 
 
     def terminate(self):
-        print("TERMINATE!!!")
+        logging.info("TERMINATE!!!")
 
         for qemu_inst in self.qemu_instance_list:
             qemu_inst.kill()
@@ -66,26 +67,28 @@ class server:
 
 
     def stop(self):
-        print("STOP!!!")
+        logging.info("STOP!!!")
         self.is_started = False
 
 
     def start(self, config_path:str):
-        print("config_path={}".format(config_path))
+        logging.info("config_path={}".format(config_path))
         if os.path.exists(config_path):
             with open(config_path) as f:
                 config = json.load(f)
-            
-                print("SERVER_PUSHPOOL_DIR    = {}".format(config['SERVER_PUSHPOOL_DIR']))
-                print("SERVER_QCOW2_IMAGE_DIR = {}".format(config['SERVER_QCOW2_IMAGE_DIR']))
-                            
+
+                logging.info("SERVER_PUSHPOOL_DIR    = {}".format(config['SERVER_PUSHPOOL_DIR']))
+                logging.info("SERVER_QCOW2_IMAGE_DIR = {}".format(config['SERVER_QCOW2_IMAGE_DIR']))
+
                 self.server_pushpool_dir = self.path.realpath(config['SERVER_PUSHPOOL_DIR'])
                 self.server_qcow2image_dir = self.path.realpath(config['SERVER_QCOW2_IMAGE_DIR'])
                 self.server_variables_dict = config
-                
-                print("self.server_variables_dict={}".format(self.server_variables_dict))
+
+                logging.info("self.server_variables_dict={}".format(self.server_variables_dict))
         else:
+            logging.exception('The config.json not found !!!')
             assert False, 'The config.json not found !!!'
+
 
         # Check and count longlife.
         self.thread_task = threading.Thread(target = self.thread_routine_checking_longlife)
@@ -112,7 +115,7 @@ class server:
 
 
     def thread_routine_checking_longlife(self):
-        print("{}● thread_routine_longlife_counting{}".format("", " ..."))
+        logging.info("thread_routine_longlife_counting ...")
 
         while self.is_started:
             time.sleep(1)
@@ -144,7 +147,7 @@ class server:
 
 
     def thread_routine_killing_waiting(self):
-        print("{}● thread_routine_killing_waiting{}".format("", " ..."))
+        logging.info("thread_routine_killing_waiting ...")
 
         while self.is_started:
             # Handling killing waiting list.
@@ -221,15 +224,15 @@ class server:
     def command_to_exec(self, command:config.exec_command):
         qemu_inst = self.find_target_instance(command.taskid)
         if None == qemu_inst:
-            print("{}● get_wrong_taskid_reply_data{}".format("  ", " !!!"))
+            logging.warning("get_wrong_taskid_reply_data !!!")
             return self.get_wrong_taskid_reply_data(command.taskid)
         elif not qemu_inst.is_ssh_connected():
-            print("{}● get_ssh_not_ready_reply_data{}".format("  ", " !!!"))
+            logging.warning("get_ssh_not_ready_reply_data !!!")
             return self.get_ssh_not_ready_reply_data(command.taskid)
         else:
-            
+
             result = qemu_inst.send_exec(command.exec_arg, command.is_base64)
-            
+
             reply_data = {
                 "taskid"    : command.taskid,
                 "result"    : result,
@@ -356,7 +359,7 @@ class server:
                     filepool = self.path.normpath_windows(filepool)
                 else:
                     filepool = self.path.normpath_posix(filepool)
-                    
+
             reply_data = {
                     "result"  : True,
                     "taskid"  : qemu_inst.taskid,
@@ -387,7 +390,7 @@ class server:
         for file in files:
             if file.endswith(".qcow2"):
                 qcow2_files.append(file)
-            
+
         reply_data = {
                 "result"  : True,
                 "errcode" : 0,
@@ -402,9 +405,9 @@ class server:
 
 
     def thread_routine_listening_connections(self):
-        print("{}● thread_routine_listening_connections{}".format("", " ..."))
-        print("  socket_addr.addr={}".format(self.socket_addr.addr))
-        print("  socket_addr.port={}".format(self.socket_addr.port))
+        logging.info("thread_routine_listening_connections ...")
+        logging.info("  socket_addr.addr={}".format(self.socket_addr.addr))
+        logging.info("  socket_addr.port={}".format(self.socket_addr.port))
 
         try:
             self.listen_tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -418,8 +421,7 @@ class server:
                 thread_for_command.start()
 
         except Exception as e:
-            print("{}● exception={}".format(e))
-            logging.info("{}● exception={}".format(e))
+            logging.exception("exception={}".format(e))
 
 
     def create_qemu_instance(self, taskid:int, start_cfg:config.start_config):
@@ -438,20 +440,20 @@ class server:
                 if val.find(key_def) != -1:
                     new_start_cmd.arguments[idx] = val.replace(key_def, self.server_variables_dict[key])
         return new_start_cmd
-        
-                
+
+
     def verify_arguments(self):
         pass
 
 
     def thread_routine_processing_command(self, conn:socket.socket):
-        print("{}● thread_routine_processing_command{}".format("", " ..."))
+        logging.info("thread_routine_processing_command ...")
 
         try:
             client_mesg = str(conn.recv(2048), encoding='utf-8')
 
-            print("{}● conn={}".format("  ", conn))
-            print("{}● client_mesg={}".format("  ", client_mesg))
+            logging.info("conn={}".format(conn))
+            logging.info("client_mesg={}".format(client_mesg))
 
             if client_mesg.startswith("{\"request\":"):
                 client_data = json.loads(client_mesg)
@@ -460,7 +462,7 @@ class server:
 
                 # Start
                 if config.command_kind().start == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                    logging.info("command_kind={}".format(client_data['request']['command']))
                     start_cfg = config.start_config(client_data['request']['data'])
                     taskid:int = self.get_new_taskid()
 
@@ -483,7 +485,7 @@ class server:
 
                 # Exec
                 elif config.command_kind().exec == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                    logging.info("command_kind={}".format(client_data['request']['command']))
                     exec_cfg = config.exec_config(client_data['request']['data'])
                     reply_data = self.command_to_exec(exec_cfg.cmd)
                     default_r = config.default_reply(reply_data)
@@ -492,7 +494,7 @@ class server:
 
                 # Kill
                 elif config.command_kind().kill == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                    logging.info("command_kind={}".format(client_data['request']['command']))
                     kill_cfg = config.kill_config(client_data['request']['data'])
 
                     if kill_cfg.cmd.killall:
@@ -506,7 +508,7 @@ class server:
 
                 # QMP
                 elif config.command_kind().qmp == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                    logging.info("command_kind={}".format(client_data['request']['command']))
                     file_cfg = config.qmp_config(client_data['request']['data'])
                     reply_data = self.command_to_qmp(file_cfg.cmd)
                     default_r = config.default_reply(reply_data)
@@ -515,7 +517,7 @@ class server:
 
                 # push
                 elif config.command_kind().push == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                    logging.info("command_kind={}".format(client_data['request']['command']))
                     stat_cfg = config.push_config(client_data['request']['data'])
                     reply_data = self.command_to_push(stat_cfg.cmd)
                     push_r = config.push_reply(reply_data)
@@ -524,7 +526,7 @@ class server:
 
                 # status
                 elif config.command_kind().status == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                    logging.info("command_kind={}".format(client_data['request']['command']))
                     stat_cfg = config.status_config(client_data['request']['data'])
                     reply_data = self.command_to_status(stat_cfg.cmd)
                     stat_r = config.status_reply(reply_data)
@@ -533,7 +535,7 @@ class server:
 
                 # info
                 elif config.command_kind().info == client_data['request']['command']:
-                    print("{}● command_kind={}".format("  ", client_data['request']['command']))
+                    logging.info("command_kind={}".format("  ", client_data['request']['command']))
                     info_cfg = config.info_config()
                     reply_data = self.command_to_info(info_cfg.cmd)
                     info_r = config.info_reply(reply_data)
@@ -547,10 +549,8 @@ class server:
                     bad_resp = config.bad_response(bad_r)
                     resp_text = bad_resp.toTEXT()
 
-            print("{}● resp_text={}".format("  ", resp_text))
-
+            logging.info("resp_text={}".format(resp_text))
             conn.send(bytes(resp_text, encoding="utf-8"))
 
         except Exception as e:
-            print("{}● exception={}".format(e))
-            logging.info("{}● exception={}".format(e))
+            logging.exception("exception={}".format(e))

@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import pathlib
 import logging
 import json
+import datetime
 import os
-import base64
 
 from module import config
 from module.server import server
@@ -19,18 +18,32 @@ args = cmdarg.get_parsed_args()
 #
 # Start log
 #
-logging.basicConfig(filename='qemu-tasker.log',
-                    level=logging.INFO,
-                    format="[%(asctime)s][%(levelname)s] %(message)s",
-                    datefmt='%Y-%m-%d-%H:%M:%S')
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s',
+	                            datefmt='%Y%m%d %H:%M:%S')
+screen = logging.StreamHandler()
+screen.setLevel(logging.INFO)
+screen.setFormatter(formatter)
 
-logging.info('--------------------------------------------------------------------------------')
-logging.info(args)
+if not os.path.exists('log'):
+    os.mkdir('log')
+
+filename = datetime.datetime.now().strftime("log/qemu-tasker--%Y%m%d_%H%M%S.log")
+logfile = logging.FileHandler(filename)
+logfile.setLevel(logging.INFO)
+logfile.setFormatter(formatter)
+
+logger.addHandler(logfile)
 
 socket_addr = config.socket_address(args.host, args.port)
 
 try:
     if 'server' == args.command:
+        logger.addHandler(screen)
+        logging.info('--------------------------------------------------------------------------------')
+        logging.info("filename={}".format(filename))
+        logging.info(args)
         server(socket_addr).start(args.config)
 
     elif 'start' == args.command:
@@ -39,7 +52,7 @@ try:
         start_cfg = config.start_config(client_cfg)
         client(socket_addr).send_start(start_cfg, args.jsonreport)
 
-    elif 'exec' == args.command:                
+    elif 'exec' == args.command:
         exec_arg = config.exec_argument(args.program, args.argument)
         exec_cmd = config.exec_command(args.taskid, exec_arg, args.base64)
         exec_cfg = config.exec_config(exec_cmd.toJSON())
@@ -69,7 +82,7 @@ try:
         info = config.info_command()
         info_cfg = config.info_config()
         client(socket_addr).send_info(info_cfg, args.jsonreport)
-        
+
     elif 'list' == args.command:
         list_cmd = config.list_command(args.taskid, args.dirpath)
         list_cfg = config.list_config(list_cmd.toJSON())
@@ -89,5 +102,4 @@ try:
         cmdarg.print_help()
 
 except Exception as e:
-    print(e)
     logging.exception(e)

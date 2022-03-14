@@ -28,7 +28,7 @@ from module.qmp import QEMUMonitorProtocol
 
 class qemu_instance:
     def __init__(self, socket_addr:config.socket_address, taskid:int, start_cmd:config.start_command):
-        
+
         self.path = OsdpPath()
 
         # Resource definition
@@ -36,7 +36,7 @@ class qemu_instance:
         self.is_alive = True
         self.is_ready = False
         self.workdir_name = "qemu-tasker"
-        self.guest_os_cwd_raw = None        
+        self.guest_os_cwd_raw = None
         self.guest_os_kind = config.os_kind().unknown
         self.guest_os_work_dir = "qemu-tasker"
         self.guest_os_pushpool_dir = None
@@ -93,14 +93,14 @@ class qemu_instance:
     def __del__(self):
         if self.conn_qmp:
             self.conn_qmp.close()
-            
+
     def normpath(self, path:str):
         new_path = None
         if self.guest_os_kind == config.os_kind().windows:
             new_path = path.replace('/', '\\')
         elif self.guest_os_kind == config.os_kind().linux or \
              self.guest_os_kind == config.os_kind().macos:
-            new_path = path.replace('\\', '/')        
+            new_path = path.replace('\\', '/')
         else:
             new_path = path
         return new_path
@@ -158,19 +158,18 @@ class qemu_instance:
         cmd_str = exec_arg.program
         arg_str = ""
         if exec_arg.argument:
-            if is_base64:            
+            if is_base64:
                 b64 = base64.b64decode(exec_arg.argument)
                 utf8 = b64.decode("utf-8")
                 arg_str = utf8
             else:
                 arg_str = exec_arg.argument
-            
+
             #cmd_str = cmd_str + " \"" + arg_str + "\""
             cmd_str = cmd_str + " " + arg_str
 
-        print("● arg_base64={}".format(is_base64))
-        print("● cmd_str={}".format(cmd_str))
-        logging.info("● cmd_str={}".format(cmd_str))
+        logging.info("arg_base64={}".format(is_base64))
+        logging.info("cmd_str={}".format(cmd_str))
 
         try:
             cmdret = self.ssh_link.execute(cmd_str)
@@ -183,16 +182,14 @@ class qemu_instance:
 
         except Exception as e:
             retval = False
-
-            print("e=" + str(e))
-            logging.exception("e=" + str(e))
+            logging.exception("exception={}".format(str(e)))
 
         return retval
 
     def send_qmp(self, qmp_cmd:config.qmp_command):
         self.clear()
         argsjson = ""
-        if qmp_cmd.is_base64:            
+        if qmp_cmd.is_base64:
             b64 = base64.b64decode(qmp_cmd.argsjson)
             utf8 = b64.decode("utf-8")
             argsjson = json.loads(utf8)
@@ -211,21 +208,21 @@ class qemu_instance:
         selected_files = []
 
         dirlist = os.listdir(self.host_pushdir_path)
-        for file_from in dirlist:            
+        for file_from in dirlist:
             fullpath = os.path.join(self.host_pushdir_path, file_from)
             fullpath = self.path.normpath_posix(fullpath)
-            
+
             if os.path.exists(fullpath):
                 selected_files.append(fullpath)
             else:
-                print("Path not found ({}) !!!".format(fullpath))
+                logging.error("Path not found ({}) !!!".format(fullpath))
 
         if self.flag_is_ssh_connected:
             for file_from in selected_files:
                 basename = os.path.basename(file_from)
                 file_to = os.path.join(self.guest_os_pushpool_dir, basename)
                 file_to = self.path.normpath(file_to)
-                
+
                 cmdret = self.ssh_link.upload(file_from, file_to)
                 final_cmdret.info_lines.extend(cmdret.info_lines)
                 final_cmdret.error_lines.extend(cmdret.error_lines)
@@ -278,8 +275,7 @@ class qemu_instance:
                         self.stderr.extend(stderr)
 
                 except Exception as e:
-                    print("{}● exception={}".format(e))
-                    logging.info("{}● exception={}".format(e))
+                    logging.exception("exception={}".format(e))
 
     def thread_qmp_wait_accept(self):
         logging.info("command.py!qemu_machine::thread_wait_qmp_accept()")
@@ -298,7 +294,7 @@ class qemu_instance:
                     Break
 
             except Exception as e:
-                logging.exception("e=" + str(e))
+                logging.exception("exceptione={}".format(str(e)))
 
             sleep(1)
 
@@ -323,42 +319,42 @@ class qemu_instance:
         # Get guest current working directory path
         #
         if self.guest_os_kind == config.os_kind().windows:
-            
+
             # Try cmd.exe
             cmdret = self.ssh_link.execute('echo %cd%')
             self.guest_os_cwd_raw = ''.join(cmdret.info_lines).strip()
-            
+
             # Try powershell.exe
             if "%cd%" == self.guest_os_cwd_raw:
-                cmdret = self.ssh_link.execute('(Get-Location).Path')            
+                cmdret = self.ssh_link.execute('(Get-Location).Path')
                 self.guest_os_cwd_raw = ''.join(cmdret.info_lines).strip()
             else:
-                pass            
+                pass
         else:
             cmdret = self.ssh_link.execute('pwd')
             self.guest_os_cwd_raw = ''.join(cmdret.info_lines).strip()
-        
+
 
         # Set working directory.
         self.guest_os_pushpool_dir = self.path.normpath(os.path.join(self.guest_os_work_dir, "pushpool"), self.guest_os_kind)
-        self.ssh_link.set_working_dir(self.guest_os_work_dir)        
+        self.ssh_link.set_working_dir(self.guest_os_work_dir)
         self.ssh_link.set_os_kind(self.guest_os_kind)
-        print("self.guest_os_pushpool_dir={}".format(self.guest_os_pushpool_dir))
-        
-        
+        logging.info("self.guest_os_pushpool_dir={}".format(self.guest_os_pushpool_dir))
+
+
         # Create filepool directory.
         cmdret = self.ssh_link.mkdir(self.guest_os_pushpool_dir)
-        
-        
+
+
         if self.guest_os_kind != config.os_kind().unknown:
             self.status = config.task_status().ready
-            
 
-        print("{}● os_kind={}".format("  ", self.guest_os_kind))
-        print("{}● cwd={}".format("  ", self.guest_os_work_dir))
 
-        logging.info("{}● os_kind={}".format("  ", self.guest_os_kind))
-        logging.info("{}● cwd={}".format("  ", self.guest_os_work_dir))
+        logging.info("os_kind={}".format(self.guest_os_kind))
+        logging.info("cwd={}".format(self.guest_os_work_dir))
+
+        logging.info("os_kind={}".format(self.guest_os_kind))
+        logging.info("cwd={}".format(self.guest_os_work_dir))
 
 
     def connect_ssh(self):
@@ -390,7 +386,7 @@ class qemu_instance:
         qemu_cmdargs.append(self.start_cmd.program)
         qemu_cmdargs.extend(self.start_cmd.arguments)
         qemu_cmdargs.extend(self.base_args)
-        logging.info("{}● qemu_cmdargs={}".format("  ", qemu_cmdargs))
+        logging.info("qemu_cmdargs={}".format(qemu_cmdargs))
 
         os.makedirs(self.host_pushdir_path)
 
@@ -437,7 +433,7 @@ class qemu_instance:
             self.errcode = -1
             self.stderr.append("the process still existing (PID is {})".format(self.pid))
             return False
-        else:           
+        else:
             self.errcode = 0
             return True
 
