@@ -1,4 +1,4 @@
 {
-    "SERVER_PUSHPOOL_DIR"    : "./pushpool",  
+    "SERVER_PUSHPOOL_DIR"    : "./data/pushpool",
     "SERVER_QCOW2_IMAGE_DIR" : "/home/dougpuob/workspace/qemu-runner/"
 }

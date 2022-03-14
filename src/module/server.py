@@ -1,22 +1,24 @@
 # -*- coding: utf-8 -*-
-from ast import Or
-from email import message
 import os
-import socket
-import threading
-import time
-import logging
 import json
+import time
+import socket
+import logging
+import threading
 
 
 from module import qemu
-from module import config
+from module import config_next
 from module.path import OsdpPath
 
 
 class server:
-    def __init__(self, socket_addr:config.socket_address):
+    def __init__(self, socket_addr:config_next.socket_address):
 
+        #
+        # New Config
+        #
+        self.addr_info = config_next.socket_address(socket_addr.addr, socket_addr.port)
         self.path = OsdpPath()
         self.server_variables_dict = {}
 
@@ -27,8 +29,8 @@ class server:
 
         # Resource
         self.occupied_ports = []
-        self.server_pushpool_dir = ""
-        self.server_qcow2image_dir = ""
+        self.server_pushpool_dir = "data/pushpool"
+        self.server_qcow2image_dir = "data/images"
 
         # Status
         self.is_started = True
@@ -75,16 +77,34 @@ class server:
         logging.info("config_path={}".format(config_path))
         if os.path.exists(config_path):
             with open(config_path) as f:
+
+                # Load JSON config file
                 config = json.load(f)
-
-                logging.info("SERVER_PUSHPOOL_DIR    = {}".format(config['SERVER_PUSHPOOL_DIR']))
-                logging.info("SERVER_QCOW2_IMAGE_DIR = {}".format(config['SERVER_QCOW2_IMAGE_DIR']))
-
-                self.server_pushpool_dir = self.path.realpath(config['SERVER_PUSHPOOL_DIR'])
-                self.server_qcow2image_dir = self.path.realpath(config['SERVER_QCOW2_IMAGE_DIR'])
                 self.server_variables_dict = config
-
                 logging.info("self.server_variables_dict={}".format(self.server_variables_dict))
+
+
+                # Apply pathes in config if exist.
+                server_pushpool_dir = self.path.realpath(config['SERVER_PUSHPOOL_DIR'])
+                server_qcow2image_dir = self.path.realpath(config['SERVER_QCOW2_IMAGE_DIR'])
+
+                if os.path.exists(server_pushpool_dir):
+                    self.server_pushpool_dir = server_pushpool_dir
+
+                if os.path.exists(server_qcow2image_dir):
+                    self.server_qcow2image_dir = server_qcow2image_dir
+
+
+                # Create selected directories if not eixst.
+                if not os.path.exists(self.server_pushpool_dir):
+                    os.makedirs(self.server_pushpool_dir)
+
+                if not os.path.exists(self.server_qcow2image_dir):
+                    os.makedirs(self.server_qcow2image_dir)
+
+                logging.info("self.server_pushpool_dir   = {}".format(self.server_pushpool_dir))
+                logging.info("self.server_qcow2image_dir = {}".format(self.server_qcow2image_dir))
+
         else:
             logging.exception('The config.json not found !!!')
             assert False, 'The config.json not found !!!'
@@ -118,6 +138,7 @@ class server:
         logging.info("thread_routine_longlife_counting ...")
 
         while self.is_started:
+
             time.sleep(1)
 
             print('--------------------------------------------------------------------------------')
@@ -131,11 +152,11 @@ class server:
 
                     print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} SSH:{} OS:{}  Longlife:{}(s) {}'.format(
                             qemu_inst.taskid,
-                            qemu_inst.pid,
-                            qemu_inst.fwd_ports.toJSON(),
+                            qemu_inst.qemu_pid,
+                            qemu_inst.forward_port.toJSON(),
                             is_qmp_connected,
                             is_ssh_connected,
-                            qemu_inst.guest_os_kind,
+                            qemu_inst.guest_info.os_kind,
                             qemu_inst.longlife,
                             qemu_inst.status))
 
@@ -143,7 +164,6 @@ class server:
 
                 else:
                     qemu_inst.kill()
-                    #self.qemu_instance_list.remove(qemu_inst)
 
 
     def thread_routine_killing_waiting(self):
@@ -177,231 +197,87 @@ class server:
         return target_qemu_inst
 
 
-    def get_wrong_taskid_reply_data(self, taskid):
-        reply_data = {
-            "taskid"    : taskid,
-            "result"    : False,
-            "errcode"   : -1,
-            "stderr"    : ["wrong taskid"],
-            "stdout"    : ""
-        }
-        return reply_data
+    def command_to_exec(self,
+                        qemu_inst:qemu.qemu_instance,
+                        cmd_data:config_next.exec_command_request_data):
+        if qemu_inst and cmd_data:
+            result = qemu_inst.send_exec(cmd_data, cmd_data.is_base64)
+            resp_data = config_next.exec_command_response_data(cmd_data.taskid)
+            return resp_data
+        return None
 
 
-    def get_ssh_not_ready_reply_data(self, taskid):
-        reply_data = {
-            "taskid"    : taskid,
-            "result"    : False,
-            "errcode"   : -1,
-            "stderr"    : ["SSH connection is not ready"],
-            "stdout"    : ""
-        }
-        return reply_data
-
-
-    def get_qmp_not_ready_reply_data(self, taskid):
-        reply_data = {
-            "taskid"    : taskid,
-            "result"    : False,
-            "errcode"   : -1,
-            "stderr"    : ["QMP connection is not ready"],
-            "stdout"    : ""
-        }
-        return reply_data
-
-
-    def get_unsupported_reply_data(self, taskid):
-        reply_data = {
-            "taskid"    : taskid,
-            "result"    : False,
-            "errcode"   : -1,
-            "stderr"    : ["Unsupported command"],
-            "stdout"    : ""
-        }
-        return reply_data
-
-
-    def command_to_exec(self, command:config.exec_command):
-        qemu_inst = self.find_target_instance(command.taskid)
-        if None == qemu_inst:
-            logging.warning("get_wrong_taskid_reply_data !!!")
-            return self.get_wrong_taskid_reply_data(command.taskid)
-        elif not qemu_inst.is_ssh_connected():
-            logging.warning("get_ssh_not_ready_reply_data !!!")
-            return self.get_ssh_not_ready_reply_data(command.taskid)
-        else:
-
-            result = qemu_inst.send_exec(command.exec_arg, command.is_base64)
-
-            reply_data = {
-                "taskid"    : command.taskid,
-                "result"    : result,
-                "errcode"   : qemu_inst.errcode,
-                "stderr"    : qemu_inst.stderr,
-                "stdout"    : qemu_inst.stdout
-            }
-            return reply_data
-
-
-    def command_to_kill(self, kill_cmd:config.kill_command):
-        qemu_inst = self.find_target_instance(kill_cmd.taskid)
-        if None == qemu_inst:
-            return self.get_wrong_taskid_reply_data(kill_cmd.toJSON)
-        else:
+    def command_to_kill(self,
+                        qemu_inst:qemu.qemu_instance,
+                        kill_data:config_next.kill_command_request_data):
+        if qemu_inst and kill_data:
             self.qemu_instance_list.remove(qemu_inst)
             result = qemu_inst.kill()
-            reply_data = {
-                "taskid"    : kill_cmd.taskid,
-                "result"    : result,
-                "errcode"   : qemu_inst.errcode,
-                "stderr"    : qemu_inst.stderr,
-                "stdout"    : qemu_inst.stdout
-            }
-            return reply_data
+            resp_data = config_next.kill_command_response_data(kill_data.taskid)
+            return resp_data
+        return None
 
 
-    def command_to_kill_all(self, kill_cmd:config.kill_command):
-        kill_numb = 0
-        for qemu_inst in self.qemu_instance_list:
-            qemu_inst.kill()
-            kill_numb = kill_numb + 1
+    def command_to_qmp(self,
+                       qemu_inst:qemu.qemu_instance,
+                       qmp_data:config_next.qmp_command_request_data):
+        if qemu_inst and qmp_data:
+            ret_bool = qemu_inst.send_qmp(qmp_data)
+            if False == ret_bool:
+                qemu_inst.result.errcode = -1
+                qemu_inst.result.error_lines.append('no return !!!')
 
-        self.qemu_instance_list.clear()
-
-        reply_data = {
-            "taskid"    : kill_cmd.toJSON,
-            "result"    : True,
-            "errcode"   : 0,
-            "stderr"    : "",
-            "stdout"    : "{} QEMU instance was/were killed.".format(kill_numb) }
-
-        return reply_data
+            resp_data = config_next.qmp_command_response_data(qmp_data.taskid)
+            return resp_data
+        return None
 
 
-    def command_to_qmp(self, qmp_cmd:config.qmp_command):
-        qemu_inst = self.find_target_instance(qmp_cmd.taskid)
-        if None == qemu_inst:
-            return self.get_wrong_taskid_reply_data(qmp_cmd.taskid)
-        if not qemu_inst.is_qmp_connected():
-            return self.get_qmp_not_ready_reply_data(qmp_cmd.taskid)
-        else:
-            recv_text = qemu_inst.send_qmp(qmp_cmd)
-
-            result  = True
-            errcode = 0
-            stderr  = ""
-
-            if 0 == len(recv_text):
-                result  = False
-                errcode = -1
-                stderr  = "no return"
-
-            reply_data = {
-                "taskid"    : qmp_cmd.taskid,
-                "result"    : result,
-                "errcode"   : errcode,
-                "stderr"    : stderr,
-                "stdout"    : recv_text,
-            }
-            return reply_data
+    def command_to_push(self,
+                        qemu_inst:qemu.qemu_instance,
+                        push_data:config_next.push_command_request_data):
+        if qemu_inst and push_data:
+            qemu_inst.send_push(push_data)
+            resp_data = config_next.push_command_response_data(push_data.taskid)
+            return resp_data
+        return None
 
 
-    def command_to_push(self, push_cmd:config.push_command):
-        qemu_inst = self.find_target_instance(push_cmd.taskid)
-        if None == qemu_inst:
-            return self.get_wrong_taskid_reply_data(push_cmd.taskid)
-        if not qemu_inst.is_ssh_connected():
-            return self.get_ssh_not_ready_reply_data(push_cmd.taskid)
-        else:
-            ret_cmd = qemu_inst.send_push(push_cmd)
-
-            reply_data = {
-                "taskid"    : push_cmd.taskid,
-                "result"    : (0 == ret_cmd.errcode),
-                "errcode"   : ret_cmd.errcode,
-                "stderr"    : ret_cmd.error_lines,
-                "stdout"    : ret_cmd.info_lines,
-            }
-            return reply_data
-
-
-    def command_to_status(self, stat_cmd:config.status_command):
-        qemu_inst:qemu.qemu_instance  = self.find_target_instance(stat_cmd.taskid)
-        if None == qemu_inst:
-            reply_data = {
-                "result"  : False,
-                "taskid"  : stat_cmd.taskid,
-                "errcode" : 0 - stat_cmd.taskid,
-                "stdout"  : [],
-                "stderr"  : ["Cannot find the specific QEMU instance."],
-                "status"  : config.task_status().unknown,
-                "pid"     : 0,
-                "fwd_ports" : { "qmp" : 0,
-                                "ssh" : 0 },
-                "ssh_info" : { "targetaddr" : "",
-                               "targetport" : 0,
-                               "username" : "",
-                               "password" : ""},
-                "host_pushpool" : "",
-                "guest_os_kind" : "",
-                "guest_pushpool" : "",
-                "guest_work_dir" : "",
-                "is_connected_qmp" : False,
-                "is_connected_ssh" : False
-                }
-            return reply_data
-
-        else:
-            filepool = ''
-            if qemu_inst.guest_os_work_dir:
-                filepool = os.path.join(qemu_inst.guest_os_work_dir, qemu_inst.pushdir_name)
-                if qemu_inst.guest_os_kind == config.os_kind().windows:
-                    filepool = self.path.normpath_windows(filepool)
-                else:
-                    filepool = self.path.normpath_posix(filepool)
-
-            reply_data = {
-                    "result"  : True,
-                    "taskid"  : qemu_inst.taskid,
-                    "errcode" : qemu_inst.errcode,
-                    "stdout"  : qemu_inst.stdout,
-                    "stderr"  : qemu_inst.stderr,
-                    "status"  : qemu_inst.status,
-                    "pid"     : qemu_inst.pid,
-                    "fwd_ports" : { "qmp" : qemu_inst.fwd_ports.qmp,
-                                    "ssh" : qemu_inst.fwd_ports.ssh },
-                    "ssh_info" : { "targetaddr" : qemu_inst.socket_addr.addr,
-                                   "targetport" : qemu_inst.fwd_ports.ssh,
-                                   "username" : qemu_inst.start_cmd.ssh_login.username,
-                                   "password" : qemu_inst.start_cmd.ssh_login.password},
-                    "host_pushpool" : qemu_inst.host_pushdir_path,
-                    "guest_os_kind" : qemu_inst.guest_os_kind,
-                    "guest_pushpool" : qemu_inst.guest_os_pushpool_dir,
-                    "guest_work_dir" : qemu_inst.guest_os_work_dir,
-                    "is_connected_qmp" : qemu_inst.is_qmp_connected(),
-                    "is_connected_ssh" : qemu_inst.is_ssh_connected()
-                    }
-            return reply_data
+    def command_to_status(self,
+                          qemu_inst:qemu.qemu_instance,
+                          status_data:config_next.status_command_request_data):
+        if qemu_inst and status_data:
+            resp_data = config_next.status_command_response_data(
+                                        status_data.taskid,
+                                        qemu_inst.qemu_pid,
+                                        qemu_inst.forward_port,
+                                        qemu_inst.ssh_info,
+                                        qemu_inst.server_info,
+                                        qemu_inst.guest_info,
+                                        qemu_inst.is_qmp_connected(),
+                                        qemu_inst.is_ssh_connected())
+            # filepool = ''
+            # if qemu_inst.guest_os_work_dir:
+            #     filepool = os.path.join(qemu_inst.guest_os_work_dir, qemu_inst.pushdir_name)
+            #     if qemu_inst.guest_info.os_kind == config_next.os_kind().windows:
+            #         filepool = self.path.normpath_windows(filepool)
+            #     else:
+            #         filepool = self.path.normpath_posix(filepool)
+            return resp_data
+        return None
 
 
-    def command_to_info(self, info_cmd:config.info_command):
+    def command_to_info(self,
+                        info_data:config_next.info_command_request_data):
         qcow2_files = []
         files = os.listdir(self.server_qcow2image_dir)
         for file in files:
             if file.endswith(".qcow2"):
                 qcow2_files.append(file)
 
-        reply_data = {
-                "result"  : True,
-                "errcode" : 0,
-                "stdout"  : [],
-                "stderr"  : [],
-                "status"  : [],
-                "variables" : self.server_variables_dict,
-                "instances" : "",
-                "images"    : qcow2_files
-            }
-        return reply_data
+        resp_data = config_next.info_command_response_data(
+                                    self.server_variables_dict,
+                                    qcow2_files)
+        return resp_data
 
 
     def thread_routine_listening_connections(self):
@@ -424,22 +300,22 @@ class server:
             logging.exception("exception={}".format(e))
 
 
-    def create_qemu_instance(self, taskid:int, start_cfg:config.start_config):
-        new_start_cfg = self.apply_server_variables(start_cfg.cmd)
-        qemu_inst = qemu.qemu_instance(self.socket_addr, taskid, new_start_cfg)
+    def create_qemu_instance(self, pushpool_path:str, taskid:int, start_data:config_next.start_command_request_data):
+        self.apply_server_variables(start_data.cmd)
+        qemu_inst = qemu.qemu_instance(self.socket_addr, pushpool_path, taskid, start_data)
+
         self.qemu_instance_list.append(qemu_inst)
         qemu_inst.wait_to_create()
         return qemu_inst
 
 
-    def apply_server_variables(self, start_cmd:config.start_command) -> str:
-        new_start_cmd = start_cmd
-        for idx, val in enumerate(new_start_cmd.arguments):
+    def apply_server_variables(self, cmd_info:config_next.command_arguments):
+        for idx, val in enumerate(cmd_info.arguments):
             for key in self.server_variables_dict:
                 key_def = "${" + key + "}"
                 if val.find(key_def) != -1:
-                    new_start_cmd.arguments[idx] = val.replace(key_def, self.server_variables_dict[key])
-        return new_start_cmd
+                    cmd_info.arguments[idx] = val.replace(key_def, self.server_variables_dict[key])
+        return cmd_info
 
 
     def verify_arguments(self):
@@ -450,107 +326,154 @@ class server:
         logging.info("thread_routine_processing_command ...")
 
         try:
-            client_mesg = str(conn.recv(2048), encoding='utf-8')
+            incoming_message = str(conn.recv(2048), encoding='utf-8')
 
             logging.info("conn={}".format(conn))
-            logging.info("client_mesg={}".format(client_mesg))
+            logging.info("incomming_message={}".format(incoming_message))
 
-            if client_mesg.startswith("{\"request\":"):
-                client_data = json.loads(client_mesg)
+            if incoming_message.startswith("{\"act_kind\": \"request\""):
 
-                resp_text = ""
+                qemu_inst = None
+                resp_data = None
+                return_capsule = None
+                incoming_capsule:config_next.transaction_capsule = config_next.config().toCLASS(incoming_message)
 
+                # ------
+                # Info
+                # ------
+                if config_next.command_kind().info == incoming_capsule.cmd_kind:
+                    cmd_data:config_next.info_command_request_data = incoming_capsule.data
+                    resp_data = self.command_to_info(cmd_data)
+
+                # ------
                 # Start
-                if config.command_kind().start == client_data['request']['command']:
-                    logging.info("command_kind={}".format(client_data['request']['command']))
-                    start_cfg = config.start_config(client_data['request']['data'])
-                    taskid:int = self.get_new_taskid()
-
-                    qemu_inst = self.create_qemu_instance(taskid, start_cfg)
-
-                    reply_data = {
-                        "taskid"    : taskid,
-                        "fwd_ports" : qemu_inst.fwd_ports.toJSON(),
-                        "result"    : (0 == qemu_inst.errcode),
-                        "errcode"   : qemu_inst.errcode,
-                        "stderr"    : qemu_inst.stderr,
-                        "stdout"    : qemu_inst.stdout,
-                        "cwd"       : qemu_inst.guest_os_work_dir,
-                        "os"        : qemu_inst.guest_os_kind
-                    }
-
-                    start_r = config.start_reply(reply_data)
-                    start_resp = config.start_response(start_r)
-                    resp_text = start_resp.toTEXT()
-
-                # Exec
-                elif config.command_kind().exec == client_data['request']['command']:
-                    logging.info("command_kind={}".format(client_data['request']['command']))
-                    exec_cfg = config.exec_config(client_data['request']['data'])
-                    reply_data = self.command_to_exec(exec_cfg.cmd)
-                    default_r = config.default_reply(reply_data)
-                    default_resp = config.default_response(client_data['request']['command'], default_r)
-                    resp_text = default_resp.toTEXT()
-
+                # ------
+                elif config_next.command_kind().start == incoming_capsule.cmd_kind:
+                    cmd_data:config_next.start_command_request_data = incoming_capsule.data
+                    qemu_inst = self.create_qemu_instance(self.server_pushpool_dir,
+                                                          self.get_new_taskid(),
+                                                          cmd_data)
+                    resp_data = config_next.start_command_response_data(
+                                                        qemu_inst.taskid,
+                                                        qemu_inst.qemu_pid,
+                                                        qemu_inst.forward_port,
+                                                        qemu_inst.ssh_info,
+                                                        qemu_inst.server_info,
+                                                        qemu_inst.guest_info,
+                                                        qemu_inst.is_qmp_connected,
+                                                        qemu_inst.is_ssh_connected)
+                # ------
                 # Kill
-                elif config.command_kind().kill == client_data['request']['command']:
-                    logging.info("command_kind={}".format(client_data['request']['command']))
-                    kill_cfg = config.kill_config(client_data['request']['data'])
+                # ------
+                elif config_next.command_kind().kill == incoming_capsule.cmd_kind:
+                    cmd_data:config_next.kill_command_request_data = incoming_capsule.data
+                    qemu_inst = self.find_target_instance(cmd_data.taskid)
+                    cmdret = self.check_and_clear_qemu_instance(cmd_data.taskid, qemu_inst)
+                    if cmdret.errcode == 0:
+                        resp_data = self.command_to_kill(qemu_inst, cmd_data)
 
-                    if kill_cfg.cmd.killall:
-                        reply_data = self.command_to_kill_all(kill_cfg.cmd)
-                    else:
-                        reply_data = self.command_to_kill(kill_cfg.cmd)
+                # ------
+                # Exec
+                # ------
+                elif config_next.command_kind().exec == incoming_capsule.cmd_kind:
+                    cmd_data:config_next.exec_command_request_data = incoming_capsule.data
+                    qemu_inst = self.find_target_instance(cmd_data.taskid)
+                    cmdret = self.check_and_clear_qemu_instance(cmd_data.taskid, qemu_inst)
+                    if cmdret.errcode == 0:
+                        resp_data = self.command_to_exec(qemu_inst, cmd_data)
 
-                    default_r = config.default_reply(reply_data)
-                    default_resp = config.default_response(client_data['request']['command'], default_r)
-                    resp_text = default_resp.toTEXT()
+                # ------
+                # Status
+                # ------
+                elif config_next.command_kind().status == incoming_capsule.cmd_kind:
+                    cmd_data:config_next.status_command_request_data = incoming_capsule.data
+                    qemu_inst = self.find_target_instance(cmd_data.taskid)
+                    cmdret = self.check_and_clear_qemu_instance(cmd_data.taskid, qemu_inst)
+                    if cmdret.errcode == 0:
+                        resp_data = self.command_to_status(qemu_inst, cmd_data)
 
+                # ------
                 # QMP
-                elif config.command_kind().qmp == client_data['request']['command']:
-                    logging.info("command_kind={}".format(client_data['request']['command']))
-                    file_cfg = config.qmp_config(client_data['request']['data'])
-                    reply_data = self.command_to_qmp(file_cfg.cmd)
-                    default_r = config.default_reply(reply_data)
-                    default_resp = config.default_response(client_data['request']['command'], default_r)
-                    resp_text = default_resp.toTEXT()
+                # ------
+                elif config_next.command_kind().qmp == incoming_capsule.cmd_kind:
+                    cmd_data:config_next.qmp_command_request_data = incoming_capsule.data
+                    qemu_inst = self.find_target_instance(cmd_data.taskid)
+                    cmdret = self.check_and_clear_qemu_instance(cmd_data.taskid, qemu_inst)
+                    if cmdret.errcode == 0:
+                        resp_data = self.command_to_qmp(qemu_inst, cmd_data)
 
-                # push
-                elif config.command_kind().push == client_data['request']['command']:
-                    logging.info("command_kind={}".format(client_data['request']['command']))
-                    stat_cfg = config.push_config(client_data['request']['data'])
-                    reply_data = self.command_to_push(stat_cfg.cmd)
-                    push_r = config.push_reply(reply_data)
-                    push_resp = config.push_response(push_r)
-                    resp_text = push_resp.toTEXT()
+                # ------
+                # Push
+                # ------
+                elif config_next.command_kind().push == incoming_capsule.cmd_kind:
+                    cmd_data:config_next.push_command_request_data = incoming_capsule.data
+                    qemu_inst = self.find_target_instance(cmd_data.taskid)
+                    cmdret = self.check_and_clear_qemu_instance(cmd_data.taskid, qemu_inst)
+                    if cmdret.errcode == 0:
+                        resp_data = self.command_to_push(qemu_inst, cmd_data)
 
-                # status
-                elif config.command_kind().status == client_data['request']['command']:
-                    logging.info("command_kind={}".format(client_data['request']['command']))
-                    stat_cfg = config.status_config(client_data['request']['data'])
-                    reply_data = self.command_to_status(stat_cfg.cmd)
-                    stat_r = config.status_reply(reply_data)
-                    stat_resp = config.status_response(stat_r)
-                    resp_text = stat_resp.toTEXT()
-
-                # info
-                elif config.command_kind().info == client_data['request']['command']:
-                    logging.info("command_kind={}".format("  ", client_data['request']['command']))
-                    info_cfg = config.info_config()
-                    reply_data = self.command_to_info(info_cfg.cmd)
-                    info_r = config.info_reply(reply_data)
-                    info_resp = config.info_response(info_r)
-                    resp_text = info_resp.toTEXT()
-
+                # ------
                 # Others
-                else:
-                    reply_data = self.get_unsupported_reply_data()
-                    bad_r = config.bad_reply(reply_data)
-                    bad_resp = config.bad_response(bad_r)
-                    resp_text = bad_resp.toTEXT()
+                # ------
+                elif config_next.command_kind().list == incoming_capsule.cmd_kind or \
+                     config_next.command_kind().upload == incoming_capsule.cmd_kind or \
+                     config_next.command_kind().download == incoming_capsule.cmd_kind:
+                    error_text = "the '{}' command should not handle on server !!!".format(incoming_capsule.cmd_kind)
+                    return_capsule = config_next.transaction_capsule(
+                                                    config_next.action_kind().response,
+                                                    incoming_capsule.cmd_kind,
+                                                    self.get_command_return(-1, error_text),
+                                                    resp_data)
+                    return_capsule_text = return_capsule.toTEXT()
+                    logging.error(error_text)
 
-            logging.info("resp_text={}".format(resp_text))
-            conn.send(bytes(resp_text, encoding="utf-8"))
+
+                # ------------------------------------------------------------------------
+                if resp_data:
+                    result = ''
+                    if qemu_inst:
+                        result = qemu_inst.result
+                    else:
+                        result = self.get_command_return(0, '')
+                else:
+                    err_text = "qemu_inst and resp_data are None !!!"
+                    logging.error(err_text)
+                    result = self.get_command_return(-9999, err_text)
+
+                return_capsule = config_next.transaction_capsule(
+                                                    config_next.action_kind().response,
+                                                    incoming_capsule.cmd_kind,
+                                                    result,
+                                                    resp_data)
+                return_capsule_text = return_capsule.toTEXT()
+                logging.info("return_capsule_text={}".format(return_capsule_text))
+                conn.send(bytes(return_capsule_text, encoding="utf-8"))
 
         except Exception as e:
             logging.exception("exception={}".format(e))
+
+
+    def get_command_return(self, errcode:int, error_text:str) -> config_next.command_return():
+        cmd_ret = config_next.command_return()
+        cmd_ret.errcode = errcode
+        cmd_ret.error_lines.append(error_text)
+        return cmd_ret
+
+
+    def check_and_clear_qemu_instance(self, taskid:int, qemu_inst:qemu.qemu_instance) -> config_next.command_return:
+        cmdret = config_next.command_return()
+        cmdret.info_lines.append('taskid={}'.format(taskid))
+
+        if None == qemu_inst:
+            cmdret.errcode = -10
+            cmdret.error_lines.append('qemu_inst={}'.format(qemu_inst))
+            logging.warning(cmdret)
+        else:
+            qemu_inst.clear()
+            if not qemu_inst.is_ssh_connected():
+                cmdret.errcode = -11
+                cmdret.error_lines.append('The SSH connection is not created !!!')
+
+        return cmdret
+
+

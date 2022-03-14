@@ -9,7 +9,7 @@ import errno
 from time import sleep
 
 from module.path import OsdpPath
-from module import config
+from module import config_next
 from datetime import datetime
 
 
@@ -34,12 +34,19 @@ class ssh_link:
         self.conn_sftp = None
         self.conn_ssh_session = None
         self.working_dir = None
-        self.os_kind = config.os_kind().unknown
+        self.pushpool_dir = None
+        self.os_kind = config_next.os_kind().unknown
 
-    def set_working_dir(self, working_dir:str):
+    def __del__(self):
+        self.tcp_socket.close()
+
+    def apply_pushdir(self, pushpool_dir:str):
+        self.pushpool_dir = pushpool_dir
+
+    def apply_workdir(self, working_dir:str):
         self.working_dir = working_dir
 
-    def set_os_kind(self, os_kind:config.os_kind):
+    def apply_os_kind(self, os_kind:config_next.os_kind):
         self.os_kind = os_kind
 
     def connect(self, addr:str, port:int, username:str, password:str):
@@ -71,7 +78,7 @@ class ssh_link:
 
 
     def execute(self, cmdstr:str):
-        cmdret = config.cmd_return()
+        cmdret = config_next.command_return()
 
         if None == self.conn_ssh_session:
             return cmdret
@@ -81,7 +88,7 @@ class ssh_link:
         try:
             ssh_chanl = self.conn_ssh_session.open_session()
             if self.working_dir:
-                if self.os_kind == config.os_kind().windows:
+                if self.os_kind == config_next.os_kind().windows:
                     ssh_chanl.execute("cd {} && {}".format(self.working_dir, cmdstr))
                 else:
                     ssh_chanl.execute("cd {} ; {}".format(self.working_dir, cmdstr))
@@ -124,7 +131,7 @@ class ssh_link:
 
     def realpath(self, path:str):
 
-        cmdret = config.cmd_return()
+        cmdret = config_next.command_return()
 
         try:
             cmdret.info_lines.append("raw_path={}".format(path))
@@ -146,7 +153,7 @@ class ssh_link:
 
     def stat(self, path:str):
 
-        cmdret = config.cmd_return()
+        cmdret = config_next.command_return()
 
         try:
             attrs = self.conn_sftp.stat(path)
@@ -161,10 +168,9 @@ class ssh_link:
             cmdret.errcode = 0
 
         except Exception as e:
-            errmsg = "exception={0}".format(e)
+            errmsg = "exception occured at stat() function !!!"
             logging.exception(errmsg)
-            cmdret.error_lines.append("exception occured at stat() function !!!")
-            cmdret.error_lines.append((errmsg))
+            cmdret.error_lines.append(errmsg)
             cmdret.errcode = -1
 
         finally:
@@ -172,10 +178,18 @@ class ssh_link:
 
 
     def exists(self, path:str):
-
+        logging.info("path={}".format(path))
         cmdret = self.realpath(path)
+        logging.info("cmdret.errcode={}".format(cmdret.errcode))
+        logging.info("cmdret.info_lines={}".format(cmdret.info_lines))
+        logging.info("cmdret.error_lines={}".format(cmdret.error_lines))
         if cmdret.errcode == 0:
             cmdret_stat = self.stat(path)
+
+            logging.info("cmdret_stat.errcode={}".format(cmdret_stat.errcode))
+            logging.info("cmdret_stat.info_lines={}".format(cmdret_stat.info_lines))
+            logging.info("cmdret_stat.error_lines={}".format(cmdret_stat.error_lines))
+
             cmdret.errcode = cmdret_stat.errcode
             cmdret.error_lines.extend(cmdret_stat.error_lines)
             cmdret.info_lines.extend(cmdret_stat.info_lines)
@@ -185,13 +199,13 @@ class ssh_link:
 
     def readdir(self, subdir:str):
 
-        cmdret = config.cmd_return()
+        cmdret = config_next.command_return()
 
         try:
-            splitor = '/'
             homedir = self.conn_sftp.realpath('.')
+            expandpath = os.path.join(homedir, subdir)
+            cmdret.info_lines.append("expandpath={}".format(expandpath))
 
-            expandpath = homedir + splitor + subdir
             readdir = []
             with self.conn_sftp.opendir(expandpath) as fh:
                 readdir = list(fh.readdir())
@@ -204,7 +218,7 @@ class ssh_link:
             cmdret.data = dir_list
 
         except Exception as e:
-            errmsg = ("exception={0}".format(e))
+            errmsg = ("Exception occured at readdir() function !!!")
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
             cmdret.errcode = -1
@@ -214,6 +228,7 @@ class ssh_link:
 
 
     def mkdir(self, subdir:str):
+        subdir = self.path.normpath(subdir, self.os_kind)
 
         mode = LIBSSH2_SFTP_S_IRUSR | \
                LIBSSH2_SFTP_S_IWUSR | \
@@ -221,11 +236,10 @@ class ssh_link:
                LIBSSH2_SFTP_S_IROTH | \
                LIBSSH2_SFTP_S_IXUSR
 
-        cmdret = config.cmd_return()
+        cmdret = config_next.command_return()
         if self.path.is_abs(subdir):
             cmdret.errcode = -1
-            cmdret.error_lines.append('Absolute path is not allowed !!!')
-            cmdret.error_lines.append('subdir={}'.format(subdir))
+            cmdret.error_lines.append('absolute path is not allowed !!! subdir={}'.format(subdir))
             return cmdret
 
         try:
@@ -233,12 +247,10 @@ class ssh_link:
 
             splitor = ''
             path_list = []
-            if config.os_kind().windows == self.os_kind:
+            if config_next.os_kind().windows == self.os_kind:
                 path_list.extend(subdir.split('\\'))
-                splitor = '\\'
             else:
                 path_list.extend(subdir.split('/'))
-                splitor = '/'
 
             expandpath = homedir
             for sub_path in path_list:
@@ -249,41 +261,39 @@ class ssh_link:
                     for dir in readdir:
                         dir_list.append(dir[1].decode("utf-8"))
 
-                    expandpath = expandpath + splitor + sub_path
+                    # ssh2-python library accept posix path only.
+                    #   - /C:/Users/dougpuob/qemu-tasker <-- OK
+                    #   - \C:\Users\dougpuob\qemu-tasker <-- Failed
+                    expandpath = self.path.normpath_posix(os.path.join(expandpath, sub_path))
+                    cmdret.info_lines.append("expandpath={}".format(expandpath))
                     found = sub_path in dir_list
                     if not found:
                         self.conn_sftp.mkdir(expandpath, mode)
-
-            cmdret.errcode = 0
 
         except Exception as e:
             errmsg = ("exception={0}".format(e))
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
-            cmdret.errcode = -1
+            cmdret.errcode = -2
 
         finally:
             return cmdret
 
 
-    def download(self, file_from:str, local_dirpath:str):
-        cmdret = config.cmd_return()
+    def download(self, file_from:str, dstdir:str):
+        cmdret = config_next.command_return()
 
         try:
             before = datetime.now()
 
-            cmdret.info_lines.append("from={0}".format(file_from))
             file_from = self.conn_sftp.realpath(file_from)
             if file_from.find(':') > 0 and file_from.startswith('/'):
                 file_from = file_from[1:].replace('/', '\\')
 
-            cmdret.info_lines.append("from={0}".format(file_from))
-            cmdret.info_lines.append("to={0}".format(local_dirpath))
-
             file_stat = self.remote_stat(file_from)
 
             with self.conn_sftp.open(file_from, LIBSSH2_FXF_READ, LIBSSH2_SFTP_S_IRUSR) as fh_src, \
-                open(local_dirpath, 'wb') as fh_dst:
+                open(dstdir, 'wb') as fh_dst:
                 for size, data in fh_src:
                     fh_dst.write(data)
 
@@ -303,7 +313,7 @@ class ssh_link:
 
     def upload(self, file_from:str, file_to:str):
 
-        cmdret = config.cmd_return()
+        cmdret = config_next.command_return()
 
         mode = LIBSSH2_SFTP_S_IRUSR | \
                LIBSSH2_SFTP_S_IWUSR | \
@@ -317,12 +327,6 @@ class ssh_link:
             cmdret.error_lines.append("The specific file is not there !!!")
             cmdret.error_lines.append("file_from={}".format(file_from))
             return cmdret
-
-        # cmdret = self.exists(file_to)
-        # if cmdret.errcode != 0:
-        #     cmdret.error_lines.append("The specific file is not there !!!")
-        #     cmdret.error_lines.append("file_to={}".format(file_to))
-        #     return cmdret
 
         try:
             before = datetime.now()
