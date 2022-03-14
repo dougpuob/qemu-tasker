@@ -36,6 +36,9 @@ class ssh_link:
         self.working_dir = None
         self.os_kind = config.os_kind().unknown
 
+    def __del__(self):
+        self.tcp_socket.close()
+
     def set_working_dir(self, working_dir:str):
         self.working_dir = working_dir
 

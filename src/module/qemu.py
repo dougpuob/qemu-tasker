@@ -91,22 +91,23 @@ class qemu_instance:
         self.qemu_thread.start()
 
     def __del__(self):
+
         if self.conn_qmp:
             self.conn_qmp.close()
 
-    def normpath(self, path:str):
-        new_path = None
-        if self.guest_os_kind == config.os_kind().windows:
-            new_path = path.replace('/', '\\')
-        elif self.guest_os_kind == config.os_kind().linux or \
-             self.guest_os_kind == config.os_kind().macos:
-            new_path = path.replace('\\', '/')
-        else:
-            new_path = path
-        return new_path
+    # def normpath(self, path:str):
+    #     new_path = None
+    #     if self.guest_os_kind == config.os_kind().windows:
+    #         new_path = path.replace('/', '\\')
+    #     elif self.guest_os_kind == config.os_kind().linux or \
+    #          self.guest_os_kind == config.os_kind().macos:
+    #         new_path = path.replace('\\', '/')
+    #     else:
+    #         new_path = path
+    #     return new_path
 
-    def normpath_unix(self, path:str):
-        return path.replace('\\', '/')
+    # def normpath_unix(self, path:str):
+    #     return path.replace('\\', '/')
 
     def wait_to_create(self):
         times = 10
@@ -155,6 +156,8 @@ class qemu_instance:
         if None == self.ssh_link.tcp_socket:
             return False
 
+        self.status = config.task_status().processing
+
         cmd_str = exec_arg.program
         arg_str = ""
         if exec_arg.argument:
@@ -184,10 +187,17 @@ class qemu_instance:
             retval = False
             logging.exception("exception={}".format(str(e)))
 
+
+        self.status = config.task_status().ready
         return retval
 
     def send_qmp(self, qmp_cmd:config.qmp_command):
         self.clear()
+        self.status = config.task_status().processing
+
+        final_cmdret = config.cmd_return()
+        final_cmdret.errcode = 0
+
         argsjson = ""
         if qmp_cmd.is_base64:
             b64 = base64.b64decode(qmp_cmd.argsjson)
@@ -198,11 +208,14 @@ class qemu_instance:
 
         if self.conn_qmp:
             return self.conn_qmp.cmd(qmp_cmd.execute, args=argsjson)
-        return ""
+
+        self.status = config.task_status().ready
+        return final_cmdret
 
 
     def send_push(self, push_cmd:config.push_command):
         self.clear()
+        self.status = config.task_status().processing
 
         final_cmdret = config.cmd_return()
         selected_files = []
@@ -230,6 +243,7 @@ class qemu_instance:
                 if 0 != cmdret.errcode:
                     break
 
+        self.status = config.task_status().ready
         return final_cmdret
 
 
@@ -410,6 +424,7 @@ class qemu_instance:
 
     def kill(self) -> bool:
         self.clear()
+        self.status = config.task_status().killing
 
         if None == self.qemu_proc:
             return True

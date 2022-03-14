@@ -1,8 +1,6 @@
 # qemu-tasker
 
-The `qemu-tasker` project is a server-client program in Python which manage QEMU instances and communicate with them from the client side by commands. This project is inspired by implementing system testing in continuous integration (CI). It launch QEMU processes then connect QMP to the backend of QEMU and SSH to the guest operating system, then collect system resources by killing those processes in time, which is an option in config when launching.
-
-The `server` command to start a daemon as a server manage all QEMU instances and send/receive commands from clients; the `start` command to launch a QEMU program, options for QEMU in a JSON config file. the server will response you an unique <TASKID> to identify the QEMU process; the `kill` command to kill a QEMU instance by its <TASKID>; the `exec` command to execute command by SSH; the `qmp` command to communicate with QEMU Machie Protocol(QMP), of cause you can send HMP via QMP.
+The `qemu-tasker` is a server-client Python program. One server manages multiple QEMU instances making your control QEMU(backend) and communicate with its Guest OS side by commands. This project is inspired by implementing system testing in continuous integration (CI). It launch QEMU processes then connect QMP to the backend of QEMU and SSH to the guest operating system, then collect system resources by killing those processes in time, which is an option in config when launching.
 
 ![Figure](doc/figure-commands.png)
 
@@ -44,6 +42,26 @@ The server IP is `172.17.100.17`.
 ----------
 
 ## Commands
+There are three types commands with this project.
+
+### Control commands
+The `server` command to start a daemon as a server manage all QEMU instances and send/receive commands from clients; the `start` command to launch a QEMU program, options for QEMU in a JSON config file. the server will response you an unique <TASKID> to identify the QEMU process; the `kill` command to kill a QEMU instance by its <TASKID>; the `exec` command to execute command by SSH; the `qmp` command to communicate with QEMU Machie Protocol(QMP), of cause you can send HMP via QMP.
+
+1. `server`
+1. `start`
+1. `kill`
+1. `exec`
+1. `qmp`
+1. `status`
+
+### File transfer commands
+1. `download`
+1. `upload`
+1. `list`
+
+### Synchronization commands
+1. `push`
+1. `signal`
 
 ```
 ❯ python3 qemu-tasker.py --help

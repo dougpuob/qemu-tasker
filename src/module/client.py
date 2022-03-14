@@ -208,6 +208,10 @@ class client:
             print("[qemu-tasker] command result: {}".format(info_resp.reply.result))
 
 
+    def send_signal(self, info_cfg:config.info_config, is_json_report:bool=False):
+        # TODO: Send signal to change/sync task_status
+        pass
+
 
     #==========================================================================
     #==========================================================================
