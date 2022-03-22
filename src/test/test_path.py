@@ -62,7 +62,7 @@ class test_path(unittest.TestCase):
     def test_normpath_rel(self):
         osdp_path = OsdpPath()
         self.assertEqual(osdp_path.normpath('A/B/C\D\\E'), 'A/B/C/D/E')
-        self.assertEqual(osdp_path.normpath('A/B/C\D\\E\\.'), 'A/B/C/D/E')
+        self.assertEqual(osdp_path.normpath('A/B/C/D\\E\\.'), 'A/B/C/D/E')
         self.assertEqual(osdp_path.normpath('A/B/C/..\D\\E'), 'A/B/D/E')
         self.assertEqual(osdp_path.normpath('A/B/C/./..\D\\E'), 'A/B/D/E')
         self.assertEqual(osdp_path.normpath('A/B/C/../..\D\\E'), 'A/D/E')

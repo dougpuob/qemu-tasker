@@ -49,7 +49,6 @@ class OsdpPath():
             else:
                 return self.normpath_posix(path)
 
-        aa = path.find(':')
         is_root_win = (path.find(':') >= 0)
         is_root_unix = path.startswith('/')
 
