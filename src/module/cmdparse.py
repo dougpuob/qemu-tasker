@@ -22,6 +22,9 @@ class cmdargs():
         parser_server.add_argument('-L', '--longlife', type=int, default=30)
         parser_server.add_argument('-C', '--config', type=str, default="./config.json")
 
+        # subcommand info
+        parser_info = subparsers.add_parser('info', parents = [parent_parser], help='get server system information')
+
         # subcommand start
         parser_start = subparsers.add_parser('start', parents = [parent_parser], help='launch a QEMU achine instance')
         parser_start.add_argument('-C', '--config', required=True)
@@ -49,19 +52,19 @@ class cmdargs():
         # subcommand `list`
         parser_list = subparsers.add_parser('list', parents = [parent_parser], help='list files from local to guest')
         parser_list.add_argument('-T', '--taskid', type=int, required=True)
-        parser_list.add_argument('-S', '--dirpath', type=str)
+        parser_list.add_argument('-D', '--dstdir', type=str)
 
         # subcommand `download`
         parser_download = subparsers.add_parser('download', parents = [parent_parser], help='download files from guest to local')
         parser_download.add_argument('-T', '--taskid', type=int, required=True)
         parser_download.add_argument('-F', '--files', required=True, nargs="+")
-        parser_download.add_argument('-S', '--dirpath', type=str)
+        parser_download.add_argument('-D', '--dstdir', type=str)
 
         # subcommand `upload`
         parser_upload = subparsers.add_parser('upload', parents = [parent_parser], help='upload files from local to guest')
         parser_upload.add_argument('-T', '--taskid', type=int, required=True)
         parser_upload.add_argument('-F', '--files', required=True, nargs="+")
-        parser_upload.add_argument('-S', '--dirpath', type=str)
+        parser_upload.add_argument('-D', '--dstdir', type=str)
 
         # subcommand `push`
         parser_push = subparsers.add_parser('push', parents = [parent_parser], help='update files from local to guest')
@@ -71,13 +74,12 @@ class cmdargs():
         parser_exec = subparsers.add_parser('status', parents = [parent_parser], help='query a specific QEMU status')
         parser_exec.add_argument('-T', '--taskid', type=int, required=True)
 
-        # subcommand info
-        parser_info = subparsers.add_parser('info', parents = [parent_parser], help='get server system information')
 
 
     def print_help(self):
         args = self.parser.print_help()
         return args
+
 
     def get_parsed_args(self):
         args = self.parser.parse_args()

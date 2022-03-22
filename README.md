@@ -97,142 +97,209 @@ optional arguments:
 
 ### Server
 ``` bash
-❯ python3 qemu-tasker.py --host 172.17.100.17 server \
+❯ python3 qemu-tasker.py --host 192.168.0.201 server \
                          --config src/config.json
 ```
 
 ### Info
 ``` bash
-❯ python3 qemu-tasker.py --host 172.17.100.17 \
+❯ python3 qemu-tasker.py --host 192.168.0.201 \
                          --jsonreport \
                          info
+# Responsed JSON data
 {
-  "response": {
-    "command": "info",
-    "data": {
-      "errcode": 0,
-      "images": [
-        "abc.qcow2",
-        "windows-10-20h2.qcow2"
-      ],
-      "instances": "",
-      "result": true,
-      "stderr": [],
-      "stdout": [],
-      "variables": {
-        "SERVER_PUSHPOOL_DIR": "./pushpool",
-        "SERVER_QCOW2_IMAGE_DIR": "/home/dougpuob/workspace/qemu-runner/"
-      }
+  "act_kind": "response",
+  "cmd_kind": "info",
+  "data": {
+    "image_files": [
+      "abc.qcow2",
+      "windows-10-20h2.qcow2"
+    ],
+    "name": "info_command_response_data",
+    "variables": {
+      "SERVER_PUSHPOOL_DIR": "./data/pushpool",
+      "SERVER_QCOW2_IMAGE_DIR": "/home/dougpuob/workspace/qemu-runner/"
     }
+  },
+  "result": {
+    "data": null,
+    "errcode": 0,
+    "error_lines": [
+      ""
+    ],
+    "info_lines": []
   }
 }
+
 
 ```
 
 ### Start
 ``` bash
-❯ python3 qemu-tasker.py --host 172.17.100.17 \
+❯ python3 qemu-tasker.py --host 192.168.0.201 \
                          --jsonreport \
                          start \
                          --config qemu-taskcfg.json
+# Responsed JSON data
 {
-  "response": {
-    "command": "start",
-    "data": {
-      "cwd": "qemu-tasker",
-      "errcode": 0,
-      "fwd_ports": {
-        "qmp": 10051,
-        "ssh": 10052
+  "act_kind": "response",
+  "cmd_kind": "start",
+  "data": {
+    "forward": {
+      "qmp": 10011,
+      "ssh": 10012
+    },
+    "guest_info": {
+      "os_kind": "unknown",
+      "pushpool_path": "",
+      "workdir_path": ""
+    },
+    "is_connected_qmp": {},
+    "is_connected_ssh": {},
+    "name": "start_command_response_data",
+    "pid": 245002,
+    "server_info": {
+      "pushpool_path": "/home/dougpuob/workspace/dougpuob/qemu-tasker/qemu-tasker.git/pushpool/20220321_132055_10010",
+      "workdir_path": "/home/dougpuob/workspace/dougpuob/qemu-tasker/qemu-tasker.git"
+    },
+    "ssh": {
+      "account": {
+        "password": "dougpuob",
+        "username": "dougpuob"
       },
-      "os": "unknown",
-      "result": true,
-      "stderr": [],
-      "stdout": [],
-      "taskid": 10050
-    }
+      "target": {
+        "address": "192.168.0.201",
+        "port": 12801
+      }
+    },
+    "taskid": 10010
+  },
+  "result": {
+    "data": null,
+    "errcode": 0,
+    "error_lines": [],
+    "info_lines": []
   }
 }
+
+
 
 ```
 
 ### Exec
 ``` bash
-❯ python3 qemu-tasker.py --host 172.17.100.17 \
+❯ python3 qemu-tasker.py --host 192.168.0.201 \
                          --jsonreport \
                          exec \
-                         --taskid 10060 \
+                         --taskid 10010 \
                          --program "ipconfig" \
-                         --argument="-all"
+                         --argument "/all"
+# Responsed JSON data
 {
-  "response": {
-    "command": "exec",
-    "data": {
-      "errcode": 0,
-      "result": true,
-      "stderr": [],
-      "stdout": [
-        "",
-        "Windows IP Configuration",
-        "",
-        "   Host Name . . . . . . . . . . . . : DESKTOP-I9TKP5J",
-        "   Primary Dns Suffix  . . . . . . . : ",
-        "   Node Type . . . . . . . . . . . . : Hybrid",
-        "   IP Routing Enabled. . . . . . . . : No",
-        "   WINS Proxy Enabled. . . . . . . . : No",
-        "",
-        "Ethernet adapter Ethernet Instance 0:",
-        "",
-        "   Connection-specific DNS Suffix  . : ",
-        "   Description . . . . . . . . . . . : Intel(R) PRO/1000 MT Network Connection #2",
-        "   Physical Address. . . . . . . . . : 52-54-00-12-34-56",
-        "   DHCP Enabled. . . . . . . . . . . : Yes",
-        "   Autoconfiguration Enabled . . . . : Yes",
-        "   Site-local IPv6 Address . . . . . : fec0::4ce8:6b94:da87:28d3%1(Preferred) ",
-        "   Link-local IPv6 Address . . . . . : fe80::4ce8:6b94:da87:28d3%14(Preferred) ",
-        "   IPv4 Address. . . . . . . . . . . : 10.0.2.15(Preferred) ",
-        "   Subnet Mask . . . . . . . . . . . : 255.255.255.0",
-        "   Lease Obtained. . . . . . . . . . : Friday, March 11, 2022 6:50:28 AM",
-        "   Lease Expires . . . . . . . . . . : Saturday, March 12, 2022 6:50:28 AM",
-        "   Default Gateway . . .",
-        " . . . . . . : fe80::2%14",
-        "                                       10.0.2.2",
-        "   DHCP Server . . . . . . . . . . . : 10.0.2.2",
-        "   DHCPv6 IAID . . . . . . . . . . . : 257053696",
-        "   DHCPv6 Client DUID. . . . . . . . : 00-01-00-01-29-5F-7C-32-52-54-00-12-34-56",
-        "   DNS Servers . . . . . . . . . . . : 10.0.2.3",
-        "   NetBIOS over Tcpip. . . . . . . . : Enabled"
-      ],
-      "taskid": 10060
-    }
+  "act_kind": "response",
+  "cmd_kind": "exec",
+  "data": {
+    "name": "generic_command_response_data",
+    "taskid": 10010
+  },
+  "result": {
+    "data": null,
+    "errcode": 0,
+    "error_lines": [],
+    "info_lines": [
+      "",
+      "Windows IP Configuration",
+      "",
+      "   Host Name . . . . . . . . . . . . : DESKTOP-I9TKP5J",
+      "   Primary Dns Suffix  . . . . . . . : ",
+      "   Node Type . . . . . . . . . . . . : Hybrid",
+      "   IP Routing Enabled. . . . . . . . : No",
+      "   WINS Proxy Enabled. . . . . . . . : No",
+      "",
+      "Ethernet adapter Ethernet Instance 0:",
+      "",
+      "   Connection-specific DNS Suffix  . : ",
+      "   Description . . . . . . . . . . . : Intel(R) PRO/1000 MT Network Connection #2",
+      "   Physical Address. . . . . . . . . : 52-54-00-12-34-56",
+      "   DHCP Enabled. . . . . . . . . . . : Yes",
+      "   Autoconfiguration Enabled . . . . : Yes",
+      "   Site-local IPv6 Address . . . . . : fec0::4ce8:6b94:da87:28d3%1(Preferred) ",
+      "   Link-local IPv6 Address . . . . . : fe80::4ce8:6b94:da87:28d3%14(Preferred) ",
+      "   IPv4 Address. . . . . . . . . . . : 10.0.2.15(Preferred) ",
+      "   Subnet Mask . . . . . . . . . . . : 255.255.255.0",
+      "   Lease Obtained. . . . . . . . . . : Monday, March 21, 2022 6:21:10 AM",
+      "   Lease Expires . . . . . . . . . . : Tuesday, March 22, 2022 6:21:09 AM",
+      "   Default Gateway . . . ",
+      ". . . . . . : fe80::2%14",
+      "                                       10.0.2.2",
+      "   DHCP Server . . . . . . . . . . . : 10.0.2.2",
+      "   DHCPv6 IAID . . . . . . . . . . . : 257053696",
+      "   DHCPv6 Client DUID. . . . . . . . : 00-01-00-01-29-5F-7C-32-52-54-00-12-34-56",
+      "   DNS Servers . . . . . . . . . . . : 10.0.2.3",
+      "   NetBIOS over Tcpip. . . . . . . . : Enabled"
+    ]
   }
 }
-
 ```
 
 ### QMP
 
 ``` bash
-❯ python3 qemu-tasker.py --host 172.17.100.17 \
-                         --jsonreport \
-                         qmp \
-                         --taskid 10060 \
-                         --execute human-monitor-command \
-                         --argsjson='''{"command-line" : "info version" }'''
+❯ python3 src/qemu-tasker.py --host 192.168.0.201 \
+                             --jsonreport \
+                             qmp \
+                             --taskid 10010 \
+                             --execute human-monitor-command \
+                             --argsjson '''{"command-line" : "info version" }'''
+# Responsed JSON data
 {
-  "response": {
-    "command": "qmp",
-    "data": {
-      "errcode": 0,
-      "result": true,
-      "stderr": "",
-      "stdout": {
-        "return": "6.2.50v6.2.0-996-g78a5f4fe83\r\n"
-      },
-      "taskid": 10060
-    }
+  "act_kind": "response",
+  "cmd_kind": "qmp",
+  "data": {
+    "name": "generic_command_response_data",
+    "taskid": 10010
+  },
+  "result": {
+    "data": null,
+    "errcode": 0,
+    "error_lines": [],
+    "info_lines": [
+      {
+        "return": "6.2.50v6.2.0-995-gc1d7ca1fb8\r\n"
+      }
+    ]
   }
 }
+
+
+❯ python3 src/qemu-tasker.py --host 192.168.0.201 \
+                               --jsonreport \
+                               qmp \
+                               --taskid 10010 \
+                               --execute human-monitor-command \
+                               --argsjson eyJjb21tYW5kLWxpbmUiIDogImluZm8gdmVyc2lvbiIgfQ== \
+                               --base64
+# Responsed JSON data
+{
+  "act_kind": "response",
+  "cmd_kind": "qmp",
+  "data": {
+    "name": "generic_command_response_data",
+    "taskid": 10010
+  },
+  "result": {
+    "data": null,
+    "errcode": 0,
+    "error_lines": [],
+    "info_lines": [
+      {
+        "return": "6.2.50v6.2.0-995-gc1d7ca1fb8\r\n"
+      }
+    ]
+  }
+}
+
+
 
 ```
 
@@ -243,6 +310,7 @@ optional arguments:
                                --taskid 10060 \
                                --execute human-monitor-command \
                                --argsjson='''{"command-line" : "savevm snapshot01" }'''
+# Responsed JSON data
 {
   "response": {
     "command": "qmp",

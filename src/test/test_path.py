@@ -27,6 +27,7 @@ class test_path(unittest.TestCase):
     def test_normpath_abs(self):
         osdp_path = OsdpPath()
         self.assertEqual(osdp_path.normpath('c:/Windows'), 'c:\\Windows')
+        self.assertEqual(osdp_path.normpath('c:/Windows/.'), 'c:\\Windows')
         self.assertEqual(osdp_path.normpath('c:/A/B/C\D\E'), 'c:\\A\\B\\C\\D\\E')
         self.assertEqual(osdp_path.normpath('c:/A/B/C\.\E'), 'c:\\A\\B\\C\\E')
         self.assertEqual(osdp_path.normpath('c:/A/B/C\..\E'), 'c:\\A\\B\\E')
@@ -38,6 +39,7 @@ class test_path(unittest.TestCase):
     def test_normpath_windows_abs(self):
         osdp_path = OsdpPath()
         self.assertEqual(osdp_path.normpath_windows('c:/Windows'), 'c:\\Windows')
+        self.assertEqual(osdp_path.normpath_windows('c:/Windows/.'), 'c:\\Windows')
         self.assertEqual(osdp_path.normpath_windows('c:/A/B/C\D\E'), 'c:\\A\\B\\C\\D\\E')
         self.assertEqual(osdp_path.normpath_windows('c:/A/B/C\.\E'), 'c:\\A\\B\\C\\E')
         self.assertEqual(osdp_path.normpath_windows('c:/A/B/C\..\E'), 'c:\\A\\B\\E')
@@ -49,6 +51,7 @@ class test_path(unittest.TestCase):
     def test_normpath_windows_rel(self):
         osdp_path = OsdpPath()
         self.assertEqual(osdp_path.normpath_windows('A/B/C\D\\E'), 'A\\B\\C\\D\\E')
+        self.assertEqual(osdp_path.normpath_windows('A/B/C\D\\E\\.'), 'A\\B\\C\\D\\E')
         self.assertEqual(osdp_path.normpath_windows('A/B/C/..\D\\E'), 'A\\B\\D\\E')
         self.assertEqual(osdp_path.normpath_windows('A/B/C/./..\D\\E'), 'A\\B\\D\\E')
         self.assertEqual(osdp_path.normpath_windows('A/B/C/../..\D\\E'), 'A\\D\\E')
@@ -59,6 +62,7 @@ class test_path(unittest.TestCase):
     def test_normpath_rel(self):
         osdp_path = OsdpPath()
         self.assertEqual(osdp_path.normpath('A/B/C\D\\E'), 'A/B/C/D/E')
+        self.assertEqual(osdp_path.normpath('A/B/C\D\\E\\.'), 'A/B/C/D/E')
         self.assertEqual(osdp_path.normpath('A/B/C/..\D\\E'), 'A/B/D/E')
         self.assertEqual(osdp_path.normpath('A/B/C/./..\D\\E'), 'A/B/D/E')
         self.assertEqual(osdp_path.normpath('A/B/C/../..\D\\E'), 'A/D/E')

@@ -1,21 +1,30 @@
 {
-  "longlife": 100,  
-  "program": "qemu-system-x86_64",
-  "arguments": [
-    "-m",
-    "4G",
-    "-smp",
-    "4",
-    "-accel",
-    "kvm",
-    "-usb",
-    "-device",
-    "usb-tablet",
-    "-drive",
-    "file=${SERVER_QCOW2_IMAGE_DIR}/windows-10-20h2.qcow2,format=qcow2,snapshot=on"
-  ],
-  "ssh_login": {
-    "username": "dougpuob",
-    "password": "dougpuob"
+  "name": "start_command_request_data",
+  "longlife": 100,
+  "cmd": {
+    "program": "qemu-system-x86_64",
+    "arguments": [
+      "-m",
+      "4G",
+      "-smp",
+      "4",
+      "-accel",
+      "kvm",
+      "-usb",
+      "-device",
+      "usb-tablet",
+      "-drive",
+      "file=${SERVER_QCOW2_IMAGE_DIR}/windows-10-20h2.qcow2,format=qcow2,snapshot=on"
+    ]
+  },
+  "ssh": {
+    "target": {
+      "addr": "192.168.0.201",
+      "port": 12801
+    },
+    "account": {
+      "username": "dougpuob",
+      "password": "dougpuob"
+    }
   }
 }
