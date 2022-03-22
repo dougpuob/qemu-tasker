@@ -44,12 +44,12 @@ class client:
     #==========================================================================
     #==========================================================================
     #==========================================================================
-    def send_control_command(self, cmd_kind:config_next.command_kind, cmd_data, is_json_report:bool) -> json:
+    def send_control_command(self, cmd_kind:config_next.command_kind, cmd_data, is_json_report:bool) -> config_next.transaction_capsule:
         logging.info("cmd_data={}".format(cmd_data.toTEXT()))
         request_capsule = config_next.transaction_capsule(config_next.action_kind().request, cmd_kind, data=cmd_data)
 
         self.conn_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.conn_tcp.connect((self.host_addr.addr, self.host_addr.port))
+        self.conn_tcp.connect((self.host_addr.address, self.host_addr.port))
         self.conn_tcp.send(request_capsule.toTEXT().encode())
 
         BUFF_SIZE = 2048
@@ -76,52 +76,45 @@ class client:
             else:
                 print("[qemu-tasker] returned errcode: {}".format(response_json.result.errcode))
 
-        return response_json
+        response_capsule = config_next.config().toCLASS(response_text)
+        return response_capsule
 
 
     def send_transfer_command(self,
                               cmd_kind:config_next.command_kind,
                               cmd_data,
                               is_json_report:bool=False) -> config_next.transaction_capsule:
+        cmdret = config_next.command_return()
 
         # Retrieve SSH information by sending a STATUS command.
-        response_capsule_json = self.send_control_command(
+        status_response_capsule = self.send_control_command(
                                         config_next.command_kind().status,
                                         config_next.status_command_request_data(cmd_data.taskid),
                                         None)
-        response_capsule = config_next.config().toCLASS(json.dumps(response_capsule_json))
-        status_data:config_next.status_command_response_data = response_capsule.data
 
-        cmdret = config_next.command_return()
-        is_connected = False
-
-        try:
-            is_connected = self.ssh_link.connect(status_data.ssh.target.addr,
+        if status_response_capsule.data:
+            status_data:config_next.status_command_response_data = status_response_capsule.data
+            is_connected = self.ssh_link.connect(status_data.ssh.target.address,
                                                  status_data.forward.ssh,
                                                  status_data.ssh.account.username,
                                                  status_data.ssh.account.password)
-        except Exception as e:
-            cmdret.error_lines.append(str(e))
-
-        if not is_connected:
-            cmdret.errcode = -1
-            cmdret.error_lines.append('Failed to establish a SSH connection !!!')
-            return cmdret
-
-        if   cmd_kind == config_next.command_kind().list:
-            tx_capsule = self.exec_list_command(cmd_data, status_data)
-        elif cmd_kind == config_next.command_kind().upload:
-            tx_capsule = self.exec_upload_command(cmd_data, status_data)
-        elif cmd_kind == config_next.command_kind().download:
-            tx_capsule = self.exec_download_command(cmd_data, status_data)
+            if not is_connected:
+                cmdret.errcode = -1
+                cmdret.error_lines.append('Failed to establish a SSH connection !!!')
         else:
             cmdret.errcode = -2
-            cmdret.error_lines.append('Failed to dispatch command !!!')
-            tx_capsule = config_next.transaction_capsule(config_next.action_kind().response,
-                                                         cmd_kind)
-        tx_capsule.result.errcode = cmdret.errcode
-        tx_capsule.result.info_lines.extend(cmdret.info_lines)
-        tx_capsule.result.error_lines.extend(cmdret.error_lines)
+            cmdret.error_lines.append('response_capsule.data is None !!!')
+
+        tx_capsule = None
+        if cmdret.errcode == 0:
+            if   cmd_kind == config_next.command_kind().list:
+                tx_capsule = self.exec_list_command(cmd_data, status_data)
+            elif cmd_kind == config_next.command_kind().upload:
+                tx_capsule = self.exec_upload_command(cmd_data, status_data)
+            elif cmd_kind == config_next.command_kind().download:
+                tx_capsule = self.exec_download_command(cmd_data, status_data)
+        else:
+            tx_capsule = config_next.transaction_capsule(config_next.action_kind().response, cmd_kind, cmdret, None)
 
         if is_json_report:
             if True == is_json_report:
@@ -250,56 +243,61 @@ class client:
                             status_resp_data:config_next.status_command_response_data):
         total_cmdret = config_next.command_return()
 
-        try:
-            guest_os_kind  = status_resp_data.guest_info.os_kind
-            guest_work_dir = status_resp_data.guest_info.workdir_name
 
-            guest_dstdir = guest_work_dir
-            if cmd_data.dstdir:
-                guest_dstdir = self.path.normpath(os.path.join(guest_dstdir, cmd_data.dstdir))
-                total_cmdret.info_lines.append("guest_dstdir={}".format(guest_dstdir))
-                mkdir_cmdret = self.ssh_link.mkdir(guest_dstdir)
-                total_cmdret.errcode = mkdir_cmdret.errcode
-                total_cmdret.error_lines.extend(mkdir_cmdret.error_lines)
-                total_cmdret.info_lines.extend(mkdir_cmdret.info_lines)
+        for file_path in cmd_data.files:
+            file_path = os.path.realpath(file_path)
+            if not os.path.exists(file_path):
+                total_cmdret.error_lines.append("An input file is not existing !!! (file_path={})".format(file_path))
+                total_cmdret.errcode = -1
 
-            if 0 == total_cmdret.errcode:
-                for file_path in cmd_data.files:
-                    file_path = os.path.realpath(file_path)
+        if total_cmdret.errcode== 0:
 
-                    if platform.system() == 'Windows':
-                        file_path = self.path.normpath_windows(file_path)
-                    else:
-                        file_path = self.path.normpath_posix(file_path)
+            try:
+                guest_os_kind  = status_resp_data.guest_info.os_kind
+                guest_work_dir = status_resp_data.guest_info.workdir_name
 
-                    basename = self.path.basename(file_path)
+                guest_dstdir = guest_work_dir
+                if cmd_data.dstdir:
+                    guest_dstdir = self.path.normpath(os.path.join(guest_dstdir, cmd_data.dstdir))
+                    total_cmdret.info_lines.append("guest_dstdir={}".format(guest_dstdir))
+                    mkdir_cmdret = self.ssh_link.mkdir(guest_dstdir)
+                    total_cmdret.errcode = mkdir_cmdret.errcode
+                    total_cmdret.error_lines.extend(mkdir_cmdret.error_lines)
+                    total_cmdret.info_lines.extend(mkdir_cmdret.info_lines)
 
-                    total_cmdret.info_lines.append('--------------------------------------------------')
-                    total_cmdret.info_lines.append('guest_os_kind={}'.format(guest_os_kind))
-                    total_cmdret.info_lines.append('file_path={}'.format(file_path))
+                if 0 == total_cmdret.errcode:
+                    for file_path in cmd_data.files:
+                        file_path = os.path.realpath(file_path)
 
-                    target_path = self.path.normpath(os.path.join(guest_dstdir, basename), guest_os_kind)
-                    upload_cmdret = self.ssh_link.upload(file_path, target_path)
+                        if platform.system() == 'Windows':
+                            file_path = self.path.normpath_windows(file_path)
+                        else:
+                            file_path = self.path.normpath_posix(file_path)
 
-                    total_cmdret.errcode = total_cmdret.errcode
-                    if total_cmdret.errcode != 0:
-                        total_cmdret.info_lines.extend(upload_cmdret.info_lines)
-                        total_cmdret.error_lines.extend(upload_cmdret.error_lines)
-                        break
+                        basename = self.path.basename(file_path)
 
-        except Exception as e:
-            total_cmdret.error_lines.append(str(e))
-            logging.info(str(e))
+                        total_cmdret.info_lines.append('--------------------------------------------------')
+                        total_cmdret.info_lines.append('guest_os_kind={}'.format(guest_os_kind))
+                        total_cmdret.info_lines.append('file_path={}'.format(file_path))
+
+                        target_path = self.path.normpath(os.path.join(guest_dstdir, basename), guest_os_kind)
+                        upload_cmdret = self.ssh_link.upload(file_path, target_path)
+
+                        total_cmdret.errcode = total_cmdret.errcode
+                        if total_cmdret.errcode != 0:
+                            total_cmdret.info_lines.extend(upload_cmdret.info_lines)
+                            total_cmdret.error_lines.extend(upload_cmdret.error_lines)
+                            break
+
+            except Exception as e:
+                total_cmdret.error_lines.append(str(e))
+                logging.info(str(e))
 
         resp_data:config_next = config_next.upload_command_response_data(cmd_data.taskid)
         tx_capsule = config_next.transaction_capsule(config_next.action_kind().response,
                                                      config_next.command_kind().upload,
                                                      total_cmdret,
                                                      resp_data)
-        tx_capsule.result.errcode = total_cmdret.errcode
-        tx_capsule.result.error_lines.extend(total_cmdret.error_lines)
-        tx_capsule.result.info_lines.extend(total_cmdret.info_lines)
-
         return tx_capsule
 
     #==========================================================================

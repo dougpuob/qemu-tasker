@@ -18,7 +18,7 @@ class server:
         #
         # New Config
         #
-        self.addr_info = config_next.socket_address(socket_addr.addr, socket_addr.port)
+        self.addr_info = config_next.socket_address(socket_addr.address, socket_addr.port)
         self.path = OsdpPath()
         self.server_variables_dict = {}
 
@@ -254,14 +254,8 @@ class server:
                                         qemu_inst.server_info,
                                         qemu_inst.guest_info,
                                         qemu_inst.is_qmp_connected(),
-                                        qemu_inst.is_ssh_connected())
-            # filepool = ''
-            # if qemu_inst.guest_os_work_dir:
-            #     filepool = os.path.join(qemu_inst.guest_os_work_dir, qemu_inst.pushdir_name)
-            #     if qemu_inst.guest_info.os_kind == config_next.os_kind().windows:
-            #         filepool = self.path.normpath_windows(filepool)
-            #     else:
-            #         filepool = self.path.normpath_posix(filepool)
+                                        qemu_inst.is_ssh_connected(),
+                                        qemu_inst.status)
             return resp_data
         return None
 
@@ -282,12 +276,12 @@ class server:
 
     def thread_routine_listening_connections(self):
         logging.info("thread_routine_listening_connections ...")
-        logging.info("  socket_addr.addr={}".format(self.socket_addr.addr))
+        logging.info("  socket_addr.address={}".format(self.socket_addr.address))
         logging.info("  socket_addr.port={}".format(self.socket_addr.port))
 
         try:
             self.listen_tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.listen_tcp_conn.bind((self.socket_addr.addr, self.socket_addr.port))
+            self.listen_tcp_conn.bind((self.socket_addr.address, self.socket_addr.port))
             self.listen_tcp_conn.listen(10)
 
             while self.is_started:
@@ -361,7 +355,8 @@ class server:
                                                         qemu_inst.server_info,
                                                         qemu_inst.guest_info,
                                                         qemu_inst.is_qmp_connected,
-                                                        qemu_inst.is_ssh_connected)
+                                                        qemu_inst.is_ssh_connected,
+                                                        qemu_inst.status)
                 # ------
                 # Kill
                 # ------
@@ -388,7 +383,7 @@ class server:
                 elif config_next.command_kind().status == incoming_capsule.cmd_kind:
                     cmd_data:config_next.status_command_request_data = incoming_capsule.data
                     qemu_inst = self.find_target_instance(cmd_data.taskid)
-                    cmdret = self.check_and_clear_qemu_instance(cmd_data.taskid, qemu_inst)
+                    cmdret = self.clear_qemu_instance(cmd_data.taskid, qemu_inst)
                     if cmdret.errcode == 0:
                         resp_data = self.command_to_status(qemu_inst, cmd_data)
 
@@ -436,7 +431,7 @@ class server:
                     else:
                         result = self.get_command_return(0, '')
                 else:
-                    err_text = "qemu_inst and resp_data are None !!!"
+                    err_text = "the resp_data is None !!!"
                     logging.error(err_text)
                     result = self.get_command_return(-9999, err_text)
 
@@ -458,6 +453,16 @@ class server:
         cmd_ret.errcode = errcode
         cmd_ret.error_lines.append(error_text)
         return cmd_ret
+
+
+    def clear_qemu_instance(self, taskid:int, qemu_inst:qemu.qemu_instance) -> config_next.command_return:
+        cmdret = config_next.command_return()
+        cmdret.info_lines.append('taskid={}'.format(taskid))
+
+        if qemu_inst:
+            qemu_inst.clear()
+
+        return cmdret
 
 
     def check_and_clear_qemu_instance(self, taskid:int, qemu_inst:qemu.qemu_instance) -> config_next.command_return:

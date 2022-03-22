@@ -80,7 +80,7 @@ class qemu_instance:
 
         # SSH
         self.ssh_obj = ssh_link()
-        self.qmp_obj = QEMUMonitorProtocol((self.socket_addr.addr, self.forward_port.qmp), server=True)
+        self.qmp_obj = QEMUMonitorProtocol((self.socket_addr.address, self.forward_port.qmp), server=True)
         self.ssh_info = start_data.ssh_info
         self.flag_is_qmp_connected = False
         self.flag_is_ssh_connected = False
@@ -230,9 +230,9 @@ class qemu_instance:
         final_cmdret = config_next.command_return()
         selected_files = []
 
-        dirlist = os.listdir(self.host_pushdir_path)
+        dirlist = os.listdir(self.server_info.pushpool_path)
         for file_from in dirlist:
-            fullpath = os.path.join(self.host_pushdir_path, file_from)
+            fullpath = os.path.join(self.server_info.pushpool_path, file_from)
             fullpath = self.path_obj.normpath_posix(fullpath)
 
             if os.path.exists(fullpath):
@@ -274,7 +274,7 @@ class qemu_instance:
 
 
     def attach_qemu_device_qmp(self):
-        arg1 = ["-chardev", "socket,id=qmp,host={},port={}".format(self.socket_addr.addr, self.forward_port.qmp)]
+        arg1 = ["-chardev", "socket,id=qmp,host={},port={}".format(self.socket_addr.address, self.forward_port.qmp)]
         arg2 = ["-mon", "chardev=qmp,mode=control"]
         self.qemu_base_args.extend(arg1)
         self.qemu_base_args.extend(arg2)
@@ -377,18 +377,21 @@ class qemu_instance:
             cmdret = self.ssh_obj.execute('pwd')
             guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
 
+
         guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
-        logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_homedir_path))
+        logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
 
         guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
         logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_name))
+
+        guest_info_workdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, self.WORKDIR_NAME))
+        logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
 
 
         # Set working directory.
         self.ssh_obj.apply_os_kind(guest_info_os_kind)
         self.ssh_obj.apply_workdir(guest_info_workdir_name)
         self.ssh_obj.apply_pushdir(guest_info_pushdir_name)
-        logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
 
 
         # Create Guest Information.
@@ -398,8 +401,10 @@ class qemu_instance:
         self.guest_info = config_next.guest_environment_information(
                                         guest_info_os_kind,
                                         guest_info_homedir_path,
+                                        guest_info_workdir_path,
                                         guest_info_workdir_name,
                                         guest_info_pushdir_name)
+
 
         # Create filepool directory.
         cmdret = self.ssh_obj.mkdir(guest_info_pushdir_name)
@@ -419,7 +424,7 @@ class qemu_instance:
         if self.flag_is_ssh_connected:
             return
 
-        wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_addr.addr,
+        wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_addr.address,
                                                                                        self.forward_port.ssh,
                                                                                        self.start_data.ssh_info.account.username,
                                                                                        self.start_data.ssh_info.account.password))

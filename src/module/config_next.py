@@ -94,8 +94,8 @@ class forward_port(config):
 
 
 class socket_address(config):
-    def __init__(self, addr:str, port:int):
-        self.addr:str = addr
+    def __init__(self, address:str, port:int):
+        self.address:str = address
         self.port:int = port
 
 
@@ -158,9 +158,10 @@ class transaction_capsule(config):
 
 
 class guest_environment_information(config):
-    def __init__(self, os_kind:os_kind=os_kind().unknown,  homedir_path:str='', workdir_name:str='', pushpool_name:str=''):
+    def __init__(self, os_kind:os_kind=os_kind().unknown,  homedir_path:str='', workdir_path:str='', workdir_name:str='', pushpool_name:str=''):
         self.os_kind = os_kind
         self.homedir_path = homedir_path
+        self.workdir_path = workdir_path
         self.workdir_name = workdir_name
         self.pushpool_name = pushpool_name
 
@@ -209,12 +210,14 @@ class start_command_response_data(config):
                  server_info:server_environment_information,
                  guest_info:guest_environment_information,
                  is_connected_qmp:bool,
-                 is_connected_ssh:bool):
+                 is_connected_ssh:bool,
+                 status:task_status):
         self.name = self.__class__.__name__
 
         # Target
-        self.taskid    = taskid
-        self.pid       = pid
+        self.taskid  = taskid
+        self.pid     = pid
+        self.status  = status
 
         # Resource
         self.forward     = port_fwd
