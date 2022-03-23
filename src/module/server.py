@@ -85,8 +85,8 @@ class server:
 
 
                 # Apply pathes in config if exist.
-                server_pushpool_dir = self.path.realpath(config['SERVER_PUSHPOOL_DIR'])
-                server_qcow2image_dir = self.path.realpath(config['SERVER_QCOW2_IMAGE_DIR'])
+                server_pushpool_dir = self.path.normpath(self.path.realpath(config['SERVER_PUSHPOOL_DIR']))
+                server_qcow2image_dir = self.path.normpath(self.path.realpath(config['SERVER_QCOW2_IMAGE_DIR']))
 
                 if os.path.exists(server_pushpool_dir):
                     self.server_pushpool_dir = server_pushpool_dir
