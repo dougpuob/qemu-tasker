@@ -69,13 +69,14 @@ try:
         # Create a START command request
         config_start_data = config_next.config().toCLASS(json.dumps(json.load(open(args.config))))
         cmd_data = config_next.start_command_request_data(config_start_data.longlife,
+                                                          config_start_data.qcow2filename,
                                                           config_start_data.ssh,
                                                           config_start_data.cmd)
         # Update arguments from command line
         if args.host:
-            cmd_data.ssh_info.target.address = args.host
+            cmd_data.ssh.target.address = args.host
         if args.port:
-            cmd_data.ssh_info.target.port = args.port
+            cmd_data.ssh.target.port = args.port
         logging.info("[qemu-tasker.py] cmd_data={}".format(cmd_data.toTEXT()))
         client(socket_addr).send_control_command(config_next.command_kind().start, cmd_data, args.jsonreport)
 

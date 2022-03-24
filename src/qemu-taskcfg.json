@@ -1,6 +1,7 @@
 {
   "name": "start_command_request_data",
   "longlife": 100,
+  "qcow2filename" : "windows-10-20h2.qcow2",
   "cmd": {
     "program": "qemu-system-x86_64",
     "arguments": [
@@ -14,7 +15,7 @@
       "-device",
       "usb-tablet",
       "-drive",
-      "file=${SERVER_QCOW2_IMAGE_DIR}/windows-10-20h2.qcow2,format=qcow2,snapshot=on"
+      "file=${SERVER_QCOW2_IMAGE_DIR}/${qcow2filename},format=qcow2,snapshot=on"
     ]
   },
   "ssh": {

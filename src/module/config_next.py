@@ -192,13 +192,15 @@ class generic_command_response_data(config):
 class start_command_request_data(config):
     def __init__(self,
                  longlife:int,
+                 qcow2filename:str,
                  ssh_info:ssh_information,
                  cmd_info:command_arguments):
         self.name = self.__class__.__name__
 
         self.longlife = longlife
+        self.qcow2filename = qcow2filename
         self.cmd = cmd_info
-        self.ssh_info = ssh_info
+        self.ssh = ssh_info
 
 
 class start_command_response_data(config):

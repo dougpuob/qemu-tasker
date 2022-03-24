@@ -295,11 +295,32 @@ class server:
 
 
     def create_qemu_instance(self, pushpool_path:str, taskid:int, start_data:config_next.start_command_request_data):
-        self.apply_server_variables(start_data.cmd)
-        qemu_inst = qemu.qemu_instance(self.socket_addr, pushpool_path, taskid, start_data)
 
+        #
+        # Check QCOW2 image dir path.
+        #
+        if not os.path.exists(self.server_qcow2image_dir):
+            logging.error('QCOW2 image direcotyr found !!! (self.server_qcow2image_dir={})'.format(self.server_qcow2image_dir))
+            return None
+
+        image_filepath = os.path.join(self.server_qcow2image_dir, start_data.qcow2filename)
+        if not os.path.exists(image_filepath):
+            logging.error('QCOW2 image file not found !!! (image_filepath={})'.format(image_filepath))
+            return None
+
+        #
+        # Apply variables.
+        #
+        self.apply_server_variables(start_data.cmd)
+        self.apply_client_variables(start_data.cmd, start_data)
+
+        #
+        # Go for it.
+        #
+        qemu_inst = qemu.qemu_instance(self.socket_addr, pushpool_path, taskid, start_data)
         self.qemu_instance_list.append(qemu_inst)
         qemu_inst.wait_to_create()
+
         return qemu_inst
 
 
@@ -309,6 +330,14 @@ class server:
                 key_def = "${" + key + "}"
                 if val.find(key_def) != -1:
                     cmd_info.arguments[idx] = val.replace(key_def, self.server_variables_dict[key])
+        return cmd_info
+
+
+    def apply_client_variables(self, cmd_info:config_next.command_arguments, start_data:config_next.start_command_request_data):
+        qcow2filename = '${qcow2filename}'
+        for idx, val in enumerate(cmd_info.arguments):
+            if val.find(qcow2filename) != -1:
+                cmd_info.arguments[idx] = val.replace(qcow2filename, start_data.qcow2filename)
         return cmd_info
 
 

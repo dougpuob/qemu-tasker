@@ -81,7 +81,7 @@ class qemu_instance:
         # SSH
         self.ssh_obj = ssh_link()
         self.qmp_obj = QEMUMonitorProtocol((self.socket_addr.address, self.forward_port.qmp), server=True)
-        self.ssh_info = start_data.ssh_info
+        self.ssh_info = start_data.ssh
         self.flag_is_qmp_connected = False
         self.flag_is_ssh_connected = False
 
@@ -426,8 +426,8 @@ class qemu_instance:
 
         wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_addr.address,
                                                                                        self.forward_port.ssh,
-                                                                                       self.start_data.ssh_info.account.username,
-                                                                                       self.start_data.ssh_info.account.password))
+                                                                                       self.start_data.ssh.account.username,
+                                                                                       self.start_data.ssh.account.password))
         wait_ssh_thread.setDaemon(True)
         wait_ssh_thread.start()
 
