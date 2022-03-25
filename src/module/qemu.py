@@ -13,6 +13,7 @@ import subprocess
 import logging
 import socket
 
+from inspect import currentframe, getframeinfo
 from ssh2.session import Session
 
 import psutil
@@ -187,7 +188,11 @@ class qemu_instance:
 
         except Exception as e:
             retval = False
-            logging.exception("exception={}".format(str(e)))
+            frameinfo = getframeinfo(currentframe())
+            errmsg = ("exception={0}".format(e)) + '\n' + \
+                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
+            logging.exception(errmsg)
 
 
         self.status = config_next.task_status().ready
@@ -297,7 +302,11 @@ class qemu_instance:
                         self.result.error_lines.extend(stderr)
 
                 except Exception as e:
-                    logging.exception("exception={}".format(e))
+                    frameinfo = getframeinfo(currentframe())
+                    errmsg = ("exception={0}".format(e)) + '\n' + \
+                             ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                            ("frameinfo.lineno={0}".format(frameinfo.lineno))
+                    logging.exception(errmsg)
 
 
     def thread_qmp_wait_accept(self):

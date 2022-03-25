@@ -6,6 +6,7 @@ import socket
 import logging
 import threading
 
+from inspect import currentframe, getframeinfo
 
 from module import qemu
 from module import config_next
@@ -291,7 +292,11 @@ class server:
                 thread_for_command.start()
 
         except Exception as e:
-            logging.exception("exception={}".format(e))
+            frameinfo = getframeinfo(currentframe())
+            errmsg = ("exception={0}".format(e)) + '\n' + \
+                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
+            logging.exception(errmsg)
 
 
     def create_qemu_instance(self, pushpool_path:str, taskid:int, start_data:config_next.start_command_request_data):
@@ -474,7 +479,11 @@ class server:
                 conn.send(bytes(return_capsule_text, encoding="utf-8"))
 
         except Exception as e:
-            logging.exception("exception={}".format(e))
+            frameinfo = getframeinfo(currentframe())
+            errmsg = ("exception={0}".format(e)) + '\n' + \
+                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
+            logging.exception(errmsg)
 
 
     def get_command_return(self, errcode:int, error_text:str) -> config_next.command_return():

@@ -140,6 +140,7 @@ class client:
         cmdret.info_lines.append("dstpath={}".format(dstpath))
 
         if cmdret.errcode == 0:
+            logging.info('trying to call self.ssh_link.exists() function. (dstpath={})'.format(dstpath))
             cmdret_exist = self.ssh_link.exists(dstpath)
             if cmdret_exist.errcode != 0:
                 cmdret.error_lines.append("The path is not exist !!! (dstpath={})".format(dstpath))
@@ -149,6 +150,7 @@ class client:
 
         readdir_data = None
         if cmdret.errcode == 0:
+            logging.info('trying to call self.ssh_link.readdir() function. (dstpath={})'.format(dstpath))
             cmdret_readdir = self.ssh_link.readdir(dstpath)
             if cmdret_readdir.errcode != 0:
                 cmdret.error_lines.append("Failed to call readdir() !!! (dstpath={})".format(dstpath))

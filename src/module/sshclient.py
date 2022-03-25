@@ -7,6 +7,7 @@ import logging
 import errno
 
 from time import sleep
+from inspect import currentframe, getframeinfo
 
 from module.path import OsdpPath
 from module import config_next
@@ -119,7 +120,10 @@ class ssh_link:
             cmdret.errcode = ssh_chanl.get_exit_status()
 
         except Exception as e:
-            errmsg = ("exception={0}".format(e))
+            frameinfo = getframeinfo(currentframe())
+            errmsg = ("exception={0}".format(e)) + '\n' + \
+                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
 
@@ -142,7 +146,10 @@ class ssh_link:
             cmdret.errcode = 0
 
         except Exception as e:
-            errmsg = ("exception={0}".format(e))
+            frameinfo = getframeinfo(currentframe())
+            errmsg = ("exception={0}".format(e)) + '\n' + \
+                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
             logging.exception(errmsg)
             cmdret.error_lines.append("exception occured at realpath() function !!!")
             cmdret.error_lines.append(errmsg)
@@ -203,10 +210,11 @@ class ssh_link:
 
         try:
             homedir = self.conn_sftp.realpath('.')
-            expandpath = os.path.join(homedir, subdir)
+            expandpath = self.path.normpath(os.path.join(homedir, subdir))
             cmdret.info_lines.append("expandpath={}".format(expandpath))
 
             readdir = []
+            logging.info('trying to call the self.conn_sftp.opendir() function. (expandpath={})'.format(expandpath))
             with self.conn_sftp.opendir(expandpath) as fh:
                 readdir = list(fh.readdir())
 
@@ -218,7 +226,11 @@ class ssh_link:
             cmdret.data = dir_list
 
         except Exception as e:
-            errmsg = ("Exception occured at readdir() function !!!")
+            frameinfo = getframeinfo(currentframe())
+            errmsg = "Exception occured at readdir() function !!! \n" + \
+                     ("exception={0}".format(e)) + '\n' + \
+                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
             cmdret.errcode = -1
@@ -271,7 +283,11 @@ class ssh_link:
                         self.conn_sftp.mkdir(expandpath, mode)
 
         except Exception as e:
-            errmsg = ("exception={0}".format(e))
+            frameinfo = getframeinfo(currentframe())
+            errmsg = "Exception occured at mkdir() function !!! \n" + \
+                     ("exception={0}".format(e)) + '\n' + \
+                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
             cmdret.errcode = -2
@@ -302,7 +318,10 @@ class ssh_link:
             cmdret.errcode = 0
 
         except Exception as e:
-            errmsg = ("exception={0}".format(e))
+            frameinfo = getframeinfo(currentframe())
+            errmsg = ("exception={0}".format(e)) + '\n' + \
+                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
             cmdret.errcode = -1
@@ -347,7 +366,10 @@ class ssh_link:
             cmdret.errcode = 0
 
         except Exception as e:
-            errmsg = "exception={0}".format(str(e))
+            frameinfo = getframeinfo(currentframe())
+            errmsg = ("exception={0}".format(e)) + '\n' + \
+                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
             cmdret.errcode = -1
