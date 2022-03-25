@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ast import Raise, Subscript
+from ast import Assert, Raise, Subscript
 import os
 from re import L
 import socket
@@ -34,21 +34,36 @@ class ssh_link:
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.conn_sftp = None
         self.conn_ssh_session = None
-        self.working_dir = None
-        self.pushpool_dir = None
+
+        self.envvar_path = None
+
+        self.workdir_name = None
+        self.pushdir_name = None
+
+        self.workdir_path = None
+        self.pushdir_path = None
+
         self.os_kind = config_next.os_kind().unknown
 
     def __del__(self):
         self.tcp_socket.close()
 
-    def apply_pushdir(self, pushpool_dir:str):
-        self.pushpool_dir = pushpool_dir
+    def apply_pushdir_name(self, pushdir_name:str):
+        self.pushdir_name = pushdir_name
 
-    def apply_workdir(self, working_dir:str):
-        self.working_dir = working_dir
+    def apply_workdir_name(self, workdir_name:str):
+        self.workdir_name = workdir_name
+
+    def apply_pushdir_path(self, pushdir_path:str):
+        self.pushdir_path = pushdir_path
+
+    def apply_workdir_path(self, workdir_path:str):
+        self.workdir_path = workdir_path
+
 
     def apply_os_kind(self, os_kind:config_next.os_kind):
         self.os_kind = os_kind
+
 
     def connect(self, addr:str, port:int, username:str, password:str):
         if self.tcp_socket:
@@ -60,6 +75,36 @@ class ssh_link:
             self.flag_is_ssh_connected = True
             return True
         return False
+
+
+    def get_path_environment_variable(self):
+
+        path_env = ''
+        ssh_chanl = self.conn_ssh_session.open_session()
+        if ssh_chanl:
+            if self.os_kind == config_next.os_kind().windows:
+                ssh_chanl.execute("powershell -C (Get-Item Env:PATH)[0].Value")
+            else:
+                Assert (config_next.os_kind().unknown)
+
+            ssh_chanl.wait_eof()
+
+            size, data = ssh_chanl.read()
+            logging.info("size={}".format(size))
+            logging.info("data={}".format(data))
+            text = data.decode('utf-8')
+            while size > 0:
+                size, data = ssh_chanl.read()
+                text = text + data.decode('utf-8')
+
+            ssh_chanl.close()
+            path_env = text.strip()
+
+        return  path_env
+
+
+    def update_path_envvar(self, new_path_value:str):
+        self.envvar_path = new_path_value
 
 
     def remote_stat(self, file_path:str):
@@ -86,38 +131,69 @@ class ssh_link:
 
         ssh_chanl = None
 
+        logging.info("Trying to execute command. (cmdstr={})".format(cmdstr))
+
         try:
             ssh_chanl = self.conn_ssh_session.open_session()
-            if self.working_dir:
+            if None == ssh_chanl:
+                errtext = "Failed to call self.conn_ssh_session.open_session() function, because it returned A None object !!!"
+                raise ModuleNotFoundError(errtext)
+
+            # # Call setenv() function
+            # if self.envvar_path:
+            #     ret_setenv = ssh_chanl.setenv("PATH", self.envvar_path)
+            #     logging.info("return ssh_chanl.setenv() function. (ret_setenv={})".format(ret_setenv))
+
+
+            new_cmdstr = cmdstr
+            if self.workdir_path:
                 if self.os_kind == config_next.os_kind().windows:
-                    ssh_chanl.execute("cd {} && {}".format(self.working_dir, cmdstr))
+                    new_cmdstr = "cd {} & {}".format(self.workdir_path, cmdstr)
                 else:
-                    ssh_chanl.execute("cd {} ; {}".format(self.working_dir, cmdstr))
-            else:
-                ssh_chanl.execute(cmdstr)
+                    new_cmdstr = "cd {} ; {}".format(self.workdir_path, cmdstr)
+            ssh_chanl.execute(new_cmdstr)
 
-            times = 5
-            while times > 0:
-
-                sleep(0.5)
-                times = times - 1
-
+            logging.info("Trying to call ssh_chanl.read() function.")
+            size, data = ssh_chanl.read()
+            logging.info("size={}".format(size))
+            logging.info("data={}".format(data))
+            lines = [line.decode('utf-8') for line in data.splitlines()]
+            cmdret.info_lines.extend(lines)
+            while size > 0:
                 size, data = ssh_chanl.read()
                 lines = [line.decode('utf-8') for line in data.splitlines()]
                 cmdret.info_lines.extend(lines)
-                while size > 0:
-                    size, data = ssh_chanl.read()
-                    lines = [line.decode('utf-8') for line in data.splitlines()]
-                    cmdret.info_lines.extend(lines)
 
+            logging.info("Trying to call ssh_chanl.read_stderr() function.")
+            size, data = ssh_chanl.read_stderr()
+            logging.info("size={}".format(size))
+            logging.info("data={}".format(data))
+            lines = [line.decode('utf-8') for line in data.splitlines()]
+            cmdret.error_lines.extend(lines)
+            while size > 0:
                 size, data = ssh_chanl.read_stderr()
-                lines = [line.decode('utf-8') for line in data.splitlines()]
                 cmdret.error_lines.extend(lines)
-                while size > 0:
-                    size, data = ssh_chanl.read_stderr()
-                    cmdret.error_lines.extend(lines)
 
+            logging.info("Trying to call ssh_chanl.close() function.")
+            ssh_chanl.close()
+
+            logging.info("Trying to call ssh_chanl.wait_closed() function.")
+            ret_wait_eof = ssh_chanl.wait_eof()
+            logging.info("ssh_chanl.wait_eof() function (ret_wait_eof={})".format(ret_wait_eof))
+
+            logging.info("Trying to call ssh_chanl.get_exit_status() function.")
             cmdret.errcode = ssh_chanl.get_exit_status()
+            infotext = "ssh_chanl.get_exit_status() function (cmdret.errcode={})".format(cmdret.errcode)
+            logging.info(infotext)
+
+        except ModuleNotFoundError as e:
+            frameinfo = getframeinfo(currentframe())
+            errmsg = ("exception={0}".format(e)) + '\n' + \
+                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
+            logging.exception(errmsg)
+            cmdret.error_lines.append(errmsg)
+            cmdret.errcode = -10
 
         except Exception as e:
             frameinfo = getframeinfo(currentframe())
@@ -126,12 +202,13 @@ class ssh_link:
                      ("frameinfo.lineno={0}".format(frameinfo.lineno))
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
+            cmdret.errcode = -12345
 
         finally:
             if ssh_chanl:
                 ssh_chanl.close()
+            return cmdret
 
-        return cmdret
 
     def realpath(self, path:str):
 
@@ -153,7 +230,7 @@ class ssh_link:
             logging.exception(errmsg)
             cmdret.error_lines.append("exception occured at realpath() function !!!")
             cmdret.error_lines.append(errmsg)
-            cmdret.errcode = -1
+            cmdret.errcode = -12345
 
         finally:
             return cmdret
@@ -178,7 +255,7 @@ class ssh_link:
             errmsg = "exception occured at stat() function !!!"
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
-            cmdret.errcode = -1
+            cmdret.errcode = -12345
 
         finally:
             return cmdret
@@ -233,7 +310,7 @@ class ssh_link:
                      ("frameinfo.lineno={0}".format(frameinfo.lineno))
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
-            cmdret.errcode = -1
+            cmdret.errcode = -12345
 
         finally:
             return cmdret
@@ -290,7 +367,7 @@ class ssh_link:
                      ("frameinfo.lineno={0}".format(frameinfo.lineno))
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
-            cmdret.errcode = -2
+            cmdret.errcode = -12345
 
         finally:
             return cmdret
@@ -324,7 +401,7 @@ class ssh_link:
                      ("frameinfo.lineno={0}".format(frameinfo.lineno))
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
-            cmdret.errcode = -1
+            cmdret.errcode = -12345
 
         finally:
             return cmdret
@@ -372,7 +449,7 @@ class ssh_link:
                      ("frameinfo.lineno={0}".format(frameinfo.lineno))
             logging.exception(errmsg)
             cmdret.error_lines.append(errmsg)
-            cmdret.errcode = -1
+            cmdret.errcode = -12345
 
         finally:
             return cmdret

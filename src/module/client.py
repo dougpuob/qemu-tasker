@@ -31,10 +31,14 @@ class client:
 
 
     def __init__(self, host_addr:config_next.socket_address):
+        self.BUFF_SIZE = 4096
+
         self.path = OsdpPath()
+        self.ssh_link = ssh_link()
+
         self.host_addr = host_addr
         self.flag_is_ssh_connected = False
-        self.ssh_link = ssh_link()
+
 
 
     def __del__(self):
@@ -52,13 +56,12 @@ class client:
         self.conn_tcp.connect((self.host_addr.address, self.host_addr.port))
         self.conn_tcp.send(request_capsule.toTEXT().encode())
 
-        BUFF_SIZE = 2048
         received = b''
         while True:
             sleep(0.1)
-            part = self.conn_tcp.recv(BUFF_SIZE)
+            part = self.conn_tcp.recv(self.BUFF_SIZE)
             received = received + part
-            if len(part) < BUFF_SIZE:
+            if len(part) < self.BUFF_SIZE:
                 try:
                     json.loads(str(received, encoding='utf-8'))
                     break

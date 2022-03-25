@@ -39,7 +39,6 @@ class qemu_instance:
         #
         # Definitions
         #
-        self.BUFF_SIZE = 2048
         self.WORKDIR_NAME = "qemu-tasker"
 
         self.start_data = start_data
@@ -103,8 +102,12 @@ class qemu_instance:
 
 
     def __del__(self):
+
         if self.qmp_obj:
             self.qmp_obj.close()
+
+        if self.qemu_proc:
+            self.qemu_proc = None
 
 
     def wait_to_create(self):
@@ -318,10 +321,10 @@ class qemu_instance:
 
     def thread_ssh_try_connect(self, host_addr, host_port, username, password):
         logging.info("command.py!qemu_machine::thread_wait_ssh_connect()")
-        while not self.flag_is_ssh_connected:
-            logging.info("QEMU(taskid={0}) is trying to connect SSH ...".format(self.taskid))
+        while (not self.flag_is_ssh_connected) and (None != self.qemu_proc):
             try:
-                self.ssh_obj.connect(host_addr, host_port,username,password)
+                logging.info("QEMU(taskid={0}) is trying to connect ... (host_addr={1}, host_port={2})".format(self.taskid, host_addr, host_port))
+                self.ssh_obj.connect(host_addr, host_port, username, password)
                 if self.ssh_obj.tcp_socket and self.ssh_obj.conn_ssh_session:
                     self.flag_is_ssh_connected = True
                     self.status = config_next.task_status().querying
@@ -330,10 +333,13 @@ class qemu_instance:
                     Break
 
             except ConnectionRefusedError as e:
-                logging.warning("SSH connection was refused, is going to retry again !!!")
+                logging.warning("SSH connection was refused, is going to retry again !!! (username={} ,password={})".format(username, password))
 
             except Exception as e:
-                logging.exception("exceptione={}".format(str(e)))
+                frameinfo = getframeinfo(currentframe())
+                errmsg = ("exception={0}".format(e)) + '\n' + \
+                        ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                        ("frameinfo.lineno={0}".format(frameinfo.lineno))
 
             sleep(1)
 
@@ -391,7 +397,10 @@ class qemu_instance:
         logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
 
         guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
-        logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_name))
+        logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
+
+        guest_info_pushdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, guest_info_pushdir_name))
+        logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_path))
 
         guest_info_workdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, self.WORKDIR_NAME))
         logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
@@ -399,8 +408,10 @@ class qemu_instance:
 
         # Set working directory.
         self.ssh_obj.apply_os_kind(guest_info_os_kind)
-        self.ssh_obj.apply_workdir(guest_info_workdir_name)
-        self.ssh_obj.apply_pushdir(guest_info_pushdir_name)
+        self.ssh_obj.apply_workdir_name(guest_info_workdir_name)
+        self.ssh_obj.apply_pushdir_name(guest_info_pushdir_name)
+        self.ssh_obj.apply_workdir_path(guest_info_workdir_path)
+        self.ssh_obj.apply_pushdir_path(guest_info_pushdir_path)
 
 
         # Create Guest Information.
@@ -422,7 +433,18 @@ class qemu_instance:
         logging.info("  cmdret.info_lines={0}".format(cmdret.info_lines))
         logging.info("  cmdret.error_lines={0}".format(cmdret.error_lines))
 
+        # Append envrionment variable.
+        #logging.info("QEMU(taskid={0}) append envirnment variable to PATH".format(self.taskid))
+        #self.ssh_obj.append_workdir_to_path()
 
+        # Update path environment variable
+        old_envvar_path = self.ssh_obj.get_path_environment_variable()
+        if old_envvar_path:
+            new_envvar_path = old_envvar_path + guest_info_workdir_path + ";"
+            self.ssh_obj.update_path_envvar(new_envvar_path)
+        logging.info("QEMU(taskid={0}) new_envvar_path={1}".format(self.taskid, new_envvar_path))
+
+        # Update status of QEMU instance.
         if self.guest_info.os_kind != config_next.os_kind().unknown:
             self.status = config_next.task_status().ready
         logging.info("QEMU(taskid={0}) self.status={1}".format(self.taskid, self.status))

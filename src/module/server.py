@@ -308,7 +308,7 @@ class server:
             logging.error('QCOW2 image direcotyr found !!! (self.server_qcow2image_dir={})'.format(self.server_qcow2image_dir))
             return None
 
-        image_filepath = os.path.join(self.server_qcow2image_dir, start_data.qcow2filename)
+        image_filepath = self.path.normpath_posix(os.path.join(self.server_qcow2image_dir, start_data.qcow2filename))
         if not os.path.exists(image_filepath):
             logging.error('QCOW2 image file not found !!! (image_filepath={})'.format(image_filepath))
             return None
@@ -323,7 +323,6 @@ class server:
         # Go for it.
         #
         qemu_inst = qemu.qemu_instance(self.socket_addr, pushpool_path, taskid, start_data)
-        self.qemu_instance_list.append(qemu_inst)
         qemu_inst.wait_to_create()
 
         return qemu_inst
@@ -381,6 +380,7 @@ class server:
                     qemu_inst = self.create_qemu_instance(self.server_pushpool_dir,
                                                           self.get_new_taskid(),
                                                           cmd_data)
+                    self.qemu_instance_list.append(qemu_inst)
                     resp_data = config_next.start_command_response_data(
                                                         qemu_inst.taskid,
                                                         qemu_inst.qemu_pid,
