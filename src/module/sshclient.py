@@ -210,7 +210,7 @@ class ssh_link:
 
         try:
             homedir = self.conn_sftp.realpath('.')
-            expandpath = self.path.normpath(os.path.join(homedir, subdir))
+            expandpath = self.path.normpath_posix(os.path.join(homedir, subdir))
             cmdret.info_lines.append("expandpath={}".format(expandpath))
 
             readdir = []
