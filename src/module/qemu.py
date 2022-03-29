@@ -22,7 +22,7 @@ import subprocess
 from time import sleep
 
 from datetime import datetime
-from module import config_next
+from module import config
 from module.sshclient import ssh_link
 from module.path import OsdpPath
 from module.qmp import QEMUMonitorProtocol
@@ -31,10 +31,10 @@ from module.qmp import QEMUMonitorProtocol
 class qemu_instance:
 
     def __init__(self,
-                 socket_addr:config_next.socket_address,
+                 socket_addr:config.socket_address,
                  pushpool_path:str,
                  taskid:int,
-                 start_data:config_next.start_command_request_data):
+                 start_data:config.start_command_request_data):
 
         #
         # Definitions
@@ -62,20 +62,20 @@ class qemu_instance:
         self.path_obj = OsdpPath()
         self.is_alive = True
         self.is_ready = False
-        self.status = config_next.task_status().waiting
-        self.result = config_next.command_return()
+        self.status = config.task_status().waiting
+        self.result = config.command_return()
 
         avail_tcp_ports = self.find_avaliable_ports(taskid, 2)
-        self.forward_port = config_next.forward_port(avail_tcp_ports[0], avail_tcp_ports[1])
+        self.forward_port = config.forward_port(avail_tcp_ports[0], avail_tcp_ports[1])
 
         workdir_path = self.path_obj.realpath('.')
         pushdir_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
         pushpool_path = self.path_obj.realpath(os.path.join(pushpool_path, pushdir_name))
-        self.server_info = config_next.server_environment_information(
+        self.server_info = config.server_environment_information(
                                         workdir_path,
                                         pushpool_path)
 
-        self.guest_info = config_next.guest_environment_information()
+        self.guest_info = config.guest_environment_information()
 
 
         # SSH
@@ -153,7 +153,7 @@ class qemu_instance:
         return ret_ports
 
 
-    def send_exec(self, cmd_data:config_next.exec_command_request_data, is_base64:bool):
+    def send_exec(self, cmd_data:config.exec_command_request_data, is_base64:bool):
         self.clear()
 
         logging.info("QEMU (taskid={}) send_exec()".format(self.taskid))
@@ -164,7 +164,7 @@ class qemu_instance:
         if None == self.ssh_obj.tcp_socket:
             return False
 
-        self.status = config_next.task_status().processing
+        self.status = config.task_status().processing
 
         cmd_str = cmd_data.program
         arg_str = ""
@@ -198,11 +198,11 @@ class qemu_instance:
             logging.exception(errmsg)
 
 
-        self.status = config_next.task_status().ready
+        self.status = config.task_status().ready
         return retval
 
 
-    def send_qmp(self, cmd_data:config_next.qmp_command_request_data):
+    def send_qmp(self, cmd_data:config.qmp_command_request_data):
         self.clear()
 
         logging.info("QEMU (taskid={}) send_qmp()".format(self.taskid))
@@ -210,7 +210,7 @@ class qemu_instance:
         logging.info("QEMU (taskid={}) cmd_data.argsjson={}".format(self.taskid, cmd_data.argsjson))
         logging.info("QEMU (taskid={}) cmd_data.is_base64={}".format(self.taskid, cmd_data.is_base64))
 
-        self.status = config_next.task_status().processing
+        self.status = config.task_status().processing
 
         argsjson = ""
         if cmd_data.is_base64:
@@ -224,18 +224,18 @@ class qemu_instance:
             qmsg = self.qmp_obj.cmd(cmd_data.execute, args=argsjson)
             self.result.info_lines.append(qmsg)
 
-        self.status = config_next.task_status().ready
+        self.status = config.task_status().ready
         return (self.result.errcode == 0)
 
 
-    def send_push(self, cmd_data:config_next.push_command_request_data):
+    def send_push(self, cmd_data:config.push_command_request_data):
         self.clear()
 
         logging.info("QEMU (taskid={}) send_push()".format(self.taskid))
 
-        self.status = config_next.task_status().processing
+        self.status = config.task_status().processing
 
-        final_cmdret = config_next.command_return()
+        final_cmdret = config.command_return()
         selected_files = []
 
         dirlist = os.listdir(self.server_info.pushpool_path)
@@ -262,7 +262,7 @@ class qemu_instance:
                 if 0 != cmdret.errcode:
                     break
 
-        self.status = config_next.task_status().ready
+        self.status = config.task_status().ready
         return (final_cmdret.errcode == 0)
 
 
@@ -327,7 +327,7 @@ class qemu_instance:
                 self.ssh_obj.connect(host_addr, host_port, username, password)
                 if self.ssh_obj.tcp_socket and self.ssh_obj.conn_ssh_session:
                     self.flag_is_ssh_connected = True
-                    self.status = config_next.task_status().querying
+                    self.status = config.task_status().querying
                     logging.info("QEMU(taskid={0}) self.status={1}".format(self.taskid, self.status))
                     logging.info("QEMU(taskid={0}) is connected.".format(self.taskid))
                     Break
@@ -348,7 +348,7 @@ class qemu_instance:
 
 
 
-        guest_info_os_kind = config_next.os_kind().unknown
+        guest_info_os_kind = config.os_kind().unknown
         guest_info_homedir_path =''
         guest_info_pushdir_name =''
 
@@ -362,13 +362,13 @@ class qemu_instance:
         if cmdret.errcode == 0:
             stdout = ''.join(cmdret.info_lines).strip()
             if stdout.find("Linux") > 0:
-                guest_info_os_kind = config_next.os_kind().linux
+                guest_info_os_kind = config.os_kind().linux
             if stdout.find("Darwin") > 0:
-                guest_info_os_kind = config_next.os_kind().macos
+                guest_info_os_kind = config.os_kind().macos
         else:
             cmdret = self.ssh_obj.execute('systeminfo')
             if cmdret.errcode == 0:
-                guest_info_os_kind = config_next.os_kind().windows
+                guest_info_os_kind = config.os_kind().windows
 
         logging.info("QEMU(taskid={0}) guest_info_os_kind={1}".format(self.taskid, guest_info_os_kind))
 
@@ -376,7 +376,7 @@ class qemu_instance:
         #
         # Get guest current working directory path
         #
-        if guest_info_os_kind == config_next.os_kind().windows:
+        if guest_info_os_kind == config.os_kind().windows:
 
             # Try cmd.exe
             cmdret = self.ssh_obj.execute('echo %cd%')
@@ -418,7 +418,7 @@ class qemu_instance:
         # C:\\Users\\dougpuob\\qemu-tasker\\pushpool
         # ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^ <-- pushdir_name
         #   homedir_path       ^^^^^^^^^^^ <-- workdir_name
-        self.guest_info = config_next.guest_environment_information(
+        self.guest_info = config.guest_environment_information(
                                         guest_info_os_kind,
                                         guest_info_homedir_path,
                                         guest_info_workdir_path,
@@ -445,8 +445,8 @@ class qemu_instance:
         logging.info("QEMU(taskid={0}) new_envvar_path={1}".format(self.taskid, new_envvar_path))
 
         # Update status of QEMU instance.
-        if self.guest_info.os_kind != config_next.os_kind().unknown:
-            self.status = config_next.task_status().ready
+        if self.guest_info.os_kind != config.os_kind().unknown:
+            self.status = config.task_status().ready
         logging.info("QEMU(taskid={0}) self.status={1}".format(self.taskid, self.status))
 
 
@@ -475,7 +475,7 @@ class qemu_instance:
 
     def create(self):
         self.clear()
-        self.status = config_next.task_status().creating
+        self.status = config.task_status().creating
 
         qemu_cmdargs = []
         qemu_cmdargs.append(self.start_data.cmd.program)
@@ -491,7 +491,7 @@ class qemu_instance:
         self.qemu_proc = subprocess.Popen(qemu_cmdargs, shell=False, close_fds=True)
         self.qemu_pid = self.qemu_proc.pid
 
-        self.status = config_next.task_status().connecting
+        self.status = config.task_status().connecting
         self.connect_ssh()
 
     def is_proc_alive(self) -> bool:
@@ -503,7 +503,7 @@ class qemu_instance:
 
     def kill(self) -> bool:
         self.clear()
-        self.status = config_next.task_status().killing
+        self.status = config.task_status().killing
 
         if None == self.qemu_proc:
             return True

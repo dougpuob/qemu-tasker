@@ -10,7 +10,7 @@ from time import sleep
 from inspect import currentframe, getframeinfo
 
 from module.path import OsdpPath
-from module import config_next
+from module import config
 from datetime import datetime
 
 
@@ -43,7 +43,7 @@ class ssh_link:
         self.workdir_path = None
         self.pushdir_path = None
 
-        self.os_kind = config_next.os_kind().unknown
+        self.os_kind = config.os_kind().unknown
 
     def __del__(self):
         self.tcp_socket.close()
@@ -61,7 +61,7 @@ class ssh_link:
         self.workdir_path = workdir_path
 
 
-    def apply_os_kind(self, os_kind:config_next.os_kind):
+    def apply_os_kind(self, os_kind:config.os_kind):
         self.os_kind = os_kind
 
 
@@ -82,10 +82,10 @@ class ssh_link:
         path_env = ''
         ssh_chanl = self.conn_ssh_session.open_session()
         if ssh_chanl:
-            if self.os_kind == config_next.os_kind().windows:
+            if self.os_kind == config.os_kind().windows:
                 ssh_chanl.execute("powershell -C (Get-Item Env:PATH)[0].Value")
             else:
-                Assert (config_next.os_kind().unknown)
+                Assert (config.os_kind().unknown)
 
             ssh_chanl.wait_eof()
 
@@ -124,7 +124,7 @@ class ssh_link:
 
 
     def execute(self, cmdstr:str):
-        cmdret = config_next.command_return()
+        cmdret = config.command_return()
 
         if None == self.conn_ssh_session:
             return cmdret
@@ -147,7 +147,7 @@ class ssh_link:
 
             new_cmdstr = cmdstr
             if self.workdir_path:
-                if self.os_kind == config_next.os_kind().windows:
+                if self.os_kind == config.os_kind().windows:
                     new_cmdstr = "cd {} & {}".format(self.workdir_path, cmdstr)
                 else:
                     new_cmdstr = "cd {} ; {}".format(self.workdir_path, cmdstr)
@@ -212,7 +212,7 @@ class ssh_link:
 
     def realpath(self, path:str):
 
-        cmdret = config_next.command_return()
+        cmdret = config.command_return()
 
         try:
             cmdret.info_lines.append("raw_path={}".format(path))
@@ -237,7 +237,7 @@ class ssh_link:
 
     def stat(self, path:str):
 
-        cmdret = config_next.command_return()
+        cmdret = config.command_return()
 
         try:
             attrs = self.conn_sftp.stat(path)
@@ -283,7 +283,7 @@ class ssh_link:
 
     def readdir(self, subdir:str):
 
-        cmdret = config_next.command_return()
+        cmdret = config.command_return()
 
         try:
             homedir = self.conn_sftp.realpath('.')
@@ -325,7 +325,7 @@ class ssh_link:
                LIBSSH2_SFTP_S_IROTH | \
                LIBSSH2_SFTP_S_IXUSR
 
-        cmdret = config_next.command_return()
+        cmdret = config.command_return()
         if self.path.is_abs(subdir):
             cmdret.errcode = -1
             cmdret.error_lines.append('absolute path is not allowed !!! subdir={}'.format(subdir))
@@ -336,7 +336,7 @@ class ssh_link:
 
             splitor = ''
             path_list = []
-            if config_next.os_kind().windows == self.os_kind:
+            if config.os_kind().windows == self.os_kind:
                 path_list.extend(subdir.split('\\'))
             else:
                 path_list.extend(subdir.split('/'))
@@ -374,7 +374,7 @@ class ssh_link:
 
 
     def download(self, file_from:str, dstdir:str):
-        cmdret = config_next.command_return()
+        cmdret = config.command_return()
 
         try:
             before = datetime.now()
@@ -409,7 +409,7 @@ class ssh_link:
 
     def upload(self, file_from:str, file_to:str):
 
-        cmdret = config_next.command_return()
+        cmdret = config.command_return()
 
         mode = LIBSSH2_SFTP_S_IRUSR | \
                LIBSSH2_SFTP_S_IWUSR | \

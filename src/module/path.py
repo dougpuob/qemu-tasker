@@ -3,7 +3,7 @@ from ctypes.wintypes import CHAR
 import os
 import platform
 
-from module import config_next
+from module import config
 
 class OsdpPath():
 
@@ -44,7 +44,7 @@ class OsdpPath():
 
     def normpath(self, path:str, os_kind=None) -> str:
         if os_kind != None:
-            if os_kind == config_next.os_kind().windows:
+            if os_kind == config.os_kind().windows:
                 return self.normpath_windows(path)
             else:
                 return self.normpath_posix(path)

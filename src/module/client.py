@@ -22,7 +22,7 @@ from ssh2.sftp import LIBSSH2_FXF_CREAT, LIBSSH2_FXF_WRITE, \
 #
 # Internal modules
 #
-from module import config_next
+from module import config
 from module.path import OsdpPath
 from module.sshclient import ssh_link
 
@@ -30,7 +30,7 @@ from module.sshclient import ssh_link
 class client:
 
 
-    def __init__(self, host_addr:config_next.socket_address):
+    def __init__(self, host_addr:config.socket_address):
         self.BUFF_SIZE = 4096
 
         self.path = OsdpPath()
@@ -48,9 +48,9 @@ class client:
     #==========================================================================
     #==========================================================================
     #==========================================================================
-    def send_control_command(self, cmd_kind:config_next.command_kind, cmd_data, is_json_report:bool) -> config_next.transaction_capsule:
+    def send_control_command(self, cmd_kind:config.command_kind, cmd_data, is_json_report:bool) -> config.transaction_capsule:
         logging.info("cmd_data={}".format(cmd_data.toTEXT()))
-        request_capsule = config_next.transaction_capsule(config_next.action_kind().request, cmd_kind, data=cmd_data)
+        request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
 
         self.conn_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.conn_tcp.connect((self.host_addr.address, self.host_addr.port))
@@ -79,24 +79,24 @@ class client:
             else:
                 print("[qemu-tasker] returned errcode: {}".format(response_json.result.errcode))
 
-        response_capsule = config_next.config().toCLASS(response_text)
+        response_capsule = config.config().toCLASS(response_text)
         return response_capsule
 
 
     def send_transfer_command(self,
-                              cmd_kind:config_next.command_kind,
+                              cmd_kind:config.command_kind,
                               cmd_data,
-                              is_json_report:bool=False) -> config_next.transaction_capsule:
-        cmdret = config_next.command_return()
+                              is_json_report:bool=False) -> config.transaction_capsule:
+        cmdret = config.command_return()
 
         # Retrieve SSH information by sending a STATUS command.
         status_response_capsule = self.send_control_command(
-                                        config_next.command_kind().status,
-                                        config_next.status_command_request_data(cmd_data.taskid),
+                                        config.command_kind().status,
+                                        config.status_command_request_data(cmd_data.taskid),
                                         None)
 
         if status_response_capsule.data:
-            status_data:config_next.status_command_response_data = status_response_capsule.data
+            status_data:config.status_command_response_data = status_response_capsule.data
             is_connected = self.ssh_link.connect(status_data.ssh.target.address,
                                                  status_data.forward.ssh,
                                                  status_data.ssh.account.username,
@@ -110,14 +110,14 @@ class client:
 
         tx_capsule = None
         if cmdret.errcode == 0:
-            if   cmd_kind == config_next.command_kind().list:
+            if   cmd_kind == config.command_kind().list:
                 tx_capsule = self.exec_list_command(cmd_data, status_data)
-            elif cmd_kind == config_next.command_kind().upload:
+            elif cmd_kind == config.command_kind().upload:
                 tx_capsule = self.exec_upload_command(cmd_data, status_data)
-            elif cmd_kind == config_next.command_kind().download:
+            elif cmd_kind == config.command_kind().download:
                 tx_capsule = self.exec_download_command(cmd_data, status_data)
         else:
-            tx_capsule = config_next.transaction_capsule(config_next.action_kind().response, cmd_kind, cmdret, None)
+            tx_capsule = config.transaction_capsule(config.action_kind().response, cmd_kind, cmdret, None)
 
         if is_json_report:
             if True == is_json_report:
@@ -129,11 +129,11 @@ class client:
 
 
     def exec_list_command(self,
-                          cmd_data:config_next.list_command_request_data,
-                          status_resp_data:config_next.status_command_response_data):
+                          cmd_data:config.list_command_request_data,
+                          status_resp_data:config.status_command_response_data):
         guest_work_dir = status_resp_data.guest_info.workdir_name
 
-        cmdret = config_next.command_return()
+        cmdret = config.command_return()
         if None == cmd_data.dstdir:
             cmdret.errcode = -1
             cmdret.error_lines.append("The specific dstdir cannot be EMPTY !!!")
@@ -163,20 +163,20 @@ class client:
             readdir_data = cmdret_readdir.data
             cmdret.info_lines.append("{} file were found.".format(len(readdir_data)))
 
-        resp_data = config_next.list_command_response_data(cmd_data.taskid, readdir_data)
-        tx_capsule = config_next.transaction_capsule (config_next.action_kind().response,
-                                                      config_next.command_kind().list,
+        resp_data = config.list_command_response_data(cmd_data.taskid, readdir_data)
+        tx_capsule = config.transaction_capsule (config.action_kind().response,
+                                                      config.command_kind().list,
                                                       cmdret,
                                                       resp_data)
         return tx_capsule
 
 
     def exec_download_command(self,
-                              cmd_data:config_next.download_command_request_data,
-                              status_resp_data:config_next.status_command_response_data):
+                              cmd_data:config.download_command_request_data,
+                              status_resp_data:config.status_command_response_data):
         guest_work_dir = status_resp_data.guest_info.workdir_name
 
-        cmdret = config_next.command_return()
+        cmdret = config.command_return()
         if None == cmd_data.dstdir:
             cmdret.errcode = -1
             cmdret.error_lines.append("The specific dstdir cannot be EMPTY !!!")
@@ -235,18 +235,18 @@ class client:
                 cmdret.error_lines.append(str(e))
                 logging.info(str(e))
 
-        resp_data = config_next.download_command_response_data(cmd_data.taskid)
-        tx_capsule = config_next.transaction_capsule(config_next.action_kind().response,
-                                                     config_next.command_kind().download,
+        resp_data = config.download_command_response_data(cmd_data.taskid)
+        tx_capsule = config.transaction_capsule(config.action_kind().response,
+                                                     config.command_kind().download,
                                                      cmdret,
                                                      resp_data)
         return tx_capsule
 
 
     def exec_upload_command(self,
-                            cmd_data:config_next.upload_command_request_data,
-                            status_resp_data:config_next.status_command_response_data):
-        total_cmdret = config_next.command_return()
+                            cmd_data:config.upload_command_request_data,
+                            status_resp_data:config.status_command_response_data):
+        total_cmdret = config.command_return()
 
 
         for file_path in cmd_data.files:
@@ -298,9 +298,9 @@ class client:
                 total_cmdret.error_lines.append(str(e))
                 logging.info(str(e))
 
-        resp_data:config_next = config_next.upload_command_response_data(cmd_data.taskid)
-        tx_capsule = config_next.transaction_capsule(config_next.action_kind().response,
-                                                     config_next.command_kind().upload,
+        resp_data:config = config.upload_command_response_data(cmd_data.taskid)
+        tx_capsule = config.transaction_capsule(config.action_kind().response,
+                                                     config.command_kind().upload,
                                                      total_cmdret,
                                                      resp_data)
         return tx_capsule
