@@ -181,19 +181,19 @@ try:
             process_capsule(input_args, response_capsule)
 
         elif 'list' == input_args.command:
-            # Create a LIST command request
             cmd_data = config.list_command_request_data(input_args.taskid, input_args.dstdir)
-            #puppet_client(pskt_addr).command_to_list(cmd_data, args.jsonreport)
+            response_capsule = puppet_client(puppet_cmd_addr_info).request_execute_command(cmd_data)
+            process_capsule(input_args, response_capsule)
 
         elif 'upload' == input_args.command:
-            # Create a UPLOAD command request
             cmd_data = config.upload_command_request_data(input_args.taskid, input_args.files, input_args.dstdir)
-            #puppet_client(pskt_addr).command_to_list(cmd_data, args.jsonreport)
+            response_capsule = puppet_client(puppet_cmd_addr_info).request_execute_command(cmd_data)
+            process_capsule(input_args, response_capsule)
 
         elif 'download' == input_args.command:
-            # Create a DOWNLOAD command request
             cmd_data = config.download_command_request_data(input_args.taskid, input_args.files, input_args.dstdir)
-            #puppet_client(pskt_addr).command_to_list(cmd_data, args.jsonreport)
+            response_capsule = puppet_client(puppet_cmd_addr_info).request_execute_command(cmd_data)
+            process_capsule(input_args, response_capsule)
 
 
         # =========================================================================

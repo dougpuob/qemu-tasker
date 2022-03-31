@@ -8,6 +8,8 @@ import subprocess
 from time import sleep
 from tokenize import Ignore
 
+from inspect import currentframe, getframeinfo
+
 from module import config
 
 class execproc():
@@ -56,26 +58,31 @@ class execproc():
         logging.info("cmdstr={}".format(cmdstr))
 
         cmdret:config.command_return = config.command_return()
-        proc = subprocess.Popen(cmdstr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
-        if proc:
-            cmdret.data = proc
 
-            while True:
-                stdout_lines = [line.decode('utf-8', errors="ignore").rstrip() for line in proc.stdout.readlines()]
-                cmdret.info_lines.extend(stdout_lines)
+        try:
+            proc = subprocess.Popen(cmdstr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
+            if proc:
+                cmdret.data = proc
 
-                stderr_lines = [line.decode('utf-8', errors="ignore").rstrip() for line in proc.stderr.readlines()]
-                cmdret.error_lines.extend(stderr_lines)
+                while True:
+                    stdout_lines = [line.decode('utf-8', errors="ignore").rstrip() for line in proc.stdout.readlines()]
+                    cmdret.info_lines.extend(stdout_lines)
 
-                cmdret.errcode = proc.wait(1)
-                if (len(stderr_lines) == 0) and \
-                   (len(stdout_lines) == 0):
-                    break
+                    stderr_lines = [line.decode('utf-8', errors="ignore").rstrip() for line in proc.stderr.readlines()]
+                    cmdret.error_lines.extend(stderr_lines)
 
-            # for i,s in enumerate(cmdret.info_lines):
-            #     cmdret.info_lines[i] = s.strip()
+                    cmdret.errcode = proc.wait(1)
+                    if (len(stderr_lines) == 0) and \
+                    (len(stdout_lines) == 0):
+                        break
 
-            # for i,s in enumerate(cmdret.error_lines):
-            #     cmdret.error_lines[i] = s.strip()
+        except Exception as e:
+            frameinfo = getframeinfo(currentframe())
+            cmdret.errcode = -1
+            cmdret.error_lines.append("exception={0}".format(e))
+            cmdret.error_lines.append("frameinfo.filename={0}".format(frameinfo.filename))
+            cmdret.error_lines.append("frameinfo.lineno={0}".format(frameinfo.lineno))
+            logging.exception(cmdret.error_lines)
 
-        return cmdret
+        finally:
+            return cmdret
