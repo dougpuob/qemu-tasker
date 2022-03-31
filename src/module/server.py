@@ -107,8 +107,8 @@ class server:
                 logging.info("self.server_qcow2image_dir = {}".format(self.server_qcow2image_dir))
 
         else:
-            logging.exception('The config.json not found !!!')
-            assert False, 'The config.json not found !!!'
+            logging.exception('The settings.json not found !!!')
+            assert False, 'The settings.json not found !!!'
 
 
         # Check and count longlife.

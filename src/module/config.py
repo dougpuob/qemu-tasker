@@ -29,8 +29,10 @@ class command_kind:
         self.info     = "info"
 
         # File transfer commands
-        self.list     = "list"
+        self.puppet   = "puppet"
+        self.execute  = "execute"
         self.upload   = "upload"
+        self.list     = "list"
         self.download = "download"
 
         # Synchronization command
@@ -88,9 +90,10 @@ class server_name(config):
 
 
 class forward_port(config):
-    def __init__(self, qmp_port:int, ssh_port:int):
+    def __init__(self, qmp_port:int, ssh_port:int, puppet_port:int):
         self.qmp = qmp_port
         self.ssh = ssh_port
+        self.pup = puppet_port
 
 
 class socket_address(config):
@@ -135,6 +138,14 @@ class command_return:
         self.errcode = 0
         self.error_lines.clear()
         self.info_lines.clear()
+
+
+class return_unsupported_command(command_return):
+    def __init__(self):
+        self.error_lines = ['unsupported command']
+        self.info_lines = []
+        self.errcode = -99999
+        self.data = None
 
 
 class transaction_capsule(config):
@@ -290,6 +301,21 @@ exec_command_response_data = generic_command_response_data
 # =============================================================================
 # File transfer commands
 # =============================================================================
+# Puppet command
+class puppet_command_request_data(config):
+    def __init__(self):
+        self.name    = self.__class__.__name__
+
+
+class puppet_command_response_data(config):
+    def __init__(self):
+        self.name    = self.__class__.__name__
+
+
+# Execute command
+execute_command_request_data  = exec_command_request_data
+execute_command_response_data = exec_command_response_data
+
 
 # List command
 class list_command_request_data(config):

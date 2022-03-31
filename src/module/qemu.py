@@ -65,8 +65,8 @@ class qemu_instance:
         self.status = config.task_status().waiting
         self.result = config.command_return()
 
-        avail_tcp_ports = self.find_avaliable_ports(taskid, 2)
-        self.forward_port = config.forward_port(avail_tcp_ports[0], avail_tcp_ports[1])
+        avail_tcp_ports = self.find_avaliable_ports(taskid, 3)
+        self.forward_port = config.forward_port(avail_tcp_ports[0], avail_tcp_ports[1], avail_tcp_ports[2])
 
         workdir_path = self.path_obj.realpath('.')
         pushdir_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
