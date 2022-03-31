@@ -202,10 +202,9 @@ class puppet_server:
 
         except Exception as e:
             frameinfo = getframeinfo(currentframe())
-            errmsg = ("exception={0}".format(e)) + '\n' + \
-                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
-                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
-            logging.exception(errmsg)
+            logging.exception("exception={0}".format(e))
+            logging.exception("frameinfo.filename={0}".format(frameinfo.filename))
+            logging.exception("frameinfo.lineno={0}".format(frameinfo.lineno))
 
 
     def handle_execute_command(self, cmd_data:config.execute_command_request_data):
@@ -216,6 +215,7 @@ class puppet_server:
 
     def handle_list_command(self, cmd_data:config.list_command_request_data):
         cmdret:config.command_return = config.command_return()
+        self.ftp
         return cmdret
 
 
