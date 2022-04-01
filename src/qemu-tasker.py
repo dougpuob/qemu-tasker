@@ -177,22 +177,22 @@ try:
                                                            input_args.program,
                                                            input_args.argument,
                                                            input_args.base64)
-            response_capsule = puppet_client(puppet_cmd_addr_info).request_execute_command(cmd_data)
+            response_capsule = puppet_client(puppet_cmd_addr_info).request_puppet_command(config.command_kind().execute, cmd_data)
             process_capsule(input_args, response_capsule)
 
         elif 'list' == input_args.command:
             cmd_data = config.list_command_request_data(input_args.taskid, input_args.dstdir)
-            response_capsule = puppet_client(puppet_cmd_addr_info).request_execute_command(cmd_data)
+            response_capsule = puppet_client(puppet_cmd_addr_info).request_puppet_command(config.command_kind().list, cmd_data)
             process_capsule(input_args, response_capsule)
 
         elif 'upload' == input_args.command:
             cmd_data = config.upload_command_request_data(input_args.taskid, input_args.files, input_args.dstdir)
-            response_capsule = puppet_client(puppet_cmd_addr_info).request_execute_command(cmd_data)
+            response_capsule = puppet_client(puppet_cmd_addr_info).request_puppet_command(config.command_kind().upload, cmd_data)
             process_capsule(input_args, response_capsule)
 
         elif 'download' == input_args.command:
             cmd_data = config.download_command_request_data(input_args.taskid, input_args.files, input_args.dstdir)
-            response_capsule = puppet_client(puppet_cmd_addr_info).request_execute_command(cmd_data)
+            response_capsule = puppet_client(puppet_cmd_addr_info).request_puppet_command(config.command_kind().download, cmd_data)
             process_capsule(input_args, response_capsule)
 
 

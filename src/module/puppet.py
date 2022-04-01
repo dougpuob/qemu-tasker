@@ -20,6 +20,7 @@ from inspect import currentframe, getframeinfo
 from module import config
 from module.execproc import execproc
 from module.path import OsdpPath
+from module.ftpclient import ftpclient
 
 
 
@@ -34,18 +35,16 @@ class puppet_server:
         # Process
         self.puppet_proc = None
         self.execproc = execproc()
+        self.client = None
 
         # TCP
         self.listen_tcp_conn = None
         self.accepted_list:list = []
 
         # Servers
-        self.host_addr:str = self.settings.Puppet.Host.Address
-        self.cmd_port:int = self.settings.Puppet.Host.Port.Cmd
-        self.ftp_port:int = self.settings.Puppet.Host.Port.Ftp
-        self.ftp_user_list:list = []
-        for item in self.settings.Puppet.FtpUserList:
-            self.ftp_user_list.append(config.account_information(item.UserName, item.Password))
+        self.cmd_host = config.socket_address(self.settings.Puppet.Host.Address, self.settings.Puppet.Host.Port.Cmd)
+        self.ftp_host = config.socket_address(self.settings.Puppet.Host.Address, self.settings.Puppet.Host.Port.Ftp)
+        self.ftp_client = config.account_information(self.settings.Puppet.FtpClient.UserName, self.settings.Puppet.FtpClient.Password)
 
 
     def __del__(self):
@@ -76,21 +75,19 @@ class puppet_server:
         #
         # Start FTP server
         #
-        self.start_ftp_server('', self.ftp_port, self.ftp_user_list)
+        self.start_ftp_server('', self.ftp_host.port, self.ftp_client)
 
 
 
-    def start_ftp_server(self, ftp_addr:str, ftp_port:int, account_list:list):
+    def start_ftp_server(self, ftp_addr:str, ftp_port:int, user:config.account_information):
 
         # Instantiate a dummy authorizer for managing 'virtual' users
         authorizer = DummyAuthorizer()
 
         # Define a new user having full r/w permissions and a read-only
         # anonymous user
-        for item in account_list:
-            user_info:config.account_information = item
-            homedir = os.path.expanduser('~')
-            authorizer.add_user(user_info.username, user_info.password, homedir, perm='elradfmwMT')
+        homedir = os.path.expanduser('~')
+        authorizer.add_user(user.username, user.password, homedir, perm='elradfmwMT')
         authorizer.add_anonymous(os.getcwd())
 
         # Instantiate FTP handler class
@@ -119,12 +116,12 @@ class puppet_server:
 
     def thread_routine_listening_connections(self):
         logging.info("thread_routine_listening_connections ...")
-        logging.info("  host_addr={}".format(self.host_addr))
-        logging.info("  cmd_port={}".format(self.cmd_port))
+        logging.info("  host_addr={}".format(self.ftp_host))
+        logging.info("  cmd_port={}".format(self.cmd_host))
 
         try:
             self.listen_tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.listen_tcp_conn.bind((self.host_addr, self.cmd_port))
+            self.listen_tcp_conn.bind((self.cmd_host.address, self.cmd_host.port))
             self.listen_tcp_conn.listen(10)
             self.is_started = True
 
@@ -214,18 +211,23 @@ class puppet_server:
 
 
     def handle_list_command(self, cmd_data:config.list_command_request_data):
-        cmdret:config.command_return = config.command_return()
-        self.ftp
+        if self.client == None:
+            self.client = ftpclient(self.ftp_host, self.ftp_client)
+        cmdret = self.client.list(cmd_data.dstdir)
         return cmdret
 
 
     def handle_download_command(self, cmd_data:config.download_command_request_data):
-        cmdret:config.command_return = config.command_return()
+        if self.client == None:
+            self.client = ftpclient(self.ftp_host, self.ftp_client)
+        cmdret = self.client.list(cmd_data.dstdir)
         return cmdret
 
 
     def handle_upload_command(self, cmd_data:config.upload_command_request_data):
-        cmdret:config.command_return = config.command_return()
+        if self.client == None:
+            self.client = ftpclient(self.ftp_host, self.ftp_client)
+        cmdret = self.client.upload(cmd_data.files, cmd_data.dstdir)
         return cmdret
 
 
@@ -260,10 +262,11 @@ class puppet_client():
         return resp_data
 
 
-    def request_execute_command(self, cmd_data:config.execute_command_request_data):
-        response_capsule = self.send(config.command_kind().execute, cmd_data)
+    def request_puppet_command(self, cmd_kind:config.command_kind, cmd_data:config.execute_command_request_data):
+        response_capsule = self.send(cmd_kind, cmd_data)
         new_capsulre:config.transaction_capsule = config.transaction_capsule(response_capsule.act_kind,
                                                                              response_capsule.cmd_kind,
                                                                              response_capsule.result,
                                                                              response_capsule.data)
         return new_capsulre
+

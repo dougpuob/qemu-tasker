@@ -8,9 +8,10 @@
                 "Cmd" : 12903
             }
         },
-        "FtpUserList": [
-            { "UserName" : "dougpuob", "Password" : "dougpuob"}
-        ]
+        "FtpClient": {
+            "UserName" : "dougpuob",
+            "Password" : "dougpuob"
+            }
     },
     "Server" : {
         "MaximumInstanceNumber"  : 3,
