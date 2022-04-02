@@ -220,7 +220,7 @@ class puppet_server:
     def handle_download_command(self, cmd_data:config.download_command_request_data):
         if self.client == None:
             self.client = ftpclient(self.ftp_host, self.ftp_client)
-        cmdret = self.client.list(cmd_data.dstdir)
+        cmdret = self.client.download(cmd_data.files, cmd_data.dstdir)
         return cmdret
 
 

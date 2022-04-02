@@ -37,6 +37,24 @@ class ftpclient():
     #     finally:
     #         return cmdret
 
+    def try_mkdir(self, dir_path:str):
+        cmdret = config.command_return ()
+
+        try:
+            full_pathname = self.ftp.mkd(dir_path)
+            cmdret.info_lines.append("full_pathname={}".format(full_pathname))
+
+
+        except Exception as e:
+            cmdret.error_lines.append('exception occured at {} function !!!'.format("try_mkdir()"))
+            cmdret.error_lines.append(str(e))
+            cmdret.errcode = -1
+            logging.info(cmdret.error_lines)
+
+        finally:
+            return cmdret
+
+
     def list(self, dir_path:str):
         cmdret = config.command_return ()
 
@@ -54,23 +72,28 @@ class ftpclient():
             return cmdret
 
 
-    def download(self, file_path:str, save_to_path:str):
+    def download(self, filepath_list:list, save_to_path:str):
         cmdret = config.command_return ()
 
         try:
-            pwd = self.ftp.pwd()
-            dirname = os.path.dirname(file_path)
 
-            dir_changed = False
-            if pwd != dirname:
-                dir_changed = True
-                self.ftp.cwd(dirname)
+            #
+            # Check directory
+            #
+            if not os.path.exists(save_to_path):
+                os.makedirs(save_to_path)
 
-            basename = os.path.basename(file_path)
-            self.ftp.retrbinary("RETR " + basename ,open(save_to_path, 'wb').write)
+            if not os.path.exists(save_to_path):
+                raise "Directory is not there !!! (save_to_path={})".format(save_to_path)
 
-            if dir_changed:
-                self.ftp.cwd(pwd)
+            #
+            # Download files
+            #
+            for filepath in filepath_list:
+                basename = os.path.basename(filepath)
+                target_path = os.path.join(save_to_path, basename)
+                resp = self.ftp.retrbinary("RETR " + filepath, open(target_path, 'wb').write)
+                cmdret.info_lines.append(resp)
 
         except Exception as e:
             cmdret.error_lines.append('exception occured at {} function !!!'.format("download()"))
@@ -98,11 +121,17 @@ class ftpclient():
                 raise "File not found !!!"
 
             #
-            # Change directory then upload files
+            # Try to create the directory then change directory
             #
             pwd = self.ftp.pwd()
-            self.ftp.cwd(dir_to_save)
+            cmdret_mkdir = self.try_mkdir(dir_to_save)
+            cmdret.info_lines.extend(cmdret_mkdir.info_lines)
+            if cmdret_mkdir.errcode != 0:
+                cmdret.error_lines.extend(cmdret_mkdir.error_lines)
 
+            #
+            # Upload files
+            #
             for filepath in filepath_list:
                 basename = os.path.basename(filepath)
                 file = open(filepath,'rb')
@@ -111,7 +140,11 @@ class ftpclient():
                     cmdret.info_lines.append(resp)
                     file.close()
 
-            self.ftp.cwd(pwd)
+            #
+            # Change directory to the origin
+            #
+            resp = self.ftp.cwd(pwd)
+            cmdret.info_lines.append(resp)
 
         except Exception as e:
             cmdret.error_lines.append('exception occured at {} function !!!'.format("upload()"))
