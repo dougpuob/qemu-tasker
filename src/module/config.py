@@ -178,7 +178,8 @@ class guest_environment_information(config):
 
 
 class server_environment_information(config):
-    def __init__(self, workdir_path:str, pushpool_path:str):
+    def __init__(self, socket_addr:socket_address, workdir_path:str, pushpool_path:str):
+        self.socket_addr = socket_addr
         self.workdir_path = workdir_path
         self.pushpool_path = pushpool_path
 

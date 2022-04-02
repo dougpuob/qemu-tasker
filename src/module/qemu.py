@@ -72,6 +72,7 @@ class qemu_instance:
         pushdir_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
         pushpool_path = self.path_obj.realpath(os.path.join(pushpool_path, pushdir_name))
         self.server_info = config.server_environment_information(
+                                        socket_addr,
                                         workdir_path,
                                         pushpool_path)
 
