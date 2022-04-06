@@ -1,1 +1,1 @@
-python -m pytest -v --cov src/test
+python -m pytest -v --cov ../src/test

@@ -28,9 +28,12 @@ pip3 install pyftpdlib
 ### Quick Start
 The server IP is `172.17.100.17`.
 
-#### Server side:
+#### Server side (Governor):
 1. Start the server.
    - `python3 qemu-tasker.py --host 172.17.100.17 server --config settings.json`
+
+#### Server side (Puppet):
+[!run-puppet-server.ps1](script/run-puppet-server.ps1)
 
 #### Local side:
 1. Query server information.
