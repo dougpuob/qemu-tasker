@@ -17,7 +17,7 @@ class cmdargs():
         self.parser.add_argument('-J', '--jsonreport', action='store_true', default=False)
         self.parser.add_argument('-V', '--version', action='version', version='%(prog)s 0.1')
         self.parser.add_argument('-L', '--logdir', type=str)
-        self.parser.add_argument('-S', '--settings', type=str, default="./settings.json")
+        self.parser.add_argument('-S', '--settings', type=str, default="settings.json")
 
         # subcommand server
         parser_server = subparsers.add_parser('server', parents = [parent_parser], help='start a server daemon')

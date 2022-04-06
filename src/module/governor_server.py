@@ -19,15 +19,94 @@ from module.path import OsdpPath
 # =================================================================================================
 class governor_server_base:
   def __init__(self):
-        pass
+    pass
+
+  def __del__(self):
+    pass
+
+  def terminate(self):
+    pass
+
+  def stop(self):
+    pass
+
+  def start(self, config_path:str):
+    pass
+
+  def get_new_taskid(self):
+    pass
+
+  def find_target_instance(self, taskid) -> qemu.qemu_instance:
+    pass
+
+  def command_to_exec(self,
+                        qemu_inst:qemu.qemu_instance,
+                        cmd_data:config.exec_command_request_data):
+    pass
+
+  def command_to_kill(self,
+                        qemu_inst:qemu.qemu_instance,
+                        kill_data:config.kill_command_request_data):
+    pass
+
+  def command_to_qmp(self,
+                        qemu_inst:qemu.qemu_instance,
+                        qmp_data:config.qmp_command_request_data):
+    pass
+
+  def command_to_push(self,
+                        qemu_inst:qemu.qemu_instance,
+                        push_data:config.push_command_request_data):
+    pass
+
+  def command_to_status(self,
+                            qemu_inst:qemu.qemu_instance,
+                            status_data:config.status_command_request_data):
+    pass
+
+  def command_to_info(self,
+                        info_data:config.info_command_request_data):
+    pass
+
+  def create_qemu_instance(self, pushpool_path:str, taskid:int, start_data:config.start_command_request_data):
+    pass
+
+  def apply_server_variables(self, cmd_info:config.command_arguments):
+    pass
+
+  def apply_client_variables(self, cmd_info:config.command_arguments, start_data:config.start_command_request_data):
+    pass
+
+  def verify_arguments(self):
+    pass
+
+  def get_command_return(self, errcode:int, error_text:str) -> config.command_return:
+    pass
+
+  def clear_qemu_instance(self, taskid:int, qemu_inst:qemu.qemu_instance) -> config.command_return:
+    pass
+
+  def check_and_clear_qemu_instance(self, taskid:int, qemu_inst:qemu.qemu_instance) -> config.command_return:
+    pass
+
 
 
 # =================================================================================================
 #
 # =================================================================================================
 class governor_server_mock(governor_server_base):
-  def __init__(self):
-        pass
+  def __init__(self, socket_addr:config.socket_address):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((socket_addr.address, socket_addr.port))
+        s.listen(1)
+
+        # conn, addr = s.accept()
+        # print 'Connected by', addr
+        # while 1:
+        # data = conn.recv(1024)
+        # if not data: break
+        # conn.sendall(data)
+        # conn.close()
 
 
 # =================================================================================================
@@ -94,41 +173,29 @@ class governor_server(governor_server_base):
         self.is_started = False
 
 
-    def start(self, config_path:str):
-        logging.info("config_path={}".format(config_path))
-        if os.path.exists(config_path):
-            with open(config_path) as f:
+    def start(self, settings):
+        self.settings = settings
 
-                # Load JSON config file
-                config = json.load(f)
-                self.server_variables_dict = config
-                logging.info("self.server_variables_dict={}".format(self.server_variables_dict))
+        # Apply pathes in config if exist.
+        server_pushpool_dir = self.path.normpath(self.path.realpath(self.settings.Server.SERVER_PUSHPOOL_DIR))
+        server_qcow2image_dir = self.path.normpath(self.path.realpath(self.settings.Server.SERVER_QCOW2_IMAGE_DIR))
 
+        if os.path.exists(server_pushpool_dir):
+            self.server_pushpool_dir = server_pushpool_dir
 
-                # Apply pathes in config if exist.
-                server_pushpool_dir = self.path.normpath(self.path.realpath(config['SERVER_PUSHPOOL_DIR']))
-                server_qcow2image_dir = self.path.normpath(self.path.realpath(config['SERVER_QCOW2_IMAGE_DIR']))
-
-                if os.path.exists(server_pushpool_dir):
-                    self.server_pushpool_dir = server_pushpool_dir
-
-                if os.path.exists(server_qcow2image_dir):
-                    self.server_qcow2image_dir = server_qcow2image_dir
+        if os.path.exists(server_qcow2image_dir):
+            self.server_qcow2image_dir = server_qcow2image_dir
 
 
-                # Create selected directories if not eixst.
-                if not os.path.exists(self.server_pushpool_dir):
-                    os.makedirs(self.server_pushpool_dir)
+        # Create selected directories if not eixst.
+        if not os.path.exists(self.server_pushpool_dir):
+            os.makedirs(self.server_pushpool_dir)
 
-                if not os.path.exists(self.server_qcow2image_dir):
-                    os.makedirs(self.server_qcow2image_dir)
+        if not os.path.exists(self.server_qcow2image_dir):
+            os.makedirs(self.server_qcow2image_dir)
 
-                logging.info("self.server_pushpool_dir   = {}".format(self.server_pushpool_dir))
-                logging.info("self.server_qcow2image_dir = {}".format(self.server_qcow2image_dir))
-
-        else:
-            logging.exception('The settings.json not found !!!')
-            assert False, 'The settings.json not found !!!'
+        logging.info("self.server_pushpool_dir   = {}".format(self.server_pushpool_dir))
+        logging.info("self.server_qcow2image_dir = {}".format(self.server_qcow2image_dir))
 
 
         # Check and count longlife.

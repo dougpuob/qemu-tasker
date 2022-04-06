@@ -6,6 +6,7 @@ from module import config
 
 class loadconfig():
   def __init__(self, config_path:str) -> object:
+    self.object = None
     self.rawtext:str = ''
     if os.path.exists(config_path):
       with open(config_path) as f:
