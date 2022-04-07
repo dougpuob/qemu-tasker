@@ -11,7 +11,7 @@ if (-Not (Get-ScheduledTask | Where-Object {$_.TaskName -like $TASK_NAME}))
   # ----------------------------------------------------------------------------
   # Register a scheduled task
   # ----------------------------------------------------------------------------
-  $RUN_START_CONTENT = ("@ECHO OFF{0}pwsh -Command $RUN_START_PS1{1}PAUSE" -f [environment]::NewLine [environment]::NewLine)
+  $RUN_START_CONTENT = ("@ECHO OFF{0}pwsh -Command $RUN_START_PS1{1}PAUSE" -f [System.Environment]::NewLine [System.Environment]::NewLine)
   $RUN_START_CONTENT | Set-Content  -Path $RUN_START_BAT
   $Trigger= New-ScheduledTaskTrigger -AtStartup
   $User= "NT AUTHORITY\SYSTEM"
