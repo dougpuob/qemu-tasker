@@ -29,7 +29,7 @@ else
   git checkout feature-add-puppet-command
 
   # Become a puppet server
-  python .\src\qemu-tasker.py puppet
+  python ./src/qemu-tasker.py puppet
 
   Pop-Location
 }
