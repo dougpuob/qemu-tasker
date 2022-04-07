@@ -12,7 +12,7 @@ if (-Not (Get-ScheduledTask | Where-Object {$_.TaskName -like $TASK_NAME}))
   $Trigger= New-ScheduledTaskTrigger -AtStartup
   $User= "NT AUTHORITY\SYSTEM"
   $Action= New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument $SCRIPT_PATH
-  Register-ScheduledTask -TaskName $TASK_NAME -Trigger $Trigger -User $User -Action $Action -RunLevel Highest –Force
+  Register-ScheduledTask -TaskName $TASK_NAME -Trigger $Trigger -User $User -Action $Action -RunLevel Highest -Force
 }
 else 
 {
