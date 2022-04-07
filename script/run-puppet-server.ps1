@@ -1,3 +1,5 @@
+Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force
+
 $SCRIPT_PATH=$MyInvocation.MyCommand.Definition
 $TASK_NAME="launch-qemu-tasker"
 $QEMU_TASKER_DIR=(Join-Path $ENV:HOMEDRIVE $ENV:HOMEPATH qemu-takser.git)
