@@ -1,2 +1,3 @@
 @ECHO OFF
-PowerShell.exe -Command "%HOMEDRIVE%%HOMEPATH%\run-puppet-server.ps1"
+pwsh -Command "%HOMEDRIVE%%HOMEPATH%\run-puppet-server.ps1"
+PAUSE
