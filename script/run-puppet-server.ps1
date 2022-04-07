@@ -29,7 +29,8 @@ else
   git checkout feature-add-puppet-command
 
   # Become a puppet server
-  python ./src/qemu-tasker.py puppet
+  $QEMU_TASKER_PY = (Join-Path $QEMU_TASKER_DIR src qemu-tasker.py)
+  python $QEMU_TASKER_PY puppet
 
   Pop-Location
 }
