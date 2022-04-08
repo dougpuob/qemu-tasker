@@ -15,7 +15,7 @@
         "Port" :
         {
             "Cmd" : 12802,
-            "Ftp" : 12803
+            "Ftp" : 60000
         },
         "FtpClient": {
             "UserName" : "dougpuob",
