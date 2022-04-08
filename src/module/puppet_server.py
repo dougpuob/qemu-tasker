@@ -61,7 +61,7 @@ class puppet_server(puppet_server_base):
 
         # Servers
         self.cmd_host = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Cmd)
-        self.ftp_server_addr_info = config.socket_address(self.setting.Governor.Address, self.setting.Puppet.Port.Ftp)
+        self.ftp_server_addr_info = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Ftp)
         self.ftp_client_addr_info = config.account_information(self.setting.Puppet.FtpClient.UserName, self.setting.Puppet.FtpClient.Password)
 
 
@@ -98,12 +98,11 @@ class puppet_server(puppet_server_base):
 
 
     def start_ftp_server(self, ftp_host:config.socket_address):
-    #def start_ftp_server(self, ftp_addr:str, ftp_port:int, user:config.account_information):
 
         homedir = os.path.expanduser('~')
         #authorizer.add_user(user.username, user.password, homedir, perm='elradfmwMT')
         authorizer = DummyAuthorizer()
-        authorizer.add_user('dougpuob', 'dougpuob', homedir, perm='elradfmwMT')
+        #authorizer.add_user('dougpuob', 'dougpuob', homedir, perm='elradfmwMT')
         authorizer.add_anonymous(os.getcwd())
 
         #authorizer.add_anonymous(homedir)
@@ -111,11 +110,10 @@ class puppet_server(puppet_server_base):
         handler = FTPHandler
         handler.authorizer = authorizer
 
-        host_addr_info = ('', ftp_host.port)
+        host_addr_info = (ftp_host.address, ftp_host.port)
         logging.info("host_addr_info={}".format(host_addr_info))
         ftp_server = FTPServer(host_addr_info, handler)
         ftp_server.serve_forever()
-        ftp_server.handle_write()
 
 
     def thread_routine_listening_connections(self):
