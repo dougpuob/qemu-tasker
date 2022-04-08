@@ -105,8 +105,10 @@ class puppet_server(puppet_server_base):
 
         handler = FTPHandler
         handler.authorizer = authorizer
+        handler.mmasquerade_address = ftp_host.address
+        handler.passive_ports = range(60000, 65535)
 
-        host_addr_info = (ftp_host.address, ftp_host.port)
+        host_addr_info = ('', ftp_host.port)
         logging.info("host_addr_info={}".format(host_addr_info))
         ftp_server = FTPServer(host_addr_info, handler)
         ftp_server.serve_forever()
