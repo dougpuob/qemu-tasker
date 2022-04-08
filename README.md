@@ -30,7 +30,7 @@ The server IP is `172.17.100.17`.
 
 #### Server side (Governor):
 1. Start the server.
-   - `python3 qemu-tasker.py --host 172.17.100.17 server --config settings.json`
+   - `python3 qemu-tasker.py --host 172.17.100.17 server --config setting.json`
 
 #### Server side (Puppet):
 [!run-puppet-server.ps1](script/run-puppet-server.ps1)
@@ -102,7 +102,7 @@ optional arguments:
 ### Server
 ``` bash
 ❯ python3 qemu-tasker.py --host 192.168.0.201 server \
-                         --config src/settings.json
+                         --config src/setting.json
 ```
 
 ### Info

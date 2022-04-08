@@ -6,7 +6,6 @@ import datetime
 import os
 
 from module import config
-from module.qemu_tasker import qemu_tasker
 from module.cmdparse import cmdargs
 from module.loadconfig import loadconfig
 from module.print import process_capsule
@@ -18,22 +17,16 @@ from module.puppet_server import puppet_server
 from module.puppet_client import puppet_client
 
 
-class qemu_tasker():
+class main():
 
     def __init__(self, parsed_args, governor_client_obj=None):
         self.input_args = parsed_args
+        self.setting = None
 
         #
         # Objects
         #
         self.governor_client_obj = governor_client_obj
-
-
-        #
-        # Runtime variables
-        #
-        self.settings = None
-        self.server_addr = None
 
 
         #
@@ -68,15 +61,22 @@ class qemu_tasker():
 
 
             # Load JSON config file
-            settings_filepath = os.path.abspath(os.path.join(os.path.dirname(__file__), self.input_args.settings))
-            self.settings = loadconfig(settings_filepath).get_data()
+            setting_filepath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', self.input_args.setting))
+            if os.path.exists(setting_filepath):
+                self.setting = loadconfig(setting_filepath).get_data()
+            else:
+                assert_text = "Setting file is not found (setting_filepath={}) !!!".format(setting_filepath)
+                logging.error(assert_text)
+                return False
 
             # Server socket address information
+            self.setting.Governor.Address = self.input_args.host
+            self.setting.Governor.Port = self.input_args.port
             self.server_addr = config.socket_address(self.input_args.host, self.input_args.port)
 
             # Puppet socket address information
-            puppet_cmd_addr_info = config.socket_address(self.settings.Puppet.Host.Address, self.settings.Puppet.Host.Port.Cmd)
-            puppet_ftp_addr_info = config.socket_address(self.settings.Puppet.Host.Address, self.settings.Puppet.Host.Port.Ftp)
+            puppet_cmd_addr_info = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Cmd)
+            puppet_ftp_addr_info = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Ftp)
 
 
             # =========================================================================
@@ -95,7 +95,7 @@ class qemu_tasker():
                 self.logger.addHandler(logfile)
                 logging.info(self.input_args)
 
-                governor_server(self.server_addr).start(self.input_args.config)
+                governor_server(self.setting).start()
 
 
             elif 'puppet' == self.input_args.command:
@@ -111,7 +111,7 @@ class qemu_tasker():
                 self.logger.addHandler(logfile)
                 logging.info(self.input_args)
 
-                puppet_server(self.settings).start()
+                puppet_server(self.setting).start()
 
 
             else:
@@ -145,9 +145,10 @@ class qemu_tasker():
                     # Create a START command request
                     config_start_data = config.config().toCLASS(json.dumps(json.load(open(self.input_args.config))))
                     cmd_data = config.start_command_request_data(config_start_data.longlife,
-                                                                    config_start_data.qcow2filename,
-                                                                    config_start_data.ssh,
-                                                                    config_start_data.cmd)
+                                                                 config_start_data.qcow2filename,
+                                                                 config_start_data.ssh,
+                                                                 config_start_data.cmd)
+
                     # Update arguments from command line
                     if self.input_args.host:
                         cmd_data.ssh.target.address = self.input_args.host
@@ -192,7 +193,7 @@ class qemu_tasker():
 
                 elif 'execute' == self.input_args.command:
                     # Query status info
-                    status_resp_data = self.send_governor_status_command(governor_client(self.server_addr), self.input_args.taskid)
+                    status_resp_data = self.send_governor_status_command(self.governor_client_obj, self.input_args.taskid)
 
                     # Original command
                     cmd_data = config.execute_command_request_data(self.input_args.taskid,
@@ -250,7 +251,7 @@ class qemu_tasker():
                 # =========================================================================
 
                 else:
-                    self.cmdarg.print_help()
+                    cmdargs().print_help()
 
 
         except Exception as e:

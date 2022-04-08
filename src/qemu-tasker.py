@@ -6,7 +6,7 @@ import datetime
 import os
 
 from module import config
-from module.qemu_tasker import qemu_tasker
+from module.main import main
 from module.cmdparse import cmdargs
 from module.loadconfig import loadconfig
 from module.print import process_capsule
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     parsed_args = cmdargs().get_parsed_args()
     governor_server_socket_info = config.socket_address(parsed_args.host, parsed_args.port)
     governor_client_obj = governor_client(governor_server_socket_info)
-    qemu_tasker(parsed_args, governor_client_obj).main()
+    main(parsed_args, governor_client_obj).main()
 
 
 

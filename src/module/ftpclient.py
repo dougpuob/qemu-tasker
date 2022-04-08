@@ -17,6 +17,10 @@ class ftpclient():
 
 
     def __del__(self):
+        self.close()
+
+
+    def close(self):
         if self.ftp:
             self.ftp.close()
             self.ftp = None

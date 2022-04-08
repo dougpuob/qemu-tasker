@@ -45,9 +45,9 @@ class puppet_server_mock(puppet_server_base):
 # =================================================================================================
 class puppet_server(puppet_server_base):
 
-    def __init__(self, settings):
+    def __init__(self, setting):
         self.BUFF_SIZE = 4096
-        self.settings = settings
+        self.setting = setting
         self.is_started = False
 
         # Process
@@ -60,9 +60,9 @@ class puppet_server(puppet_server_base):
         self.accepted_list:list = []
 
         # Servers
-        self.cmd_host = config.socket_address(self.settings.Puppet.Host.Address, self.settings.Puppet.Host.Port.Cmd)
-        self.ftp_host = config.socket_address(self.settings.Puppet.Host.Address, self.settings.Puppet.Host.Port.Ftp)
-        self.ftp_client = config.account_information(self.settings.Puppet.FtpClient.UserName, self.settings.Puppet.FtpClient.Password)
+        self.cmd_host = config.socket_address(self.setting.Puppet.Host.Address, self.setting.Puppet.Host.Port.Cmd)
+        self.ftp_host = config.socket_address(self.setting.Puppet.Host.Address, self.setting.Puppet.Host.Port.Ftp)
+        self.ftp_client = config.account_information(self.setting.Puppet.FtpClient.UserName, self.setting.Puppet.FtpClient.Password)
 
 
     def __del__(self):

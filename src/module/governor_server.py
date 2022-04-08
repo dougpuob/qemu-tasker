@@ -113,17 +113,16 @@ class governor_server_mock(governor_server_base):
 #
 # =================================================================================================
 class governor_server(governor_server_base):
-    def __init__(self, socket_addr:config.socket_address):
+    def __init__(self, setting):
 
-        #
         # New Config
-        #
-        self.addr_info = config.socket_address(socket_addr.address, socket_addr.port)
+        self.setting = setting
+        self.addr_info = config.socket_address(self.setting.Governor.Address, self.setting.Governor.Port)
         self.path = OsdpPath()
         self.server_variables_dict = {}
 
         # Connection
-        self.socket_addr = socket_addr
+        self.socket_addr = self.addr_info
         self.listen_tcp_conn = None
         self.accepted_conn_list = []
 
@@ -165,6 +164,7 @@ class governor_server(governor_server_base):
 
         self.is_started = False
         if self.listen_tcp_conn:
+            self.listen_tcp_conn.shutdown()
             self.listen_tcp_conn.close()
 
 
@@ -173,12 +173,17 @@ class governor_server(governor_server_base):
         self.is_started = False
 
 
-    def start(self, settings):
-        self.settings = settings
+    def start(self):
 
         # Apply pathes in config if exist.
-        server_pushpool_dir = self.path.normpath(self.path.realpath(self.settings.Server.SERVER_PUSHPOOL_DIR))
-        server_qcow2image_dir = self.path.normpath(self.path.realpath(self.settings.Server.SERVER_QCOW2_IMAGE_DIR))
+        server_pushpool_dir = ''
+        server_qcow2image_dir = ''
+
+        for idx, val in enumerate(self.setting.Governor.Variables):
+            if val.Name == "SERVER_PUSHPOOL_DIR":
+                server_pushpool_dir = self.path.normpath(self.path.realpath(val.Value))
+            elif val.Name == "SERVER_QCOW2_IMAGE_DIR":
+                server_qcow2image_dir = self.path.normpath(self.path.realpath(val.Value))
 
         if os.path.exists(server_pushpool_dir):
             self.server_pushpool_dir = server_pushpool_dir
@@ -194,9 +199,17 @@ class governor_server(governor_server_base):
         if not os.path.exists(self.server_qcow2image_dir):
             os.makedirs(self.server_qcow2image_dir)
 
-        logging.info("self.server_pushpool_dir   = {}".format(self.server_pushpool_dir))
-        logging.info("self.server_qcow2image_dir = {}".format(self.server_qcow2image_dir))
-
+        logging.info("self.server_pushpool_dir   = {} ({})".format(self.server_pushpool_dir, os.path.exists(self.server_pushpool_dir)))
+        logging.info("self.server_qcow2image_dir = {} ({})".format(self.server_qcow2image_dir, os.path.exists(self.server_qcow2image_dir)))
+        if os.path.exists(self.server_qcow2image_dir):
+            idx = 0
+            dirs = os.listdir(self.server_qcow2image_dir)
+            dirs.sort(reverse=True)
+            for dir in dirs:
+                if dir.lower().endswith('.qcow2'):
+                    abs_path = os.path.join(self.server_qcow2image_dir, dir)
+                    logging.info("  qcow2image[{}] = {}".format(idx, abs_path))
+                    idx = idx + 1
 
         # Check and count longlife.
         self.thread_task = threading.Thread(target = self.thread_routine_checking_longlife)
@@ -237,13 +250,15 @@ class governor_server(governor_server_base):
                 if qemu_inst.longlife > 0:
                     is_qmp_connected = self.get_bool(qemu_inst.is_qmp_connected())
                     is_ssh_connected = self.get_bool(qemu_inst.is_ssh_connected())
+                    is_pup_connected = self.get_bool(qemu_inst.is_ssh_connected())
 
-                    print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} SSH:{} OS:{}  Longlife:{}(s) {}'.format(
+                    print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} SSH:{} PUP:{} OS:{}  Longlife:{}(s) {}'.format(
                             qemu_inst.taskid,
                             qemu_inst.qemu_pid,
                             qemu_inst.forward_port.toJSON(),
                             is_qmp_connected,
                             is_ssh_connected,
+                            is_pup_connected,
                             qemu_inst.guest_info.os_kind,
                             qemu_inst.longlife,
                             qemu_inst.status))
@@ -369,6 +384,7 @@ class governor_server(governor_server_base):
 
         try:
             self.listen_tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.listen_tcp_conn.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.listen_tcp_conn.bind((self.socket_addr.address, self.socket_addr.port))
             self.listen_tcp_conn.listen(10)
 
@@ -409,7 +425,7 @@ class governor_server(governor_server_base):
         #
         # Go for it.
         #
-        qemu_inst = qemu.qemu_instance(self.socket_addr, pushpool_path, taskid, start_data)
+        qemu_inst = qemu.qemu_instance(self.setting, pushpool_path, taskid, start_data)
         qemu_inst.wait_to_create()
 
         return qemu_inst
@@ -417,10 +433,10 @@ class governor_server(governor_server_base):
 
     def apply_server_variables(self, cmd_info:config.command_arguments):
         for idx, val in enumerate(cmd_info.arguments):
-            for key in self.server_variables_dict:
-                key_def = "${" + key + "}"
-                if val.find(key_def) != -1:
-                    cmd_info.arguments[idx] = val.replace(key_def, self.server_variables_dict[key])
+            for var in  self.setting.Governor.Variables:
+                key_name = "${" + var.Name + "}"
+                if val.find(key_name) != -1:
+                    cmd_info.arguments[idx] = val.replace(key_name, var.Value)
         return cmd_info
 
 
