@@ -11,7 +11,7 @@
         ]
     },
     "Puppet" : {
-        "Address" : "192.168.0.201",
+        "Address" : "",
         "Port" :
         {
             "Cmd" : 12802,
