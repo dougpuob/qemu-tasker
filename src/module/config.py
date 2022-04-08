@@ -60,6 +60,15 @@ class task_status:
         self.killing    = "killing"
 
 
+class connection_kind:
+    def __init__(self):
+        self.unknown      = "unknown"
+        self.disabled     = "disabled"
+        self.connecting   = "creating"
+        self.connected    = "connected"
+        self.disconnected = "disconnected"
+
+
 # =============================================================================
 # Basic data structures
 # =============================================================================
@@ -139,6 +148,14 @@ class command_return:
         self.errcode = 0
         self.error_lines.clear()
         self.info_lines.clear()
+
+
+class connections_status:
+    def __init__(self):
+        self.QMP:connection_kind = connection_kind().unknown
+        self.SSH:connection_kind = connection_kind().unknown
+        self.PUP:connection_kind = connection_kind().unknown
+        self.FTP:connection_kind = connection_kind().unknown
 
 
 class return_unsupported_command(command_return):
@@ -224,8 +241,8 @@ class start_command_response_data(config):
                  ssh_conn_info:ssh_information,
                  server_info:server_environment_information,
                  guest_info:guest_environment_information,
-                 is_connected_qmp:bool,
-                 is_connected_ssh:bool,
+                 conns_status:connections_status,
+                 qemu_full_cmdargs:list,
                  status:task_status):
         self.name = self.__class__.__name__
 
@@ -239,10 +256,12 @@ class start_command_response_data(config):
         self.ssh         = ssh_conn_info
         self.server_info = server_info
         self.guest_info  = guest_info
+        self.qemu_full_cmdargs = qemu_full_cmdargs
 
         # Connections
-        self.is_connected_qmp = is_connected_qmp
-        self.is_connected_ssh = is_connected_ssh
+        self.conns_status = conns_status
+        self.is_connected_qmp = conns_status.QMP
+        self.is_connected_ssh = conns_status.SSH
 
 
 # Kill command

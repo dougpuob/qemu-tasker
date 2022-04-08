@@ -56,6 +56,7 @@ class qemu_instance:
         self.qemu_thread = None
         self.qemu_proc   = None
         self.qemu_base_args = []
+        self.qemu_full_cmdargs = []
 
 
         #
@@ -90,10 +91,9 @@ class qemu_instance:
         self.qmp_obj = QEMUMonitorProtocol((self.socket_addr.address, self.forward_port.qmp), server=True)
         self.ssh_info = start_data.ssh
         self.pup_obj = puppet_client(config.socket_address(self.setting.Governor.Address, self.forward_port.pup))
-        self.flag_is_qmp_connected = False
-        self.flag_is_ssh_connected = False
-        self.flag_is_pup_connected = False
 
+        # Connections status
+        self.connections_status = config.connections_status()
 
         #
         # QEMU devices flags
@@ -257,7 +257,7 @@ class qemu_instance:
             else:
                 logging.error("Path not found ({}) !!!".format(fullpath))
 
-        if self.flag_is_ssh_connected:
+        if self.is_ssh_connected():
             for file_from in selected_files:
                 basename = os.path.basename(file_from)
                 file_to = os.path.join(self.guest_info.pushpool_name, basename)
@@ -276,15 +276,15 @@ class qemu_instance:
 
 
     def is_qmp_connected(self):
-        return self.flag_is_qmp_connected
+        return (self.connections_status.QMP == config.connection_kind().connected)
 
 
     def is_ssh_connected(self):
-        return self.flag_is_ssh_connected
+        return (self.connections_status.SSH == config.connection_kind().connected)
 
 
     def is_pup_connected(self):
-        return self.flag_is_pup_connected
+        return (self.connections_status.PUP == config.connection_kind().connected)
 
 
     def attach_qemu_device_nic(self):
@@ -336,17 +336,17 @@ class qemu_instance:
         logging.info("command.py!qemu_machine::thread_wait_qmp_accept()")
         if self.qmp_obj:
             self.qmp_obj.accept()
-            self.flag_is_qmp_connected = True
+            self.connections_status.QMP = config.connection_kind().connected
 
 
     def thread_ssh_try_connect(self, host_addr, host_port, username, password):
         logging.info("command.py!qemu_machine::thread_wait_ssh_connect()")
-        while (not self.flag_is_ssh_connected) and (None != self.qemu_proc):
+        while (not self.is_ssh_connected()) and (None != self.qemu_proc):
             try:
                 logging.info("QEMU(taskid={0}) is trying to connect ssh ... (host_addr={1}, host_port={2})".format(self.taskid, host_addr, host_port))
                 self.ssh_obj.connect(host_addr, host_port, username, password)
                 if self.ssh_obj.tcp_socket and self.ssh_obj.conn_ssh_session:
-                    self.flag_is_ssh_connected = True
+                    self.connections_status.SSH = config.connection_kind().connected
                     self.status = config.task_status().querying
                     logging.info("QEMU(taskid={0}) self.status={1}".format(self.taskid, self.status))
                     logging.info("QEMU(taskid={0}) is connected.".format(self.taskid))
@@ -472,12 +472,12 @@ class qemu_instance:
 
     def thread_pup_try_connect(self, target_addr, target_port):
         logging.info("thread_pup_try_connect()")
-        while (not self.flag_is_pup_connected) and (None != self.qemu_proc):
+        while (not self.is_pup_connected()) and (None != self.qemu_proc):
             try:
                 logging.info("QEMU(taskid={0}) is trying to connect puppet ...".format(self.taskid))
                 self.pup_obj.connect(config.socket_address(target_addr, target_port))
                 if not self.pup_obj.is_connected():
-                    self.flag_is_pup_connected = True
+                    self.connections_status.PUP = config.connection_kind().connected
                     self.status = config.task_status().querying
                     Break
 
@@ -487,8 +487,8 @@ class qemu_instance:
             except Exception as e:
                 frameinfo = getframeinfo(currentframe())
                 errmsg = ("exception={0}".format(e)) + '\n' + \
-                        ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
-                        ("frameinfo.lineno={0}".format(frameinfo.lineno))
+                         ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                         ("frameinfo.lineno={0}".format(frameinfo.lineno))
 
             sleep(1)
 
@@ -600,7 +600,7 @@ class qemu_instance:
 
     def connect_ssh(self):
         logging.info("Connecting SSH ...")
-        if self.flag_is_ssh_connected:
+        if self.is_ssh_connected():
             return
 
         wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_addr.address,
@@ -613,7 +613,7 @@ class qemu_instance:
 
     def connect_puppet(self):
         logging.info("Connecting Puppet ...")
-        if self.flag_is_ssh_connected:
+        if self.is_pup_connected():
             return
 
         wait_ssh_thread = threading.Thread(target = self.thread_pup_try_connect, args=(self.socket_addr.address,
@@ -624,7 +624,7 @@ class qemu_instance:
 
     def connect_qmp(self):
         logging.info("Connecting QMP ...")
-        if self.flag_is_qmp_connected:
+        if self.is_qmp_connected():
             return
 
         qmp_accept_thread = threading.Thread(target = self.thread_qmp_wait_accept)
@@ -636,18 +636,18 @@ class qemu_instance:
         self.clear()
         self.status = config.task_status().creating
 
-        qemu_cmdargs = []
-        qemu_cmdargs.append(self.start_data.cmd.program)
-        qemu_cmdargs.extend(self.start_data.cmd.arguments)
-        qemu_cmdargs.extend(self.qemu_base_args)
-        logging.info("qemu_cmdargs={}".format(qemu_cmdargs))
+        self.qemu_full_cmdargs.clear()
+        self.qemu_full_cmdargs.append(self.start_data.cmd.program)
+        self.qemu_full_cmdargs.extend(self.start_data.cmd.arguments)
+        self.qemu_full_cmdargs.extend(self.qemu_base_args)
+        logging.info("self.qemu_full_cmdargs={}".format(self.qemu_full_cmdargs))
 
         os.makedirs(self.server_info.pushpool_path)
 
         # Make a QMP server so connect before launching QEMU process.
         self.connect_qmp()
 
-        self.qemu_proc = subprocess.Popen(qemu_cmdargs, shell=False, close_fds=True)
+        self.qemu_proc = subprocess.Popen(self.qemu_full_cmdargs, shell=False, close_fds=True)
         self.qemu_pid = self.qemu_proc.pid
 
         self.status = config.task_status().connecting

@@ -61,10 +61,7 @@ class governor_client(governor_client_base):
 
         self.path = OsdpPath()
         self.ssh_link = ssh_link()
-
         self.host_addr = host_addr
-        self.flag_is_ssh_connected = False
-
 
 
     def __del__(self):
