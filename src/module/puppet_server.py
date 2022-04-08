@@ -8,8 +8,6 @@ import socket
 import logging
 import threading
 import subprocess
-from pyftpdlib.authorizers import WindowsAuthorizer
-from pyftpdlib.authorizers import UnixAuthorizer
 
 # pyftpdlib
 from pyftpdlib.authorizers import DummyAuthorizer
@@ -102,10 +100,9 @@ class puppet_server(puppet_server_base):
 
         ftp_username = 'dougpuob'
         ftp_password = 'dougpuob'
-        ftp_homedir  = 'C:\\Users\\gliuser'
+        ftp_homedir  = os.path.expanduser('~')
 
-        authorizer = WindowsAuthorizer()
-
+        authorizer = DummyAuthorizer()
         authorizer.add_user(ftp_username, ftp_password, ftp_homedir, perm='elradfmwMT')
 
         handler = FTPHandler
