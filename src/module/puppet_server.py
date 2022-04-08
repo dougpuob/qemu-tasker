@@ -106,7 +106,7 @@ class puppet_server(puppet_server_base):
         handler = FTPHandler
         handler.authorizer = authorizer
         handler.masquerade_address = '192.168.0.201'
-        handler.passive_ports = range(60000, 65535)
+        #handler.passive_ports = range(60000, 65535)
 
         host_addr_info = ('', ftp_host.port)
         logging.info("host_addr_info={}".format(host_addr_info))
