@@ -101,7 +101,8 @@ class puppet_server(puppet_server_base):
 
         authorizer = DummyAuthorizer()
         homedir = os.path.expanduser('~')
-        authorizer.add_anonymous(homedir)
+        logging.info("homedir={}".format(homedir))
+        authorizer.add_anonymous('.')
 
         handler = FTPHandler
         handler.authorizer = authorizer
