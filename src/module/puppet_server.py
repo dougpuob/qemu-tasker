@@ -61,8 +61,8 @@ class puppet_server(puppet_server_base):
 
         # Servers
         self.cmd_host = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Cmd)
-        self.ftp_host = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Ftp)
-        self.ftp_client = config.account_information(self.setting.Puppet.FtpClient.UserName, self.setting.Puppet.FtpClient.Password)
+        self.ftp_server_addr_info = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Ftp)
+        self.ftp_client_addr_info = config.account_information(self.setting.Puppet.FtpClient.UserName, self.setting.Puppet.FtpClient.Password)
 
 
     def __del__(self):
@@ -93,48 +93,29 @@ class puppet_server(puppet_server_base):
         #
         # Start FTP server
         #
-        self.start_ftp_server('', self.ftp_host.port, self.ftp_client)
+        self.start_ftp_server(self.ftp_server_addr_info)
 
 
 
-    def start_ftp_server(self, ftp_addr:str, ftp_port:int, user:config.account_information):
+    def start_ftp_server(self, ftp_host:config.socket_address):
+    #def start_ftp_server(self, ftp_addr:str, ftp_port:int, user:config.account_information):
 
-        # Instantiate a dummy authorizer for managing 'virtual' users
+        # authorizer.add_user(user.username, user.password, homedir, perm='elradfmwMT')
         authorizer = DummyAuthorizer()
-
-        # Define a new user having full r/w permissions and a read-only
-        # anonymous user
+        #authorizer.add_anonymous(os.getcwd())
         homedir = os.path.expanduser('~')
-        authorizer.add_user(user.username, user.password, homedir, perm='elradfmwMT')
-        authorizer.add_anonymous(os.getcwd())
+        authorizer.add_anonymous(homedir)
 
-        # Instantiate FTP handler class
         handler = FTPHandler
         handler.authorizer = authorizer
 
-        # Define a customized banner (string returned when client connects)
-        handler.banner = "qemu-tasker puppet FTP service is ready."
-
-        # Specify a masquerade address and the range of ports to use for
-        # passive connections.  Decomment in case you're behind a NAT.
-        #handler.masquerade_address = '151.25.42.11'
-        #handler.passive_ports = range(60000, 65535)
-
-        # Instantiate FTP server class and listen on 0.0.0.0:2121
-        address = ('', ftp_port)
-        server = FTPServer(address, handler)
-
-        # set a limit for connections
-        server.max_cons = 256
-        server.max_cons_per_ip = 5
-
-        # start ftp server
-        server.serve_forever()
+        ftp_server = FTPServer(('', ftp_host.port), handler)
+        ftp_server.serve_forever()
 
 
     def thread_routine_listening_connections(self):
         logging.info("thread_routine_listening_connections ...")
-        logging.info("  host_addr={}".format(self.ftp_host))
+        logging.info("  host_addr={}".format(self.ftp_server_addr_info))
         logging.info("  cmd_port={}".format(self.cmd_host))
 
         try:
@@ -230,21 +211,21 @@ class puppet_server(puppet_server_base):
 
     def handle_list_command(self, cmd_data:config.list_command_request_data):
         if self.client == None:
-            self.client = ftpclient(self.ftp_host, self.ftp_client)
+            self.client = ftpclient(self.ftp_server_addr_info, self.ftp_client_addr_info)
         cmdret = self.client.list(cmd_data.dstdir)
         return cmdret
 
 
     def handle_download_command(self, cmd_data:config.download_command_request_data):
         if self.client == None:
-            self.client = ftpclient(self.ftp_host, self.ftp_client)
+            self.client = ftpclient(self.ftp_server_addr_info, self.ftp_client_addr_info)
         cmdret = self.client.download(cmd_data.files, cmd_data.dstdir)
         return cmdret
 
 
     def handle_upload_command(self, cmd_data:config.upload_command_request_data):
         if self.client == None:
-            self.client = ftpclient(self.ftp_host, self.ftp_client)
+            self.client = ftpclient(self.ftp_server_addr_info, self.ftp_client_addr_info)
         cmdret = self.client.upload(cmd_data.files, cmd_data.dstdir)
         return cmdret
 

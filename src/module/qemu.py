@@ -11,10 +11,8 @@ import base64
 import threading
 import subprocess
 import logging
-import socket
 
 from inspect import currentframe, getframeinfo
-from ssh2.session import Session
 
 import psutil
 import subprocess
