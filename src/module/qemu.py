@@ -611,9 +611,7 @@ class qemu_instance:
             return
 
         wait_ssh_thread = threading.Thread(target = self.thread_pup_try_connect, args=(self.socket_addr.address,
-                                                                                       self.forward_port.ssh,
-                                                                                       self.start_data.ssh.account.username,
-                                                                                       self.start_data.ssh.account.password))
+                                                                                       self.forward_port.pup))
         wait_ssh_thread.setDaemon(True)
         wait_ssh_thread.start()
 
@@ -647,7 +645,9 @@ class qemu_instance:
         self.qemu_pid = self.qemu_proc.pid
 
         self.status = config.task_status().connecting
-        self.connect_ssh()
+        #self.connect_ssh()
+        self.connect_puppet();
+
 
     def is_proc_alive(self) -> bool:
         if self.qemu_proc:

@@ -60,8 +60,8 @@ class puppet_server(puppet_server_base):
         self.accepted_list:list = []
 
         # Servers
-        self.cmd_host = config.socket_address(self.setting.Puppet.Host.Address, self.setting.Puppet.Host.Port.Cmd)
-        self.ftp_host = config.socket_address(self.setting.Puppet.Host.Address, self.setting.Puppet.Host.Port.Ftp)
+        self.cmd_host = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Cmd)
+        self.ftp_host = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Ftp)
         self.ftp_client = config.account_information(self.setting.Puppet.FtpClient.UserName, self.setting.Puppet.FtpClient.Password)
 
 
