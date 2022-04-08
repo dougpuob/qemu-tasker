@@ -9,11 +9,15 @@ from ftplib import FTP
 class ftpclient():
 
 
-    def __init__(self, addr_info:config.socket_address, user_info:config.account_information):
+    def __init__(self, addr_info:config.socket_address, user_info:config.account_information=None):
         self.ftp = FTP()
         self.ftp.encoding = 'utf-8'
         self.ftp.connect(addr_info.address, addr_info.port)
-        self.ftp.login(user_info.username, user_info.password)
+        if user_info:
+            self.ftp.login(user_info.username, user_info.password)
+        else:
+            self.ftp.login() # anonymous
+        self.ftp.set_pasv(False);
 
 
     def __del__(self):

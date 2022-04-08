@@ -103,10 +103,10 @@ class puppet_server(puppet_server_base):
         ftp_homedir  = os.path.expanduser('~')
 
         authorizer = DummyAuthorizer()
-        authorizer.add_user(ftp_username, ftp_password, ftp_homedir, perm='elradfmwMT')
+        #authorizer.add_user(ftp_username, ftp_password, ftp_homedir, perm='elradfmwMT')
+        authorizer.add_anonymous(ftp_homedir)
 
         handler = FTPHandler
-        handler.permit_privileged_ports = True
         handler.authorizer = authorizer
 
         host_addr_info = ('0.0.0.0', ftp_host.port)
