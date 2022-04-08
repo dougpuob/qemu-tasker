@@ -67,8 +67,12 @@ class qemu_instance:
         self.status = config.task_status().waiting
         self.result = config.command_return()
 
-        avail_tcp_ports = self.find_avaliable_ports(taskid, 3)
-        self.forward_port = config.forward_port(avail_tcp_ports[0], avail_tcp_ports[1], avail_tcp_ports[2])
+        avail_tcp_ports = self.find_avaliable_ports(taskid, 4) # QMP,SSH,PUP,FTP
+        self.forward_port = config.forward_port(avail_tcp_ports[0], # QMP
+                                                avail_tcp_ports[1], # SSH
+                                                avail_tcp_ports[2], # PUP
+                                                avail_tcp_ports[3]  # FTP
+                                                )
 
         workdir_path = self.path_obj.realpath('.')
         pushdir_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
@@ -286,9 +290,11 @@ class qemu_instance:
     def attach_qemu_device_nic(self):
         ssh_listen_port = 22
         pup_listen_port = self.setting.Puppet.Port.Cmd
-        arg1 = ["-netdev", "user,id=network0,hostfwd=tcp::{}-:{},hostfwd=tcp::{}-:{}".format(
-                                                                self.forward_port.ssh, ssh_listen_port,
-                                                                self.forward_port.pup, pup_listen_port)]
+        ftp_listen_port = self.setting.Puppet.Port.Ftp
+        hostfwd_ssh    = "hostfwd=tcp::{}-:{}".format(self.forward_port.ssh, ssh_listen_port)
+        hostfwd_pupcmd = "hostfwd=tcp::{}-:{}".format(self.forward_port.pup, pup_listen_port)
+        hostfwd_pupftp = "hostfwd=tcp::{}-:{}".format(self.forward_port.ftp, ftp_listen_port)
+        arg1 = ["-netdev", "user,id=network0,{},{},{}".format(hostfwd_ssh, hostfwd_pupcmd, hostfwd_pupftp)]
         arg2 = ["-net", "nic,model=e1000,netdev=network0"]
         self.qemu_base_args.extend(arg1)
         self.qemu_base_args.extend(arg2)
