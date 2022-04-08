@@ -26,12 +26,13 @@ from module import config
 from module.sshclient import ssh_link
 from module.path import OsdpPath
 from module.qmp import QEMUMonitorProtocol
+from module.puppet_client import puppet_client
 
 
 class qemu_instance:
 
     def __init__(self,
-                 socket_addr:config.socket_address,
+                 setting,
                  pushpool_path:str,
                  taskid:int,
                  start_data:config.start_command_request_data):
@@ -41,8 +42,9 @@ class qemu_instance:
         #
         self.WORKDIR_NAME = "qemu-tasker"
 
+        self.setting = setting
         self.start_data = start_data
-        self.socket_addr = socket_addr
+        self.socket_addr = config.socket_address(self.setting.Governor.Address, self.setting.Governor.Port)
         self.longlife = start_data.longlife * 60
         self.taskid = taskid
 
@@ -72,7 +74,7 @@ class qemu_instance:
         pushdir_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
         pushpool_path = self.path_obj.realpath(os.path.join(pushpool_path, pushdir_name))
         self.server_info = config.server_environment_information(
-                                        socket_addr,
+                                        self.socket_addr,
                                         workdir_path,
                                         pushpool_path)
 
@@ -83,8 +85,10 @@ class qemu_instance:
         self.ssh_obj = ssh_link()
         self.qmp_obj = QEMUMonitorProtocol((self.socket_addr.address, self.forward_port.qmp), server=True)
         self.ssh_info = start_data.ssh
+        self.pup_obj = puppet_client(config.socket_address(self.setting.Governor.Address, self.forward_port.pup))
         self.flag_is_qmp_connected = False
         self.flag_is_ssh_connected = False
+        self.flag_is_pup_connected = False
 
 
         #
@@ -93,9 +97,9 @@ class qemu_instance:
         self.attach_qemu_device_nic()
         self.attach_qemu_device_qmp()
 
+
         #
-        # F
-        # .00000000000000000000000000000000000003inal step to launch QEMU.
+        # Final step to launch QEMU.
         #
         self.qemu_thread = threading.Thread(target=self.thread_routine_to_create_proc)
         self.qemu_thread.setDaemon(True)
@@ -275,15 +279,24 @@ class qemu_instance:
         return self.flag_is_ssh_connected
 
 
+    def is_pup_connected(self):
+        return self.flag_is_pup_connected
+
+
     def attach_qemu_device_nic(self):
-        arg1 = ["-netdev", "user,id=network0,hostfwd=tcp::{}-:{}".format(self.forward_port.ssh, 22)]
+        ssh_listen_port = 22
+        pup_listen_port = self.setting.Puppet.Port.Cmd
+        arg1 = ["-netdev", "user,id=network0,hostfwd=tcp::{}-:{},hostfwd=tcp::{}-:{}".format(
+                                                                self.forward_port.ssh, ssh_listen_port,
+                                                                self.forward_port.pup, pup_listen_port)]
         arg2 = ["-net", "nic,model=e1000,netdev=network0"]
         self.qemu_base_args.extend(arg1)
         self.qemu_base_args.extend(arg2)
 
 
     def attach_qemu_device_qmp(self):
-        arg1 = ["-chardev", "socket,id=qmp,host={},port={}".format(self.socket_addr.address, self.forward_port.qmp)]
+        gov_host_addr = self.setting.Governor.Address
+        arg1 = ["-chardev", "socket,id=qmp,host={},port={}".format(gov_host_addr, self.forward_port.qmp)]
         arg2 = ["-mon", "chardev=qmp,mode=control"]
         self.qemu_base_args.extend(arg1)
         self.qemu_base_args.extend(arg2)
@@ -324,7 +337,7 @@ class qemu_instance:
         logging.info("command.py!qemu_machine::thread_wait_ssh_connect()")
         while (not self.flag_is_ssh_connected) and (None != self.qemu_proc):
             try:
-                logging.info("QEMU(taskid={0}) is trying to connect ... (host_addr={1}, host_port={2})".format(self.taskid, host_addr, host_port))
+                logging.info("QEMU(taskid={0}) is trying to connect ssh ... (host_addr={1}, host_port={2})".format(self.taskid, host_addr, host_port))
                 self.ssh_obj.connect(host_addr, host_port, username, password)
                 if self.ssh_obj.tcp_socket and self.ssh_obj.conn_ssh_session:
                     self.flag_is_ssh_connected = True
@@ -451,12 +464,153 @@ class qemu_instance:
         logging.info("QEMU(taskid={0}) self.status={1}".format(self.taskid, self.status))
 
 
+    def thread_pup_try_connect(self, target_addr, target_port):
+        logging.info("thread_pup_try_connect()")
+        while (not self.flag_is_pup_connected) and (None != self.qemu_proc):
+            try:
+                logging.info("QEMU(taskid={0}) is trying to connect puppet ...".format(self.taskid))
+                self.pup_obj.connect(config.socket_address(target_addr, target_port))
+                if not self.pup_obj.is_connected():
+                    self.flag_is_pup_connected = True
+                    self.status = config.task_status().querying
+                    Break
+
+            except ConnectionRefusedError as e:
+                logging.warning("Failed to establish puppet connection, is going to retry again !!!")
+
+            except Exception as e:
+                frameinfo = getframeinfo(currentframe())
+                errmsg = ("exception={0}".format(e)) + '\n' + \
+                        ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
+                        ("frameinfo.lineno={0}".format(frameinfo.lineno))
+
+            sleep(1)
+
+
+        logging.info("QEMU(taskid={0}) is trying to query information from current guest OS. (puppet)".format(self.taskid))
+
+
+        guest_info_os_kind = config.os_kind().unknown
+        guest_info_homedir_path =''
+        guest_info_pushdir_name =''
+
+
+        #
+        # Detect OS kind by trying the `uname` or `systeminfo` commands.
+        # - `uname` for Linux and macOS
+        # - `systeminfo` for Windows
+        #
+        cmdret = self.pup_obj.execute('uname')
+        if cmdret.errcode == 0:
+            stdout = ''.join(cmdret.info_lines).strip()
+            if stdout.find("Linux") > 0:
+                guest_info_os_kind = config.os_kind().linux
+            if stdout.find("Darwin") > 0:
+                guest_info_os_kind = config.os_kind().macos
+        else:
+            cmdret = self.pup_obj.execute('systeminfo')
+            if cmdret.errcode == 0:
+                guest_info_os_kind = config.os_kind().windows
+
+        logging.info("QEMU(taskid={0}) guest_info_os_kind={1}".format(self.taskid, guest_info_os_kind))
+
+
+        #
+        # Get guest current working directory path
+        #
+        if guest_info_os_kind == config.os_kind().windows:
+
+            # Try cmd.exe
+            cmdret = self.ssh_obj.execute('echo %cd%')
+            guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
+
+            # Try powershell.exe
+            if "%cd%" == guest_info_homedir_path:
+                cmdret = self.ssh_obj.execute('(Get-Location).Path')
+                guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
+            else:
+                pass
+        else:
+            cmdret = self.ssh_obj.execute('pwd')
+            guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
+
+
+        guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
+        logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
+
+        guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
+        logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
+
+        guest_info_pushdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, guest_info_pushdir_name))
+        logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_path))
+
+        guest_info_workdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, self.WORKDIR_NAME))
+        logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
+
+
+        # Set working directory.
+        self.ssh_obj.apply_os_kind(guest_info_os_kind)
+        self.ssh_obj.apply_workdir_name(guest_info_workdir_name)
+        self.ssh_obj.apply_pushdir_name(guest_info_pushdir_name)
+        self.ssh_obj.apply_workdir_path(guest_info_workdir_path)
+        self.ssh_obj.apply_pushdir_path(guest_info_pushdir_path)
+
+
+        # Create Guest Information.
+        # C:\\Users\\dougpuob\\qemu-tasker\\pushpool
+        # ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^ <-- pushdir_name
+        #   homedir_path       ^^^^^^^^^^^ <-- workdir_name
+        self.guest_info = config.guest_environment_information(
+                                        guest_info_os_kind,
+                                        guest_info_homedir_path,
+                                        guest_info_workdir_path,
+                                        guest_info_workdir_name,
+                                        guest_info_pushdir_name)
+
+
+        # Create filepool directory.
+        cmdret = self.ssh_obj.mkdir(guest_info_pushdir_name)
+        logging.info("QEMU(taskid={0}) create filepool directory ({1})".format(self.taskid, guest_info_pushdir_name))
+        logging.info("  cmdret.errcode={0}".format(cmdret.errcode))
+        logging.info("  cmdret.info_lines={0}".format(cmdret.info_lines))
+        logging.info("  cmdret.error_lines={0}".format(cmdret.error_lines))
+
+        # Append envrionment variable.
+        #logging.info("QEMU(taskid={0}) append envirnment variable to PATH".format(self.taskid))
+        #self.ssh_obj.append_workdir_to_path()
+
+        # Update path environment variable
+        old_envvar_path = self.ssh_obj.get_path_environment_variable()
+        if old_envvar_path:
+            new_envvar_path = old_envvar_path + guest_info_workdir_path + ";"
+            self.ssh_obj.update_path_envvar(new_envvar_path)
+        logging.info("QEMU(taskid={0}) new_envvar_path={1}".format(self.taskid, new_envvar_path))
+
+        # Update status of QEMU instance.
+        if self.guest_info.os_kind != config.os_kind().unknown:
+            self.status = config.task_status().ready
+        logging.info("QEMU(taskid={0}) self.status={1}".format(self.taskid, self.status))
+
+
     def connect_ssh(self):
         logging.info("Connecting SSH ...")
         if self.flag_is_ssh_connected:
             return
 
         wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_addr.address,
+                                                                                       self.forward_port.ssh,
+                                                                                       self.start_data.ssh.account.username,
+                                                                                       self.start_data.ssh.account.password))
+        wait_ssh_thread.setDaemon(True)
+        wait_ssh_thread.start()
+
+
+    def connect_puppet(self):
+        logging.info("Connecting Puppet ...")
+        if self.flag_is_ssh_connected:
+            return
+
+        wait_ssh_thread = threading.Thread(target = self.thread_pup_try_connect, args=(self.socket_addr.address,
                                                                                        self.forward_port.ssh,
                                                                                        self.start_data.ssh.account.username,
                                                                                        self.start_data.ssh.account.password))
