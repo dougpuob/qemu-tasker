@@ -100,16 +100,18 @@ class puppet_server(puppet_server_base):
     def start_ftp_server(self, ftp_host:config.socket_address):
     #def start_ftp_server(self, ftp_addr:str, ftp_port:int, user:config.account_information):
 
-        # authorizer.add_user(user.username, user.password, homedir, perm='elradfmwMT')
-        authorizer = DummyAuthorizer()
-        #authorizer.add_anonymous(os.getcwd())
         homedir = os.path.expanduser('~')
-        authorizer.add_anonymous(homedir)
+        #authorizer.add_user(user.username, user.password, homedir, perm='elradfmwMT')
+        authorizer = DummyAuthorizer()
+        authorizer.add_user('dougpuob', 'dougpuob', homedir, perm='elradfmwMT')
+        authorizer.add_anonymous(os.getcwd())
+
+        #authorizer.add_anonymous(homedir)
 
         handler = FTPHandler
         handler.authorizer = authorizer
 
-        host_addr_info = (ftp_host.address, ftp_host.port)
+        host_addr_info = ('', ftp_host.port)
         logging.info("host_addr_info={}".format(host_addr_info))
         ftp_server = FTPServer(host_addr_info, handler)
         ftp_server.serve_forever()

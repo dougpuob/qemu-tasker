@@ -289,11 +289,13 @@ class qemu_instance:
         ssh_listen_port = 22
         pup_listen_port = self.setting.Puppet.Port.Cmd
         ftp_listen_port = self.setting.Puppet.Port.Ftp
-        hostfwd_ssh    = "tcp::{}-:{}".format(self.forward_port.ssh, ssh_listen_port)
-        hostfwd_pupcmd = "tcp::{}-:{}".format(self.forward_port.pup, pup_listen_port)
-        hostfwd_pupftp = "tcp::{}-:{}".format(self.forward_port.ftp, ftp_listen_port)
-        arg1 = ["-netdev", "user,id=network0,hostfwd={},{},{}".format(hostfwd_ssh, hostfwd_pupcmd, hostfwd_pupftp)]
-        arg2 = ["-net", "nic,model=e1000,netdev=network0"]
+        hostfwd_ssh    = "hostfwd=tcp::{}-:{}".format(self.forward_port.ssh, ssh_listen_port)
+        hostfwd_pupcmd = "hostfwd=tcp::{}-:{}".format(self.forward_port.pup, pup_listen_port)
+        hostfwd_pupftp = "hostfwd=tcp::{}-:{}".format(self.forward_port.ftp, ftp_listen_port)
+        #arg1 = ["-netdev", "user,id=network0,hostfwd={},{},{}".format(hostfwd_ssh, hostfwd_pupcmd, hostfwd_pupftp)]
+        #arg2 = ["-net", "nic,model=e1000,netdev=network0"]
+        arg1 = ["-net", "nic,model=e1000"]
+        arg2 = ["-net", "user,{},{},{}".format(hostfwd_ssh, hostfwd_pupcmd, hostfwd_pupftp)]
         self.qemu_base_args.extend(arg1)
         self.qemu_base_args.extend(arg2)
 
