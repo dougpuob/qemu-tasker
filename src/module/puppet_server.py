@@ -106,6 +106,7 @@ class puppet_server(puppet_server_base):
         authorizer.add_user(ftp_username, ftp_password, ftp_homedir, perm='elradfmwMT')
 
         handler = FTPHandler
+        handler.permit_privileged_ports = True
         handler.authorizer = authorizer
 
         host_addr_info = ('0.0.0.0', ftp_host.port)
