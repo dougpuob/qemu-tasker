@@ -107,12 +107,15 @@ class puppet_server(puppet_server_base):
 
         handler = FTPHandler
         handler.authorizer = authorizer
-        #handler.masquerade_address = '192.168.0.201'
-        #handler.passive_ports = range(60000, 65535)
 
         host_addr_info = ('0.0.0.0', ftp_host.port)
         logging.info("host_addr_info={}".format(host_addr_info))
         ftp_server = FTPServer(host_addr_info, handler)
+
+        # set a limit for connections
+        ftp_server.max_cons = 256
+        ftp_server.max_cons_per_ip = 10
+
         ftp_server.serve_forever()
 
 
