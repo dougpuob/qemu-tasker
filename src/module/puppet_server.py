@@ -115,6 +115,7 @@ class puppet_server(puppet_server_base):
         logging.info("host_addr_info={}".format(host_addr_info))
         ftp_server = FTPServer(host_addr_info, handler)
         ftp_server.serve_forever()
+        ftp_server.handle_write()
 
 
     def thread_routine_listening_connections(self):
