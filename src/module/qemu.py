@@ -476,8 +476,9 @@ class qemu_instance:
     def thread_pup_try_connect(self, target_addr, target_port):
         logging.info("thread_pup_try_connect()")
         logging.info("thread_pup_try_connect() ({0})".format(self.is_pup_connected()))
-        while not self.is_pup_connected():
+        while True:
             try:
+                logging.info("QEMU(taskid={0}) is trying to connect puppet ...)".format(self.taskid))
                 ret = self.pup_obj.connect(config.socket_address(target_addr, target_port))
                 logging.info("QEMU(taskid={0}) is trying to connect puppet ... (ret={1})".format(self.taskid, ret))
                 logging.info("QEMU(taskid={0}) is trying to connect puppet ... (pup_obj.is_connected={1})".format(self.taskid, self.pup_obj.is_connected()))
