@@ -285,6 +285,10 @@ class qemu_instance:
         return (self.connections_status.PUP == config.connection_kind().connected)
 
 
+    def is_ftp_connected(self):
+        return (self.connections_status.FTP == config.connection_kind().connected)
+
+
     def attach_qemu_device_nic(self):
         ssh_listen_port = 22
         pup_listen_port = self.setting.Puppet.Port.Cmd
@@ -362,7 +366,6 @@ class qemu_instance:
                         ("frameinfo.lineno={0}".format(frameinfo.lineno))
 
             sleep(1)
-
 
         logging.info("QEMU(taskid={0}) is trying to query information from current guest OS.".format(self.taskid))
 

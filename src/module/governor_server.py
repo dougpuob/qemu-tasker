@@ -229,7 +229,7 @@ class governor_server(governor_server_base):
 
 
     def get_bool(self, result):
-        if result:
+        if result == config.connection_kind().connected:
             return "True "
         else:
             return "False"
@@ -248,17 +248,19 @@ class governor_server(governor_server_base):
                 qemu_inst:qemu.qemu_instance = qemu_inst_obj
 
                 if qemu_inst.longlife > 0:
-                    is_qmp_connected = self.get_bool(qemu_inst.is_qmp_connected())
-                    is_ssh_connected = self.get_bool(qemu_inst.is_ssh_connected())
-                    is_pup_connected = self.get_bool(qemu_inst.is_pup_connected())
+                    is_qmp_connected = self.get_bool(qemu_inst.connections_status.QMP)
+                    is_ssh_connected = self.get_bool(qemu_inst.connections_status.SSH)
+                    is_pup_connected = self.get_bool(qemu_inst.connections_status.PUP)
+                    is_ftp_connected = self.get_bool(qemu_inst.connections_status.FTP)
 
-                    print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} SSH:{} PUP:{} OS:{}  Longlife:{}(s) {}'.format(
+                    print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} SSH:{} PUP:{} FTP:{} OS:{} Longlife:{}(s) {}'.format(
                             qemu_inst.taskid,
                             qemu_inst.qemu_pid,
                             qemu_inst.forward_port.toJSON(),
                             is_qmp_connected,
                             is_ssh_connected,
                             is_pup_connected,
+                            is_ftp_connected,
                             qemu_inst.guest_info.os_kind,
                             qemu_inst.longlife,
                             qemu_inst.status))
