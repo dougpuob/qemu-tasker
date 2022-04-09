@@ -77,10 +77,12 @@ class puppet_client(puppet_client_base):
       return_result:bool = False
 
       try:
+        logging.info("QEMU(taskid={0}) connecting command socket ...".format(self.taskid))
         self.cmd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.cmd_socket.connect((cmd_socket_addr.address, cmd_socket_addr.port))
 
         # anonymous
+        logging.info("QEMU(taskid={0}) connecting FTP socket (anonymous) ...".format(self.taskid))
         self.ftp_obj = ftpclient(ftp_socket_addr)
 
         self.flat_is_connected = True
