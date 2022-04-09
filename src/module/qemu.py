@@ -478,8 +478,8 @@ class qemu_instance:
         while (not self.is_pup_connected()) and (None != self.qemu_proc):
             try:
                 ret = self.pup_obj.connect(config.socket_address(target_addr, target_port))
-                logging.info("QEMU(taskid={0}) is trying to connect puppet ... (ret={})".format(self.taskid, ret))
-                logging.info("QEMU(taskid={0}) is trying to connect puppet ... (pup_obj.is_connected={})".format(self.taskid, self.pup_obj.is_connected()))
+                logging.info("QEMU(taskid={0}) is trying to connect puppet ... (ret={1})".format(self.taskid, ret))
+                logging.info("QEMU(taskid={0}) is trying to connect puppet ... (pup_obj.is_connected={1})".format(self.taskid, self.pup_obj.is_connected()))
                 if not self.pup_obj.is_connected():
                     self.connections_status.PUP = config.connection_kind().connected
                     self.status = config.task_status().querying
