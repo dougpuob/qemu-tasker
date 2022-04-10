@@ -77,8 +77,7 @@ class puppet_client(puppet_client_base):
 
 
     def connect_cmd(self, cmd_socket_addr:config.socket_address):
-
-      return_result:bool = False
+      result:bool = False
 
       try:
         logging.info("puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
@@ -86,18 +85,18 @@ class puppet_client(puppet_client_base):
         result = self.cmd_socket.connect_ex((cmd_socket_addr.address, cmd_socket_addr.port))
 
         if result:
-          return_result = False
+          result = False
         else:
-          return_result = True
+          result = True
 
-        self._is_cmd_connected = return_result
+        self._is_cmd_connected = result
 
       except Exception as e:
-        return_result = False
+        result = False
         logging.exception(str(e))
 
       finally:
-        return return_result
+        return result
 
 
     def connect_ftp(self,
@@ -129,7 +128,9 @@ class puppet_client(puppet_client_base):
 
     def send(self, cmd_kind:config.command_kind, cmd_data) -> config.transaction_capsule:
 
-        if (None == self.cmd_socket):
+        assert self.cmd_socket, 'self.cmd_socket is None !!!'
+
+        if None == self.cmd_socket:
           cmdret = config.command_return()
           cmdret.errcode = -1
           cmdret.error_lines.append('The TCP connection is not established !!!')

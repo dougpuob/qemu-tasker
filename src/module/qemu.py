@@ -351,6 +351,8 @@ class qemu_instance:
         logging.info("thread_pup_try_connect()")
         logging.info("thread_pup_try_connect() ({0})".format(self.is_pup_connected()))
 
+        assert self.pup_obj, 'self.pup_obj is None !!!'
+
         while True:
             try:
                 if not self.pup_obj.is_cmd_connected():
