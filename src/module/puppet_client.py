@@ -51,6 +51,7 @@ class puppet_client(puppet_client_base):
 
 
     def __init__(self, taskid:int):
+      self.BUFF_SIZE = 4096
       self.taskid = taskid
       self.cmd_socket = None
       self.ftp_obj = None
