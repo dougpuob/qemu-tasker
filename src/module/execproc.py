@@ -50,7 +50,7 @@ class execproc():
 
 
 
-    def run(self, cmdargs:config.command_argument) -> config.command_return :
+    def run(self, cmdargs:config.command_argument, cwd:str=None) -> config.command_return :
 
         cmdstr:str = cmdargs.program
         if cmdargs.argument:
@@ -60,7 +60,7 @@ class execproc():
         cmdret:config.command_return = config.command_return()
 
         try:
-            proc = subprocess.Popen(cmdstr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
+            proc = subprocess.Popen(cmdstr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, cwd=cwd)
             if proc:
                 cmdret.data = proc
 

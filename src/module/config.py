@@ -308,12 +308,14 @@ class exec_command_request_data(config):
     def __init__(self, taskid:int,
                        program:str,
                        argument:str,
+                       cwd:str=None,
                        is_base64:bool=False):
         self.name = self.__class__.__name__
 
         self.taskid    = taskid
         self.program   = program
         self.argument  = argument
+        self.cwd       = cwd
         self.is_base64 = is_base64
 
 exec_command_response_data = generic_command_response_data

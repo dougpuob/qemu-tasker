@@ -130,8 +130,8 @@ class puppet_client(puppet_client_base):
         return resp_data
 
 
-    def execute(self, program:str, argument:str=None):
-        cmd_data = config.execute_command_request_data(self.taskid, program, argument, False)
+    def execute(self, program:str, argument:str=None, work_dirpath:str=None):
+        cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
         response_capsule = self.send(config.command_kind().execute, cmd_data)
         return response_capsule.result
 
