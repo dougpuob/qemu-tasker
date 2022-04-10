@@ -42,7 +42,6 @@ class qemu_instance:
 
         self.setting = setting
         self.start_data = start_data
-        self.socket_addr = config.socket_address(self.setting.Governor.Address, self.setting.Governor.Port)
         self.longlife = start_data.longlife * 60
         self.taskid = taskid
 
@@ -73,11 +72,16 @@ class qemu_instance:
                                                 avail_tcp_ports[3]  # FTP
                                                 )
 
+
+        self.socket_gov_addr = config.socket_address(self.setting.Governor.Address, self.setting.Governor.Port)
+        self.socket_pup_cmd = config.socket_address(self.setting.Puppet.Address, self.forward_port.pup)
+        self.socket_pup_ftp = config.socket_address(self.setting.Puppet.Address, self.forward_port.ftp)
+
         workdir_path = self.path_obj.realpath('.')
         pushdir_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
         pushpool_path = self.path_obj.realpath(os.path.join(pushpool_path, pushdir_name))
         self.server_info = config.server_environment_information(
-                                        self.socket_addr,
+                                        self.socket_gov_addr,
                                         workdir_path,
                                         pushpool_path)
 
@@ -86,7 +90,7 @@ class qemu_instance:
 
         # SSH
         self.ssh_obj = ssh_link()
-        self.qmp_obj = QEMUMonitorProtocol((self.socket_addr.address, self.forward_port.qmp), server=True)
+        self.qmp_obj = QEMUMonitorProtocol((self.socket_gov_addr.address, self.forward_port.qmp), server=True)
         self.ssh_info = start_data.ssh
         self.pup_obj = puppet_client(config.socket_address(self.setting.Governor.Address, self.forward_port.pup))
 
@@ -479,8 +483,7 @@ class qemu_instance:
         while True:
             try:
                 logging.info("QEMU(taskid={0}) is trying to connect puppet ...)".format(self.taskid))
-                ret = self.pup_obj.connect(config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Cmd),
-                                           config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Ftp))
+                ret = self.pup_obj.connect(self.socket_pup_cmd, self.socket_pup_ftp)
                 logging.info("ret={0}".format(ret))
                 logging.info("pup_obj.is_connected={0}".format(self.pup_obj.is_connected()))
                 if not self.pup_obj.is_connected():
@@ -610,7 +613,7 @@ class qemu_instance:
         if self.is_ssh_connected():
             return
 
-        wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_addr.address,
+        wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_gov_addr.address,
                                                                                        self.forward_port.ssh,
                                                                                        self.start_data.ssh.account.username,
                                                                                        self.start_data.ssh.account.password))
@@ -623,7 +626,7 @@ class qemu_instance:
         if self.is_pup_connected():
             return
 
-        wait_ssh_thread = threading.Thread(target = self.thread_pup_try_connect, args=(self.socket_addr.address,
+        wait_ssh_thread = threading.Thread(target = self.thread_pup_try_connect, args=(self.socket_gov_addr.address,
                                                                                        self.forward_port.pup))
         wait_ssh_thread.setDaemon(True)
         wait_ssh_thread.start()
