@@ -124,7 +124,7 @@ class qemu_instance:
     def wait_to_create(self):
         times = 10
         while times > 0:
-            sleep(1)
+            time.sleep(1)
             if self.qemu_proc and self.qmp_obj:
                 return True
             times = times - 1
@@ -320,7 +320,7 @@ class qemu_instance:
         self.create()
 
         while self.is_alive:
-            sleep(1)
+            time.sleep(1)
             if self.qemu_proc:
                 try:
                     stdout, stderr = self.qemu_proc.communicate()
@@ -554,7 +554,7 @@ class qemu_instance:
         while retry <= 60 and is_alive:
             retry = retry + 1
             is_alive = self.is_proc_alive()
-            sleep(1)
+            time.sleep(1)
 
         # still alive is a failure case
         if is_alive:
