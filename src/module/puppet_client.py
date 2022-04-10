@@ -136,6 +136,10 @@ class puppet_client(puppet_client_base):
         return response_capsule.result
 
 
+    def mkdir(self, dirpath:str):
+        return self.ftp_obj.try_mkdir(dirpath)
+
+
     def upload(self, files:list, dstdir:str):
         return self.ftp_obj.upload(files, dstdir)
 

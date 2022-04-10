@@ -347,136 +347,6 @@ class qemu_instance:
             self.connections_status.QMP = config.connection_kind().connected
 
 
-    def thread_ssh_try_connect(self, host_addr, host_port, username, password):
-        logging.info("command.py!qemu_machine::thread_wait_ssh_connect()")
-        while (not self.is_ssh_connected()) and (None != self.qemu_proc):
-            try:
-                logging.info("QEMU(taskid={0}) is trying to connect ssh ... (host_addr={1}, host_port={2})".format(self.taskid, host_addr, host_port))
-                self.ssh_obj.connect(host_addr, host_port, username, password)
-                if self.ssh_obj.tcp_socket and self.ssh_obj.conn_ssh_session:
-                    self.connections_status.SSH = config.connection_kind().connected
-                    self.status = config.task_status().querying
-                    logging.info("QEMU(taskid={0}) self.status={1}".format(self.taskid, self.status))
-                    logging.info("QEMU(taskid={0}) is connected.".format(self.taskid))
-                    Break
-
-            except ConnectionRefusedError as e:
-                logging.warning("SSH connection was refused, is going to retry again !!! (username={} ,password={})".format(username, password))
-
-            except Exception as e:
-                frameinfo = getframeinfo(currentframe())
-                errmsg = ("exception={0}".format(e)) + '\n' + \
-                        ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
-                        ("frameinfo.lineno={0}".format(frameinfo.lineno))
-
-            sleep(1)
-
-        logging.info("QEMU(taskid={0}) is trying to query information from current guest OS.".format(self.taskid))
-
-
-
-        guest_info_os_kind = config.os_kind().unknown
-        guest_info_homedir_path =''
-        guest_info_pushdir_name =''
-
-
-        #
-        # Detect OS kind by trying the `uname` or `systeminfo` commands.
-        # - `uname` for Linux and macOS
-        # - `systeminfo` for Windows
-        #
-        cmdret = self.ssh_obj.execute('uname -a')
-        if cmdret.errcode == 0:
-            stdout = ''.join(cmdret.info_lines).strip()
-            if stdout.find("Linux") > 0:
-                guest_info_os_kind = config.os_kind().linux
-            if stdout.find("Darwin") > 0:
-                guest_info_os_kind = config.os_kind().macos
-        else:
-            cmdret = self.ssh_obj.execute('systeminfo')
-            if cmdret.errcode == 0:
-                guest_info_os_kind = config.os_kind().windows
-
-        logging.info("QEMU(taskid={0}) guest_info_os_kind={1}".format(self.taskid, guest_info_os_kind))
-
-
-        #
-        # Get guest current working directory path
-        #
-        if guest_info_os_kind == config.os_kind().windows:
-
-            # Try cmd.exe
-            cmdret = self.ssh_obj.execute('echo %cd%')
-            guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
-
-            # Try powershell.exe
-            if "%cd%" == guest_info_homedir_path:
-                cmdret = self.ssh_obj.execute('(Get-Location).Path')
-                guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
-            else:
-                pass
-        else:
-            cmdret = self.ssh_obj.execute('pwd')
-            guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
-
-
-        guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
-        logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
-
-        guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
-        logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
-
-        guest_info_pushdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, guest_info_pushdir_name))
-        logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_path))
-
-        guest_info_workdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, self.WORKDIR_NAME))
-        logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
-
-
-        # Set working directory.
-        self.ssh_obj.apply_os_kind(guest_info_os_kind)
-        self.ssh_obj.apply_workdir_name(guest_info_workdir_name)
-        self.ssh_obj.apply_pushdir_name(guest_info_pushdir_name)
-        self.ssh_obj.apply_workdir_path(guest_info_workdir_path)
-        self.ssh_obj.apply_pushdir_path(guest_info_pushdir_path)
-
-
-        # Create Guest Information.
-        # C:\\Users\\dougpuob\\qemu-tasker\\pushpool
-        # ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^ <-- pushdir_name
-        #   homedir_path       ^^^^^^^^^^^ <-- workdir_name
-        self.guest_info = config.guest_environment_information(
-                                        guest_info_os_kind,
-                                        guest_info_homedir_path,
-                                        guest_info_workdir_path,
-                                        guest_info_workdir_name,
-                                        guest_info_pushdir_name)
-
-
-        # Create filepool directory.
-        cmdret = self.ssh_obj.mkdir(guest_info_pushdir_name)
-        logging.info("QEMU(taskid={0}) create filepool directory ({1})".format(self.taskid, guest_info_pushdir_name))
-        logging.info("  cmdret.errcode={0}".format(cmdret.errcode))
-        logging.info("  cmdret.info_lines={0}".format(cmdret.info_lines))
-        logging.info("  cmdret.error_lines={0}".format(cmdret.error_lines))
-
-        # Append envrionment variable.
-        #logging.info("QEMU(taskid={0}) append envirnment variable to PATH".format(self.taskid))
-        #self.ssh_obj.append_workdir_to_path()
-
-        # Update path environment variable
-        old_envvar_path = self.ssh_obj.get_path_environment_variable()
-        if old_envvar_path:
-            new_envvar_path = old_envvar_path + guest_info_workdir_path + ";"
-            self.ssh_obj.update_path_envvar(new_envvar_path)
-        logging.info("QEMU(taskid={0}) new_envvar_path={1}".format(self.taskid, new_envvar_path))
-
-        # Update status of QEMU instance.
-        if self.guest_info.os_kind != config.os_kind().unknown:
-            self.status = config.task_status().ready
-        logging.info("QEMU(taskid={0}) self.status={1}".format(self.taskid, self.status))
-
-
     def thread_pup_try_connect(self, target_addr, target_port):
         logging.info("thread_pup_try_connect()")
         logging.info("thread_pup_try_connect() ({0})".format(self.is_pup_connected()))
@@ -503,109 +373,99 @@ class qemu_instance:
             sleep(1)
 
 
-        logging.info("QEMU(taskid={0}) is trying to query information from current guest OS. (puppet)".format(self.taskid))
+            logging.info("QEMU(taskid={0}) is trying to query information from current guest OS. (puppet)".format(self.taskid))
 
 
-        guest_info_os_kind = config.os_kind().unknown
-        guest_info_homedir_path =''
-        guest_info_pushdir_name =''
+            guest_info_os_kind = config.os_kind().unknown
+            guest_info_homedir_path =''
+            guest_info_pushdir_name =''
 
 
-        #
-        # Detect OS kind by trying the `uname` or `systeminfo` commands.
-        # - `uname` for Linux and macOS
-        # - `systeminfo` for Windows
-        #
-        cmdret = self.pup_obj.execute('uname')
-        if cmdret.errcode == 0:
-            stdout = ''.join(cmdret.info_lines).strip()
-            if stdout.find("Linux") > 0:
-                guest_info_os_kind = config.os_kind().linux
-            if stdout.find("Darwin") > 0:
-                guest_info_os_kind = config.os_kind().macos
-        else:
-            cmdret = self.pup_obj.execute('systeminfo')
+            #
+            # Detect OS kind by trying the `uname` or `systeminfo` commands.
+            # - `uname` for Linux and macOS
+            # - `systeminfo` for Windows
+            #
+            cmdret = self.pup_obj.execute('uname')
             if cmdret.errcode == 0:
-                guest_info_os_kind = config.os_kind().windows
-
-        logging.info("QEMU(taskid={0}) guest_info_os_kind={1}".format(self.taskid, guest_info_os_kind))
-
-
-        #
-        # Get guest current working directory path
-        #
-        if guest_info_os_kind == config.os_kind().windows:
-
-            # Try cmd.exe
-            cmdret = self.ssh_obj.execute('echo %cd%')
-            guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
-
-            # Try powershell.exe
-            if "%cd%" == guest_info_homedir_path:
-                cmdret = self.ssh_obj.execute('(Get-Location).Path')
-                guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
+                stdout = ''.join(cmdret.info_lines).strip()
+                if stdout.find("Linux") > 0:
+                    guest_info_os_kind = config.os_kind().linux
+                if stdout.find("Darwin") > 0:
+                    guest_info_os_kind = config.os_kind().macos
             else:
-                pass
-        else:
-            cmdret = self.ssh_obj.execute('pwd')
-            guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
+                cmdret = self.pup_obj.execute('systeminfo')
+                if cmdret.errcode == 0:
+                    guest_info_os_kind = config.os_kind().windows
+
+            logging.info("QEMU(taskid={0}) guest_info_os_kind={1}".format(self.taskid, guest_info_os_kind))
 
 
-        guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
-        logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
+            #
+            # Get guest current working directory path
+            #
+            if guest_info_os_kind == config.os_kind().windows:
 
-        guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
-        logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
+                # Try cmd.exe
+                cmdret = self.pup_obj.execute('echo %cd%')
+                guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
 
-        guest_info_pushdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, guest_info_pushdir_name))
-        logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_path))
-
-        guest_info_workdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, self.WORKDIR_NAME))
-        logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
-
-
-        # Set working directory.
-        self.ssh_obj.apply_os_kind(guest_info_os_kind)
-        self.ssh_obj.apply_workdir_name(guest_info_workdir_name)
-        self.ssh_obj.apply_pushdir_name(guest_info_pushdir_name)
-        self.ssh_obj.apply_workdir_path(guest_info_workdir_path)
-        self.ssh_obj.apply_pushdir_path(guest_info_pushdir_path)
-
-
-        # Create Guest Information.
-        # C:\\Users\\dougpuob\\qemu-tasker\\pushpool
-        # ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^ <-- pushdir_name
-        #   homedir_path       ^^^^^^^^^^^ <-- workdir_name
-        self.guest_info = config.guest_environment_information(
-                                        guest_info_os_kind,
-                                        guest_info_homedir_path,
-                                        guest_info_workdir_path,
-                                        guest_info_workdir_name,
-                                        guest_info_pushdir_name)
+                # Try powershell.exe
+                if "%cd%" == guest_info_homedir_path:
+                    cmdret = self.pup_obj.execute('(Get-Location).Path')
+                    guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
+                else:
+                    pass
+            else:
+                cmdret = self.pup_obj.execute('pwd')
+                guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
 
 
-        # Create filepool directory.
-        cmdret = self.ssh_obj.mkdir(guest_info_pushdir_name)
-        logging.info("QEMU(taskid={0}) create filepool directory ({1})".format(self.taskid, guest_info_pushdir_name))
-        logging.info("  cmdret.errcode={0}".format(cmdret.errcode))
-        logging.info("  cmdret.info_lines={0}".format(cmdret.info_lines))
-        logging.info("  cmdret.error_lines={0}".format(cmdret.error_lines))
+            guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
+            logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
 
-        # Append envrionment variable.
-        #logging.info("QEMU(taskid={0}) append envirnment variable to PATH".format(self.taskid))
-        #self.ssh_obj.append_workdir_to_path()
+            guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
+            logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
 
-        # Update path environment variable
-        old_envvar_path = self.ssh_obj.get_path_environment_variable()
-        if old_envvar_path:
-            new_envvar_path = old_envvar_path + guest_info_workdir_path + ";"
-            self.ssh_obj.update_path_envvar(new_envvar_path)
-        logging.info("QEMU(taskid={0}) new_envvar_path={1}".format(self.taskid, new_envvar_path))
+            guest_info_pushdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, guest_info_pushdir_name))
+            logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_path))
 
-        # Update status of QEMU instance.
-        if self.guest_info.os_kind != config.os_kind().unknown:
-            self.status = config.task_status().ready
-        logging.info("QEMU(taskid={0}) self.status={1}".format(self.taskid, self.status))
+            guest_info_workdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, self.WORKDIR_NAME))
+            logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
+
+
+            # Set working directory.
+            # self.ssh_obj.apply_os_kind(guest_info_os_kind)
+            # self.ssh_obj.apply_workdir_name(guest_info_workdir_name)
+            # self.ssh_obj.apply_pushdir_name(guest_info_pushdir_name)
+            # self.ssh_obj.apply_workdir_path(guest_info_workdir_path)
+            # self.ssh_obj.apply_pushdir_path(guest_info_pushdir_path)
+
+
+            # Create Guest Information.
+            # C:\\Users\\dougpuob\\qemu-tasker\\pushpool
+            # ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^ <-- pushdir_name
+            #   homedir_path       ^^^^^^^^^^^ <-- workdir_name
+            self.guest_info = config.guest_environment_information(
+                                            guest_info_os_kind,
+                                            guest_info_homedir_path,
+                                            guest_info_workdir_path,
+                                            guest_info_workdir_name,
+                                            guest_info_pushdir_name)
+
+
+            # Create filepool directory.
+            cmdret = self.pup_obj.mkdir(guest_info_pushdir_name)
+            logging.info("QEMU(taskid={0}) create filepool directory ({1})".format(self.taskid, guest_info_pushdir_name))
+            logging.info("  cmdret.errcode={0}".format(cmdret.errcode))
+            logging.info("  cmdret.info_lines={0}".format(cmdret.info_lines))
+            logging.info("  cmdret.error_lines={0}".format(cmdret.error_lines))
+
+
+            # Update status of QEMU instance.
+            if self.guest_info.os_kind != config.os_kind().unknown:
+                self.status = config.task_status().ready
+            logging.info("QEMU(taskid={0}) self.status={1}".format(self.taskid, self.status))
 
 
     def connect_ssh(self):
