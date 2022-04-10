@@ -129,11 +129,14 @@ class puppet_server(puppet_server_base):
         try:
             self.listen_tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.listen_tcp_conn.bind((self.cmd_host.address, self.cmd_host.port))
-            self.listen_tcp_conn.listen(10)
+            self.listen_tcp_conn.listen()
             self.is_started = True
 
             while self.is_started:
+                logging.info("puppet server is waiting for connection ...")
                 new_conn, new_addr = self.listen_tcp_conn.accept()
+                logging.info("a connection is accepted (new_conn={0}, new_addr={1})".format(new_conn, new_addr))
+
                 self.accepted_list.append(new_conn)
                 thread_for_command = threading.Thread(target = self.thread_routine_processing_command, args=(new_conn,))
                 thread_for_command.setDaemon(True)
