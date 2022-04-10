@@ -114,8 +114,8 @@ class puppet_client(puppet_client_base):
           logging.info("puppet client is trying to connect FTP socket (anonymous)  ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
           self.ftp_obj = ftpclient(ftp_socket_addr)
 
-        self._is_ftp_connected = self.ftp_obj.is_connected()
-        return_result = True
+          self._is_ftp_connected = self.ftp_obj.connect()
+          return_result = self.ftp_obj.is_connected()
 
       except Exception as e:
         return_result = False

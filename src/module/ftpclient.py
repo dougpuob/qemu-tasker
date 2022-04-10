@@ -9,14 +9,23 @@ from ftplib import FTP
 class ftpclient():
 
 
-    def __init__(self, addr_info:config.socket_address, user_info:config.account_information=None):
+    def __init__(self, socket_info:config.socket_address, user_info:config.account_information=None):
         self.ftp = FTP()
         self.ftp.encoding = 'utf-8'
-        self.ftp.connect(addr_info.address, addr_info.port)
+        self.socket_info = socket_info
+        self.user_info = user_info
+
+
+    def __del__(self):
+        self.close()
+
+
+    def connect(self, passive_mode:bool=False):
+        self.ftp.connect(self.socket_info.address, self.socket_info.port)
         self._is_connected = False
 
-        if user_info:
-            result = self.ftp.login(user_info.username, user_info.password)
+        if self.user_info:
+            result = self.ftp.login(self.user_info.username, self.user_info.password)
         else:
             result = self.ftp.login() # anonymous
 
@@ -24,11 +33,13 @@ class ftpclient():
         if result == '230 Login successful.':
             self._is_connected = True
 
-        self.ftp.set_pasv(False);
+        if self._is_connected:
+            if passive_mode:
+                self.ftp.set_pasv(True);
+            else:
+                self.ftp.set_pasv(False);
 
-
-    def __del__(self):
-        self.close()
+        return self._is_connected
 
 
     def is_connected(self):
