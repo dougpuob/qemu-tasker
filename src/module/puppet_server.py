@@ -151,6 +151,7 @@ class puppet_server(puppet_server_base):
         logging.info("thread_routine_processing_command ...")
 
         try:
+            time.sleep(1)
             incoming_message = str(conn.recv(self.BUFF_SIZE), encoding='utf-8')
 
             logging.info("conn={}".format(conn))

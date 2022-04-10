@@ -145,7 +145,7 @@ class puppet_client(puppet_client_base):
 
       received = b''
       while True:
-        logging.info("self.BUFF_SIZE={0}".format(self.BUFF_SIZE))
+        time.sleep(1)
         part = self.cmd_socket.recv(self.BUFF_SIZE)
         received = received + part
         if len(part) < self.BUFF_SIZE:
