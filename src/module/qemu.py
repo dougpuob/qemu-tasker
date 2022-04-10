@@ -357,7 +357,7 @@ class qemu_instance:
                 ret = self.pup_obj.connect(self.socket_pup_cmd, self.socket_pup_ftp)
                 logging.info("ret={0}".format(ret))
                 logging.info("pup_obj.is_connected={0}".format(self.pup_obj.is_connected()))
-                if not self.pup_obj.is_connected():
+                if self.pup_obj.is_connected():
                     self.connections_status.PUP = config.connection_kind().connected
                     self.status = config.task_status().querying
                     break
