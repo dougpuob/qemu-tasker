@@ -2,6 +2,7 @@
 
 # -*- coding: utf-8 -*-
 from collections import UserList
+from enum import Flag
 import os
 import json
 from pickle import NONE
@@ -81,10 +82,14 @@ class puppet_client(puppet_client_base):
       try:
         logging.info("puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
         self.cmd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.cmd_socket.connect((cmd_socket_addr.address, cmd_socket_addr.port))
+        result = self.cmd_socket.connect_ex((cmd_socket_addr.address, cmd_socket_addr.port))
 
-        self._is_cmd_connected = True
-        return_result = True
+        if result:
+          return_result = False
+        else:
+          return_result = True
+
+        self._is_cmd_connected = return_result
 
       except Exception as e:
         return_result = False
@@ -109,7 +114,7 @@ class puppet_client(puppet_client_base):
           logging.info("puppet client is trying to connect FTP socket (anonymous)  ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
           self.ftp_obj = ftpclient(ftp_socket_addr)
 
-        self._is_ftp_connected = True
+        self._is_ftp_connected = self.ftp_obj.is_connected()
         return_result = True
 
       except Exception as e:

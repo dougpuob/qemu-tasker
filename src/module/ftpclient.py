@@ -13,15 +13,26 @@ class ftpclient():
         self.ftp = FTP()
         self.ftp.encoding = 'utf-8'
         self.ftp.connect(addr_info.address, addr_info.port)
+        self._is_connected = False
+
         if user_info:
-            self.ftp.login(user_info.username, user_info.password)
+            result = self.ftp.login(user_info.username, user_info.password)
         else:
-            self.ftp.login() # anonymous
+            result = self.ftp.login() # anonymous
+
+        logging.info("result={0}".format(result))
+        if result == '230 Login successful.':
+            self._is_connected = True
+
         self.ftp.set_pasv(False);
 
 
     def __del__(self):
         self.close()
+
+
+    def is_connected(self):
+        return self._is_connected
 
 
     def close(self):
