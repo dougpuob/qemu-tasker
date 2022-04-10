@@ -109,9 +109,7 @@ class puppet_server(puppet_server_base):
         handler = FTPHandler
         handler.authorizer = authorizer
 
-        host_addr_info = ('0.0.0.0', ftp_host.port)
-        logging.info("host_addr_info={}".format(host_addr_info))
-        ftp_server = FTPServer(host_addr_info, handler)
+        ftp_server = FTPServer(('0.0.0.0', ftp_host.port), handler)
 
         # set a limit for connections
         ftp_server.max_cons = 256
@@ -123,8 +121,8 @@ class puppet_server(puppet_server_base):
 
     def thread_routine_listening_connections(self):
         logging.info("thread_routine_listening_connections ...")
-        logging.info("  host_addr={}".format(self.ftp_server_addr_info))
-        logging.info("  cmd_port={}".format(self.cmd_host))
+        logging.info("  self.cmd_host.address={}".format(self.cmd_host.address))
+        logging.info("  self.cmd_host.port   ={}".format(self.cmd_host.port))
 
         try:
             self.listen_tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
