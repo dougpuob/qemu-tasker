@@ -117,7 +117,8 @@ class puppet_server(puppet_server_base):
         ftp_server.max_cons = 256
         ftp_server.max_cons_per_ip = 10
 
-        ftp_server.serve_forever()
+        # 60*60*24 = 86400(24Hours)
+        ftp_server.serve_forever(timeout=86400)
 
 
     def thread_routine_listening_connections(self):

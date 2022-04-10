@@ -131,6 +131,7 @@ class puppet_client(puppet_client_base):
     def send(self, cmd_kind:config.command_kind, cmd_data):
 
       assert self.cmd_socket, 'self.cmd_socket is None !!!'
+      assert self.is_cmd_connected, 'self.is_cmd_connected is FALSE !!!'
 
       if None == self.cmd_socket:
         cmdret = config.command_return()
@@ -144,6 +145,7 @@ class puppet_client(puppet_client_base):
 
       received = b''
       while True:
+        logging.info("self.BUFF_SIZE={0}".format(self.BUFF_SIZE))
         part = self.cmd_socket.recv(self.BUFF_SIZE)
         received = received + part
         if len(part) < self.BUFF_SIZE:
