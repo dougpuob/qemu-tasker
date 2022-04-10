@@ -353,12 +353,21 @@ class qemu_instance:
 
         while True:
             try:
-                logging.info("QEMU(taskid={0}) is trying to connect puppet ...)".format(self.taskid))
-                ret = self.pup_obj.connect(self.socket_pup_cmd, self.socket_pup_ftp)
-                logging.info("ret={0}".format(ret))
-                logging.info("pup_obj.is_connected={0}".format(self.pup_obj.is_connected()))
-                if self.pup_obj.is_connected():
+                if not self.pup_obj.is_cmd_connected():
+                    logging.info("QEMU(taskid={0}) is trying to connect puppet (cmd) ...)".format(self.taskid))
+                    ret = self.pup_obj.connect_cmd(self.socket_pup_cmd)
+                    logging.info("ret={0}".format(ret))
+                    logging.info("pup_obj.is_cmd_connected={0}".format(self.pup_obj.is_cmd_connected()))
+
+                if not self.pup_obj.is_ftp_connected():
+                    logging.info("QEMU(taskid={0}) is trying to connect puppet (ftp) ...)".format(self.taskid))
+                    ret = self.pup_obj.connect_ftp(self.socket_pup_ftp)
+                    logging.info("ret={0}".format(ret))
+                    logging.info("pup_obj.is_ftp_connected={0}".format(self.pup_obj.is_ftp_connected()))
+
+                if self.pup_obj.is_cmd_connected() and self.pup_obj.is_ftp_connected():
                     self.connections_status.PUP = config.connection_kind().connected
+                    self.connections_status.FTP = config.connection_kind().connected
                     self.status = config.task_status().querying
                     break
 

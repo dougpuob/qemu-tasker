@@ -53,7 +53,8 @@ class puppet_client(puppet_client_base):
       self.taskid = taskid
       self.cmd_socket = None
       self.ftp_obj = None
-      self.flat_is_connected = False
+      self._is_cmd_connected = False
+      self._is_ftp_connected = False
 
 
     def __del__(self):
@@ -65,14 +66,15 @@ class puppet_client(puppet_client_base):
         self.ftp_obj.close()
 
 
-    def is_connected(self):
-        return self.flat_is_connected
+    def is_cmd_connected(self):
+        return self._is_cmd_connected
 
 
-    def connect(self,
-                cmd_socket_addr:config.socket_address,
-                ftp_socket_addr:config.socket_address,
-                ftp_user_info:config.account_information=None):
+    def is_ftp_connected(self):
+        return self._is_ftp_connected
+
+
+    def connect_cmd(self, cmd_socket_addr:config.socket_address):
 
       return_result:bool = False
 
@@ -81,15 +83,7 @@ class puppet_client(puppet_client_base):
         self.cmd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.cmd_socket.connect((cmd_socket_addr.address, cmd_socket_addr.port))
 
-        if ftp_user_info:
-          logging.info("puppet client is trying to connect FTP socket (username & password) ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
-          self.ftp_obj = ftpclient(ftp_socket_addr, ftp_user_info)
-        else:
-          # anonymous
-          logging.info("puppet client is trying to connect FTP socket (anonymous)  ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
-          self.ftp_obj = ftpclient(ftp_socket_addr)
-
-        self.flat_is_connected = True
+        self._is_cmd_connected = True
         return_result = True
 
       except Exception as e:
@@ -98,6 +92,33 @@ class puppet_client(puppet_client_base):
 
       finally:
         return return_result
+
+
+    def connect_ftp(self,
+                ftp_socket_addr:config.socket_address,
+                ftp_user_info:config.account_information=None):
+
+      return_result:bool = False
+
+      try:
+        if ftp_user_info:
+          logging.info("puppet client is trying to connect FTP socket (username & password) ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
+          self.ftp_obj = ftpclient(ftp_socket_addr, ftp_user_info)
+        else:
+          # anonymous
+          logging.info("puppet client is trying to connect FTP socket (anonymous)  ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
+          self.ftp_obj = ftpclient(ftp_socket_addr)
+
+        self._is_ftp_connected = True
+        return_result = True
+
+      except Exception as e:
+        return_result = False
+        logging.exception(str(e))
+
+      finally:
+        return return_result
+
 
 
     def send(self, cmd_kind:config.command_kind, cmd_data) -> config.transaction_capsule:
