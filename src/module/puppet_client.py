@@ -77,16 +77,16 @@ class puppet_client(puppet_client_base):
       return_result:bool = False
 
       try:
-        logging.info("puppet client is trying to connect command socket ...")
+        logging.info("puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
         self.cmd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.cmd_socket.connect((cmd_socket_addr.address, cmd_socket_addr.port))
 
         if ftp_user_info:
-          logging.info("puppet client is trying to connect FTP socket (username & password) ...")
+          logging.info("puppet client is trying to connect FTP socket (username & password) ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
           self.ftp_obj = ftpclient(ftp_socket_addr, ftp_user_info)
         else:
           # anonymous
-          logging.info("puppet client is trying to connect FTP socket (anonymous) ...")
+          logging.info("puppet client is trying to connect FTP socket (anonymous)  ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
           self.ftp_obj = ftpclient(ftp_socket_addr)
 
         self.flat_is_connected = True
