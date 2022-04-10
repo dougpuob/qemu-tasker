@@ -109,12 +109,16 @@ class puppet_client(puppet_client_base):
         if ftp_user_info:
           logging.info("puppet client is trying to connect FTP socket (username & password) ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
           self.ftp_obj = ftpclient(ftp_socket_addr, ftp_user_info)
+          if self.ftp_obj:
+            self.ftp_obj.connect()
         else:
           # anonymous
           logging.info("puppet client is trying to connect FTP socket (anonymous)  ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
           self.ftp_obj = ftpclient(ftp_socket_addr)
+          if self.ftp_obj:
+            self.ftp_obj.connect()
 
-          self._is_ftp_connected = self.ftp_obj.connect()
+        if self.ftp_obj:
           return_result = self.ftp_obj.is_connected()
 
       except Exception as e:
@@ -126,58 +130,61 @@ class puppet_client(puppet_client_base):
 
 
 
-    def send(self, cmd_kind:config.command_kind, cmd_data) -> config.transaction_capsule:
+    def send(self, cmd_kind:config.command_kind, cmd_data):
 
-        assert self.cmd_socket, 'self.cmd_socket is None !!!'
+      assert self.cmd_socket, 'self.cmd_socket is None !!!'
 
-        if None == self.cmd_socket:
-          cmdret = config.command_return()
-          cmdret.errcode = -1
-          cmdret.error_lines.append('The TCP connection is not established !!!')
-          unknown_capsule = config.transaction_capsule(config.action_kind().response, cmd_kind, cmdret, None)
-          return unknown_capsule
+      if None == self.cmd_socket:
+        cmdret = config.command_return()
+        cmdret.errcode = -1
+        cmdret.error_lines.append('The TCP connection is not established !!!')
+        unknown_capsule = config.transaction_capsule(config.action_kind().response, cmd_kind, cmdret, None)
+        return unknown_capsule
 
-        request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
-        self.cmd_socket.send(request_capsule.toTEXT().encode())
+      request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
+      self.cmd_socket.send(request_capsule.toTEXT().encode())
 
-        received = b''
-        while True:
-            part = self.cmd_socket.recv(self.BUFF_SIZE)
-            received = received + part
-            if len(part) < self.BUFF_SIZE:
-                try:
-                    json.loads(str(received, encoding='utf-8'))
-                    break
-                except Exception as e:
-                    continue
+      received = b''
+      while True:
+        part = self.cmd_socket.recv(self.BUFF_SIZE)
+        received = received + part
+        if len(part) < self.BUFF_SIZE:
+            try:
+                json.loads(str(received, encoding='utf-8'))
+                break
+            except Exception as e:
+                continue
 
-        self.cmd_socket.close()
+      self.cmd_socket.close()
 
-        response_text = str(received, encoding='utf-8')
-        resp_data = config.config().toCLASS(response_text)
-        return resp_data
+      response_text = str(received, encoding='utf-8')
+      resp_data = config.config().toCLASS(response_text)
+      return resp_data
 
 
     def execute(self, program:str, argument:str=None, work_dirpath:str=None):
-        cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
-        response_capsule = self.send(config.command_kind().execute, cmd_data)
-        return response_capsule.result
+      logging.info('execute() 111')
+      cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
+      logging.info('execute() 222')
+      response_capsule = self.send(config.command_kind().execute, cmd_data)
+      logging.info('execute() 333')
+      return response_capsule.result
 
 
     def mkdir(self, dirpath:str):
-        return self.ftp_obj.try_mkdir(dirpath)
+      return self.ftp_obj.try_mkdir(dirpath)
 
 
     def upload(self, files:list, dstdir:str):
-        return self.ftp_obj.upload(files, dstdir)
+      return self.ftp_obj.upload(files, dstdir)
 
 
     def download(self, files:list, dstdir:str):
-        return self.ftp_obj.download(files, dstdir)
+      return self.ftp_obj.download(files, dstdir)
 
 
     def list(self, files:list, dstdir:str):
-        return self.ftp_obj.list(dstdir)
+      return self.ftp_obj.list(dstdir)
 
 
     # def request_puppet_command(self, cmd_kind:config.command_kind, cmd_data):

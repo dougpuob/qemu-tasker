@@ -400,6 +400,7 @@ class qemu_instance:
         # - `uname` for Linux and macOS
         # - `systeminfo` for Windows
         #
+        logging.info('trying to execute `uname` command ...')
         cmdret = self.pup_obj.execute('uname')
         if cmdret.errcode == 0:
             stdout = ''.join(cmdret.info_lines).strip()
