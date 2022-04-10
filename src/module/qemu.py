@@ -74,7 +74,7 @@ class qemu_instance:
 
 
         self.socket_gov_addr = config.socket_address(self.setting.Governor.Address, self.setting.Governor.Port)
-        self.socket_pup_cmd = config.socket_address(self.setting.Puppet.Address, self.forward_port.pup)
+        self.socket_pup_cmd = config.socket_address(self.setting.Governor.Address, self.forward_port.pup)
         self.socket_pup_ftp = config.socket_address(self.setting.Puppet.Address, self.forward_port.ftp)
 
         workdir_path = self.path_obj.realpath('.')
@@ -92,6 +92,8 @@ class qemu_instance:
         self.ssh_obj = ssh_link()
         self.qmp_obj = QEMUMonitorProtocol((self.socket_gov_addr.address, self.forward_port.qmp), server=True)
         self.ssh_info = start_data.ssh
+
+
         self.pup_obj = puppet_client(config.socket_address(self.setting.Governor.Address, self.forward_port.pup))
 
         # Connections status
