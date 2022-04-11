@@ -164,11 +164,8 @@ class puppet_client(puppet_client_base):
 
 
     def execute(self, program:str, argument:str=None, work_dirpath:str=None):
-      logging.info('execute() 111')
       cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
-      logging.info('execute() 222')
       response_capsule = self.send(config.command_kind().execute, cmd_data)
-      logging.info('execute() 333')
       return response_capsule.result
 
 

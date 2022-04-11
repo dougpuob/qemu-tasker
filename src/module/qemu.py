@@ -404,6 +404,8 @@ class qemu_instance:
         #
         logging.info('trying to execute `uname` command ...')
         cmdret = self.pup_obj.execute('uname')
+        logging.info('`uname` (cmdret.errcode={})'.format(cmdret.errcode))
+
         if cmdret.errcode == 0:
             stdout = ''.join(cmdret.info_lines).strip()
             if stdout.find("Linux") > 0:
@@ -411,7 +413,9 @@ class qemu_instance:
             if stdout.find("Darwin") > 0:
                 guest_info_os_kind = config.os_kind().macos
         else:
+            logging.info('trying to execute `systeminfo` command ...')
             cmdret = self.pup_obj.execute('systeminfo')
+            logging.info('`systeminfo` (cmdret.errcode={})'.format(cmdret.errcode))
             if cmdret.errcode == 0:
                 guest_info_os_kind = config.os_kind().windows
 

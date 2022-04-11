@@ -50,7 +50,7 @@ class execproc():
 
 
 
-    def run(self, cmdargs:config.command_argument, cwd:str=None) -> config.command_return :
+    def run(self, cmdargs:config.command_argument, cwd:str=None):
 
         cmdstr:str = cmdargs.program
         if cmdargs.argument:
@@ -82,7 +82,7 @@ class execproc():
             cmdret.error_lines.append("exception={0}".format(e))
             cmdret.error_lines.append("frameinfo.filename={0}".format(frameinfo.filename))
             cmdret.error_lines.append("frameinfo.lineno={0}".format(frameinfo.lineno))
-            logging.exception(cmdret.error_lines)
+            logging.exception(str(e))
 
         finally:
             return cmdret
