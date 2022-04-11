@@ -161,9 +161,7 @@ class puppet_server(puppet_server_base):
                 time.sleep(1)
 
                 incoming_data = new_conn.recv(self.BUFF_SIZE)
-                logging.info("incoming_data={}".format(incoming_data))
                 if 0 == len(incoming_data):
-                    time.sleep(3)
                     continue
 
                 incoming_message = str(incoming_data, encoding='utf-8')
