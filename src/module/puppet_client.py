@@ -82,14 +82,16 @@ class puppet_client(puppet_client_base):
       try:
         logging.info("puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
         self.cmd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = self.cmd_socket.connect_ex((cmd_socket_addr.address, cmd_socket_addr.port))
+        ret = self.cmd_socket.connect_ex((cmd_socket_addr.address, cmd_socket_addr.port))
+        logging.info("connect_ex() ret={0}".format(ret))
 
-        if result:
+        if ret:
           result = False
+          self._is_cmd_connected = False
         else:
           result = True
-
-        self._is_cmd_connected = result
+          self.cmd_socket.sendmsg('Hi Hi')
+          self._is_cmd_connected = True
 
       except Exception as e:
         result = False
