@@ -18,6 +18,7 @@ class action_kind:
 class command_kind:
     def __init__(self):
         self.unknown  = "unknown"
+        self.breakup  = "breakup"
 
         # Control commands
         self.server   = "server"
@@ -28,7 +29,7 @@ class command_kind:
         self.status   = "status"
         self.info     = "info"
 
-        # File transfer commands
+        # Puppet commands
         self.puppet   = "puppet"
         self.execute  = "execute"
         self.upload   = "upload"

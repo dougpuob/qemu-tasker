@@ -152,64 +152,76 @@ class puppet_server(puppet_server_base):
     def thread_routine_processing_command(self, conn:socket.socket):
         logging.info("thread_routine_processing_command ...")
 
+        _keep_going = True
+
         try:
-            incoming_message = str(conn.recv(self.BUFF_SIZE), encoding='utf-8')
 
-            logging.info("conn={}".format(conn))
-            logging.info("incomming_message={}".format(incoming_message))
+            while _keep_going:
+                time.sleep(1)
+                incoming_message = str(conn.recv(self.BUFF_SIZE), encoding='utf-8')
 
-            if not incoming_message.startswith("{\"act_kind\": \"request\""):
-                logging.info("Received an unknow message !!!")
-                logging.info("{}".format(incoming_message))
+                logging.info("conn={}".format(conn))
+                logging.info("incomming_message={}".format(incoming_message))
 
-            else:
-                cmd_ret = None
-                incoming_capsule:config.transaction_capsule = config.config().toCLASS(incoming_message)
+                if not incoming_message.startswith("{\"act_kind\": \"request\""):
+                    logging.info("Received an unknow message !!!")
+                    logging.info("{}".format(incoming_message))
 
-                # ------
-                # Execute
-                # ------
-                if config.command_kind().execute == incoming_capsule.cmd_kind:
-                    cmd_data:config.execute_command_request_data = incoming_capsule.data
-                    logging.info("[puppet_server] self.handle_execute_command(cmd_data) 1")
-                    cmd_ret = self.handle_execute_command(cmd_data)
-                    logging.info("[puppet_server] self.handle_execute_command(cmd_data) 2")
-
-                # ------
-                # List
-                # ------
-                elif config.command_kind().list == incoming_capsule.cmd_kind:
-                    cmd_data:config.list_command_request_data = incoming_capsule.data
-                    cmd_ret = self.handle_list_command(cmd_data)
-
-                # ------
-                # Download
-                # ------
-                elif config.command_kind().download == incoming_capsule.cmd_kind:
-                    cmd_data:config.download_command_request_data = incoming_capsule.data
-                    cmd_ret = self.handle_download_command(cmd_data)
-
-                # ------
-                # Upload
-                # ------
-                elif config.command_kind().upload == incoming_capsule.cmd_kind:
-                    cmd_data:config.upload_command_request_data = incoming_capsule.data
-                    cmd_ret = self.handle_upload_command(cmd_data)
-
-                # ------
-                # Unsupported commands
-                # ------
                 else:
-                    cmd_ret = config.return_unsupported_command()
+                    cmd_ret = None
+                    incoming_capsule:config.transaction_capsule = config.config().toCLASS(incoming_message)
+
+                    # ------
+                    # Breakup
+                    # ------
+                    if config.command_kind().breakup == incoming_capsule.cmd_kind:
+                        _keep_going = False
+                        cmd_ret = config.command_return()
+
+                    # ------
+                    # Execute
+                    # ------
+                    elif config.command_kind().execute == incoming_capsule.cmd_kind:
+                        cmd_data:config.execute_command_request_data = incoming_capsule.data
+                        logging.info("[puppet_server] self.handle_execute_command(cmd_data) 1")
+                        cmd_ret = self.handle_execute_command(cmd_data)
+                        logging.info("[puppet_server] self.handle_execute_command(cmd_data) 2")
+
+                    # ------
+                    # List
+                    # ------
+                    elif config.command_kind().list == incoming_capsule.cmd_kind:
+                        cmd_data:config.list_command_request_data = incoming_capsule.data
+                        cmd_ret = self.handle_list_command(cmd_data)
+
+                    # ------
+                    # Download
+                    # ------
+                    elif config.command_kind().download == incoming_capsule.cmd_kind:
+                        cmd_data:config.download_command_request_data = incoming_capsule.data
+                        cmd_ret = self.handle_download_command(cmd_data)
+
+                    # ------
+                    # Upload
+                    # ------
+                    elif config.command_kind().upload == incoming_capsule.cmd_kind:
+                        cmd_data:config.upload_command_request_data = incoming_capsule.data
+                        cmd_ret = self.handle_upload_command(cmd_data)
+
+                    # ------
+                    # Unsupported commands
+                    # ------
+                    else:
+                        cmd_ret = config.return_unsupported_command()
 
 
-                return_capsule = config.transaction_capsule(
-                                                    config.action_kind().response,
-                                                    incoming_capsule.cmd_kind,
-                                                    cmd_ret)
-                return_capsule_text = return_capsule.toTEXT()
-                logging.info("return_capsule_text={}".format(return_capsule_text))
-                conn.send(bytes(return_capsule_text, encoding="utf-8"))
+                    return_capsule = config.transaction_capsule(
+                                                        config.action_kind().response,
+                                                        incoming_capsule.cmd_kind,
+                                                        cmd_ret)
+                    return_capsule_text = return_capsule.toTEXT()
+                    logging.info("return_capsule_text={}".format(return_capsule_text))
+                    conn.send(bytes(return_capsule_text, encoding="utf-8"))
 
         except Exception as e:
             frameinfo = getframeinfo(currentframe())

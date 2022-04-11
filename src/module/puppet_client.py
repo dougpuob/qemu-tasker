@@ -62,6 +62,7 @@ class puppet_client(puppet_client_base):
     def __del__(self):
 
       if self.cmd_socket:
+        self.disconnect()
         self.cmd_socket.close()
 
       if self.ftp_obj:
@@ -162,6 +163,12 @@ class puppet_client(puppet_client_base):
       response_text = str(received, encoding='utf-8')
       resp_data = config.config().toCLASS(response_text)
       return resp_data
+
+
+    def disconnect(self):
+      cmd_data = config.generic_command_request_data(self.taskid)
+      response_capsule = self.send_cmd(config.command_kind().breakup, cmd_data)
+      return response_capsule.result
 
 
     def execute(self, program:str, argument:str=None, work_dirpath:str=None):
