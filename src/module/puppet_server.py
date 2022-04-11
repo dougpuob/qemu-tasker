@@ -135,9 +135,7 @@ class puppet_server(puppet_server_base):
             while self.is_started:
                 logging.info("puppet server is waiting for connection ...")
                 new_conn, new_addr = self.listen_tcp_conn.accept()
-                logging.info("a connection is accepted (new_conn={0}, new_addr={1})".format(new_conn, new_addr))
-
-                self.accepted_list.append(new_conn)
+                #self.accepted_list.append(new_conn)
                 thread_for_command = threading.Thread(target = self.thread_routine_processing_command, args=(new_conn,))
                 thread_for_command.setDaemon(True)
                 thread_for_command.start()
@@ -153,21 +151,18 @@ class puppet_server(puppet_server_base):
     def thread_routine_processing_command(self, conn:socket.socket):
         logging.info("thread_routine_processing_command ...")
 
+        logging.info("conn={}".format(conn))
         _keep_going = True
-        conn.setblocking(0)
 
         try:
 
             while _keep_going:
 
-                incoming_message = ''
-                timeout_in_seconds = 60
-                ready = select.select([conn], [], [], timeout_in_seconds)
-                if ready[0]:
-                    incoming_message = str(conn.recv(self.BUFF_SIZE), encoding='utf-8')
+                time.sleep(1)
 
-                logging.info("conn={}".format(conn))
+                incoming_message = str(conn.recv(self.BUFF_SIZE), encoding='utf-8')
                 logging.info("incomming_message={}".format(incoming_message))
+
 
                 if not incoming_message.startswith("{\"act_kind\": \"request\""):
                     logging.info("Received an unknow message !!! (len(incoming_message)={})".format(len(incoming_message)))
