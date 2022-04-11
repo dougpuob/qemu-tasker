@@ -159,7 +159,11 @@ class puppet_server(puppet_server_base):
             logging.info("conn={}".format(conn))
             logging.info("incomming_message={}".format(incoming_message))
 
-            if incoming_message.startswith("{\"act_kind\": \"request\""):
+            if not incoming_message.startswith("{\"act_kind\": \"request\""):
+                logging.info("Received an unknow message !!!")
+                logging.info("{}".format(incoming_message))
+
+            else:
 
                 cmd_ret = None
                 incoming_capsule:config.transaction_capsule = config.config().toCLASS(incoming_message)
