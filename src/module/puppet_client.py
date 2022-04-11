@@ -157,8 +157,7 @@ class puppet_client(puppet_client_base):
                 continue
 
       response_text = str(received, encoding='utf-8')
-      resp_data:config.transaction_capsule = config.config().toCLASS(response_text)
-
+      resp_data = config.config().toCLASS(response_text)
       new_resp_data = config.transaction_capsule(resp_data.act_kind,
                                                  resp_data.cmd_kind,
                                                  resp_data.result,
