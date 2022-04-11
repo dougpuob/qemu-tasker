@@ -154,18 +154,16 @@ class puppet_server(puppet_server_base):
         logging.info("thread_routine_processing_command ...")
 
         _keep_going = True
-        conn.setblocking(False)
 
         try:
 
             while _keep_going:
 
-                # timeout_in_seconds = 60
-                # ready = select.select([conn], [], [], timeout_in_seconds)
-                # if ready[0]:
-                #     incoming_message = str(conn.recv(self.BUFF_SIZE), encoding='utf-8')
-
-                incoming_message = str(conn.recv(self.BUFF_SIZE), encoding='utf-8')
+                incoming_message = ''
+                timeout_in_seconds = 60
+                ready = select.select([conn], [], [], timeout_in_seconds)
+                if ready[0]:
+                    incoming_message = str(conn.recv(self.BUFF_SIZE), encoding='utf-8')
 
                 logging.info("conn={}".format(conn))
                 logging.info("incomming_message={}".format(incoming_message))
