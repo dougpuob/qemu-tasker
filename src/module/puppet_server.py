@@ -126,9 +126,10 @@ class puppet_server(puppet_server_base):
 
         try:
             self.listen_tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.listen_tcp_conn.bind((self.cmd_host.address, self.cmd_host.port))
-            self.listen_tcp_conn.listen()
-            self.is_started = True
+            if self.listen_tcp_conn:
+                self.listen_tcp_conn.bind(('0.0.0.0', self.cmd_host.port))
+                self.listen_tcp_conn.listen(10)
+                self.is_started = True
 
             while self.is_started:
                 logging.info("puppet server is waiting for connection ...")
