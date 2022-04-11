@@ -359,7 +359,7 @@ class governor_server(governor_server_base):
                                         qemu_inst.server_info,
                                         qemu_inst.guest_info,
                                         qemu_inst.connections_status,
-                                        qemu_inst.qemu_full_cmdargs(),
+                                        qemu_inst.qemu_full_cmdargs,
                                         qemu_inst.status)
             return resp_data
         return None
