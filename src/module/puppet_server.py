@@ -105,7 +105,7 @@ class puppet_server(puppet_server_base):
 
         authorizer = DummyAuthorizer()
         #authorizer.add_user(ftp_username, ftp_password, ftp_homedir, perm='elradfmwMT')
-        authorizer.add_anonymous(ftp_homedir)
+        authorizer.add_anonymous(ftp_homedir, perm='elradfmwMT')
 
         handler = FTPHandler
         handler.authorizer = authorizer
