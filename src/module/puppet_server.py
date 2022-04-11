@@ -165,6 +165,8 @@ class puppet_server(puppet_server_base):
                     continue
 
                 incoming_message = str(incoming_data, encoding='utf-8')
+                logging.info("incoming_message={}".format(incoming_message))
+
                 if not incoming_message.startswith("{\"act_kind\": \"request\""):
                     logging.info("Received an unknow message !!! (len(incoming_message)={})".format(len(incoming_message)))
                     logging.info("{}".format(incoming_message))

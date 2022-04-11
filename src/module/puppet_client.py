@@ -136,19 +136,22 @@ class puppet_client(puppet_client_base):
       assert self.is_cmd_connected, 'self.is_cmd_connected is FALSE !!!'
 
       if None == self.cmd_socket:
-        logging.error('self.cmd_socket ix None !!!')
+        logging.error('self.cmd_socket is None !!!')
         cmdret = config.command_return()
         cmdret.errcode = -1
         cmdret.error_lines.append('The TCP connection is not established !!!')
         unknown_capsule = config.transaction_capsule(config.action_kind().response, cmd_kind, cmdret, None)
         return unknown_capsule
 
+      logging.error('send_cmd() 1')
       request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
+      logging.error('send_cmd() 2')
       self.cmd_socket.send(request_capsule.toTEXT().encode())
+      logging.error('send_cmd() 3')
 
       received = b''
       while True:
-        time.sleep(0.1)
+        time.sleep(1)
         part = self.cmd_socket.recv(self.BUFF_SIZE)
         received = received + part
         if len(part) < self.BUFF_SIZE:
