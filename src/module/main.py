@@ -253,7 +253,6 @@ class main():
     def get_puppet_client(self, taskid:int):
         # Query status info
         status_resp_data = self.send_governor_status_command(governor_client(self.server_addr), taskid)
-        cmd_data = config.upload_command_request_data(self.input_args.taskid, self.input_args.files, self.input_args.dstdir)
         pup_client = puppet_client(status_resp_data.server_info.socket_addr)
         pup_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.pup)
         pup_client.connect_cmd(pup_socket_info)
