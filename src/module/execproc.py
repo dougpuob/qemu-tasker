@@ -60,7 +60,7 @@ class execproc():
         cmdret:config.command_return = config.command_return()
 
         try:
-            proc = subprocess.Popen(cmdstr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, cwd=cwd)
+            proc = subprocess.Popen(cmdstr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=cwd)
             if proc:
                 cmdret.data = proc
 
