@@ -90,7 +90,6 @@ class puppet_client(puppet_client_base):
           self._is_cmd_connected = False
         else:
           result = True
-          self.cmd_socket.send('Hello from a puppet client'.encode())
           self._is_cmd_connected = True
 
       except Exception as e:
