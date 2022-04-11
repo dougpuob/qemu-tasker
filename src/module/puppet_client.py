@@ -151,20 +151,23 @@ class puppet_client(puppet_client_base):
 
       received = b''
       while True:
+        logging.error('send_cmd() 4')
         time.sleep(1)
         part = self.cmd_socket.recv(self.BUFF_SIZE)
+        logging.error('send_cmd() 5')
         received = received + part
         if len(part) < self.BUFF_SIZE:
             try:
+                logging.error('send_cmd() 6')
                 json.loads(str(received, encoding='utf-8'))
                 break
             except Exception as e:
                 continue
 
-      self.cmd_socket.close()
-
+      logging.error('send_cmd() 7')
       response_text = str(received, encoding='utf-8')
       resp_data = config.config().toCLASS(response_text)
+      logging.error('send_cmd() 8')
       return resp_data
 
 
