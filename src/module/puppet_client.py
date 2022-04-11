@@ -129,12 +129,13 @@ class puppet_client(puppet_client_base):
 
 
 
-    def send(self, cmd_kind:config.command_kind, cmd_data):
+    def send_cmd(self, cmd_kind:config.command_kind, cmd_data):
 
       assert self.cmd_socket, 'self.cmd_socket is None !!!'
       assert self.is_cmd_connected, 'self.is_cmd_connected is FALSE !!!'
 
       if None == self.cmd_socket:
+        logging.error('self.cmd_socket ix None !!!')
         cmdret = config.command_return()
         cmdret.errcode = -1
         cmdret.error_lines.append('The TCP connection is not established !!!')
@@ -164,8 +165,11 @@ class puppet_client(puppet_client_base):
 
 
     def execute(self, program:str, argument:str=None, work_dirpath:str=None):
+      logging.info('execute() 1')
       cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
-      response_capsule = self.send(config.command_kind().execute, cmd_data)
+      logging.info('execute() 2')
+      response_capsule = self.send_cmd(config.command_kind().execute, cmd_data)
+      logging.info('execute() 3')
       return response_capsule.result
 
 

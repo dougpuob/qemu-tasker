@@ -171,7 +171,9 @@ class puppet_server(puppet_server_base):
                 # ------
                 if config.command_kind().execute == incoming_capsule.cmd_kind:
                     cmd_data:config.execute_command_request_data = incoming_capsule.data
+                    logging.info("[puppet_server] self.handle_execute_command(cmd_data) 1")
                     cmd_ret = self.handle_execute_command(cmd_data)
+                    logging.info("[puppet_server] self.handle_execute_command(cmd_data) 2")
 
                 # ------
                 # List
