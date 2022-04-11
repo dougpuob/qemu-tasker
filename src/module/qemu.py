@@ -426,17 +426,8 @@ class qemu_instance:
         # Get guest current working directory path
         #
         if guest_info_os_kind == config.os_kind().windows:
-
-            # Try cmd.exe
-            cmdret = self.pup_obj.execute('echo %cd%')
+            cmdret = self.pup_obj.execute('(Get-Location).Path')
             guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
-
-            # Try powershell.exe
-            if "%cd%" == guest_info_homedir_path:
-                cmdret = self.pup_obj.execute('(Get-Location).Path')
-                guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
-            else:
-                pass
         else:
             cmdret = self.pup_obj.execute('pwd')
             guest_info_homedir_path = ''.join(cmdret.info_lines).strip()

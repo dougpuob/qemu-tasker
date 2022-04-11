@@ -250,6 +250,7 @@ class main():
         status_data:config.status_command_response_data = response_capsule.data
         return status_data
 
+
     def get_puppet_client(self, taskid:int):
         # Query status info
         status_resp_data = self.send_governor_status_command(governor_client(self.server_addr), taskid)
