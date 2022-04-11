@@ -154,6 +154,7 @@ class puppet_server(puppet_server_base):
         logging.info("thread_routine_processing_command ...")
 
         _keep_going = True
+        conn.setblocking(0)
 
         try:
 
