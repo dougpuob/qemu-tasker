@@ -81,10 +81,9 @@ class puppet_client(puppet_client_base):
       result:bool = False
 
       try:
-        logging.info("puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
+        #logging.info("puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
         self.cmd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         ret = self.cmd_socket.connect_ex((cmd_socket_addr.address, cmd_socket_addr.port))
-        logging.info("connect_ex() ret={0}".format(ret))
 
         if ret:
           result = False
@@ -107,7 +106,7 @@ class puppet_client(puppet_client_base):
 
       try:
         if ftp_user_info:
-          logging.info("puppet client is trying to connect FTP socket (username & password) ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
+          #logging.info("puppet client is trying to connect FTP socket (username & password) ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
           self.ftp_obj = ftpclient(ftp_socket_addr, ftp_user_info)
           if self.ftp_obj:
             self.ftp_obj.connect()
@@ -142,37 +141,29 @@ class puppet_client(puppet_client_base):
         unknown_capsule = config.transaction_capsule(config.action_kind().response, cmd_kind, cmdret, None)
         return unknown_capsule
 
-      logging.info('send_cmd() 1')
       request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
-      logging.info('send_cmd() 2')
       self.cmd_socket.send(request_capsule.toTEXT().encode())
-      logging.info('send_cmd() 3')
 
       received = b''
       while True:
-        logging.info('send_cmd() 4')
         time.sleep(1)
         part = self.cmd_socket.recv(self.BUFF_SIZE)
-
-        logging.info('send_cmd() 5 (len(part)={})'.format(len(part)))
         received = received + part
-        logging.info('send_cmd() 6 (len(received)={})'.format(len(received)))
         if len(part) < self.BUFF_SIZE:
             try:
-                logging.info('send_cmd() 7')
                 json.loads(str(received, encoding='utf-8'))
                 break
             except Exception as e:
-                logging.exception('send_cmd() xxxxxx')
-                logging.exception(str(e))
                 continue
 
-      logging.info('send_cmd() 8')
       response_text = str(received, encoding='utf-8')
-      resp_data = config.config().toCLASS(response_text)
+      resp_data:config.transaction_capsule = config.config().toCLASS(response_text)
 
-      logging.info('send_cmd() 9')
-      return resp_data
+      new_resp_data = config.transaction_capsule(resp_data.act_kind,
+                                                 resp_data.cmd_kind,
+                                                 resp_data.result,
+                                                 resp_data.data)
+      return new_resp_data
 
 
     def disconnect(self):

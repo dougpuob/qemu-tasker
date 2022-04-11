@@ -69,7 +69,6 @@ class governor_client(governor_client_base):
 
 
     def send_control_command(self, cmd_kind:config.command_kind, cmd_data, is_json_report:bool) -> config.transaction_capsule:
-        logging.info("cmd_data={}".format(cmd_data.toTEXT()))
         request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
 
         self.conn_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
