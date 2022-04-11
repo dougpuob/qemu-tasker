@@ -143,31 +143,36 @@ class puppet_client(puppet_client_base):
         unknown_capsule = config.transaction_capsule(config.action_kind().response, cmd_kind, cmdret, None)
         return unknown_capsule
 
-      logging.error('send_cmd() 1')
+      logging.info('send_cmd() 1')
       request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
-      logging.error('send_cmd() 2')
+      logging.info('send_cmd() 2')
       self.cmd_socket.send(request_capsule.toTEXT().encode())
-      logging.error('send_cmd() 3')
+      logging.info('send_cmd() 3')
 
       received = b''
       while True:
-        logging.error('send_cmd() 4')
+        logging.info('send_cmd() 4')
         time.sleep(1)
         part = self.cmd_socket.recv(self.BUFF_SIZE)
-        logging.error('send_cmd() 5')
+
+        logging.info('send_cmd() 5 (len(part)={})'.format(len(part)))
         received = received + part
+        logging.info('send_cmd() 6 (len(received)={})'.format(len(received)))
         if len(part) < self.BUFF_SIZE:
             try:
-                logging.error('send_cmd() 6')
+                logging.info('send_cmd() 7')
                 json.loads(str(received, encoding='utf-8'))
                 break
             except Exception as e:
+                logging.exception('send_cmd() xxxxxx')
+                logging.exception(str(e))
                 continue
 
-      logging.error('send_cmd() 7')
+      logging.info('send_cmd() 8')
       response_text = str(received, encoding='utf-8')
       resp_data = config.config().toCLASS(response_text)
-      logging.error('send_cmd() 8')
+
+      logging.info('send_cmd() 9')
       return resp_data
 
 
