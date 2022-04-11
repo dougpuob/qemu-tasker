@@ -148,10 +148,10 @@ class puppet_server(puppet_server_base):
             logging.exception(errmsg)
 
 
-    def thread_routine_processing_command(self, conn:socket.socket):
+    def thread_routine_processing_command(self, new_conn):
         logging.info("thread_routine_processing_command ...")
 
-        logging.info("conn={}".format(conn))
+        logging.info("new_conn={}".format(new_conn))
         _keep_going = True
 
         try:
@@ -160,7 +160,7 @@ class puppet_server(puppet_server_base):
 
                 time.sleep(1)
 
-                incoming_message = str(conn.recv(self.BUFF_SIZE), encoding='utf-8')
+                incoming_message = str(new_conn.recv(self.BUFF_SIZE), encoding='utf-8')
                 logging.info("incomming_message={}".format(incoming_message))
 
 
@@ -222,7 +222,7 @@ class puppet_server(puppet_server_base):
                                                         cmd_ret)
                     return_capsule_text = return_capsule.toTEXT()
                     logging.info("return_capsule_text={}".format(return_capsule_text))
-                    conn.send(bytes(return_capsule_text, encoding="utf-8"))
+                    new_conn.send(bytes(return_capsule_text, encoding="utf-8"))
 
         except Exception as e:
             frameinfo = getframeinfo(currentframe())
