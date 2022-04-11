@@ -160,10 +160,13 @@ class puppet_server(puppet_server_base):
 
                 time.sleep(1)
 
-                incoming_message = str(new_conn.recv(self.BUFF_SIZE), encoding='utf-8')
-                logging.info("incomming_message={}".format(incoming_message))
+                incoming_data = new_conn.recv(self.BUFF_SIZE)
+                logging.info("incoming_data={}".format(incoming_data))
+                if 0 == len(incoming_data):
+                    time.sleep(3)
+                    continue
 
-
+                incoming_message = str(incoming_data, encoding='utf-8')
                 if not incoming_message.startswith("{\"act_kind\": \"request\""):
                     logging.info("Received an unknow message !!! (len(incoming_message)={})".format(len(incoming_message)))
                     logging.info("{}".format(incoming_message))
