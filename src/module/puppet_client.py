@@ -129,7 +129,6 @@ class puppet_client(puppet_client_base):
         return self._is_ftp_connected
 
 
-
     def send_cmd(self, cmd_kind:config.command_kind, cmd_data):
 
       assert self.cmd_socket, 'self.cmd_socket is None !!!'
@@ -183,11 +182,8 @@ class puppet_client(puppet_client_base):
 
 
     def execute(self, program:str, argument:str=None, work_dirpath:str=None):
-      logging.info('execute() 1')
       cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
-      logging.info('execute() 2')
       response_capsule = self.send_cmd(config.command_kind().execute, cmd_data)
-      logging.info('execute() 3')
       return response_capsule.result
 
 

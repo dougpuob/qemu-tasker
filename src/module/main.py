@@ -183,43 +183,37 @@ class main():
                 # =========================================================================
 
                 elif 'execute' == self.input_args.command:
-                    # Query status info
-                    status_resp_data = self.send_governor_status_command(self.governor_client_obj, self.input_args.taskid)
-
-                    # Original command
+                    pup_client = self.get_puppet_client(self.input_args.taskid)
                     cmd_data = config.execute_command_request_data(self.input_args.taskid,
                                                                    self.input_args.program,
                                                                    self.input_args.argument,
                                                                    self.input_args.cwd,
                                                                    self.input_args.base64)
-                    response_capsule = puppet_client(status_resp_data.server_info.socket_addr).request_puppet_command(config.command_kind().execute, cmd_data)
+                    response_capsule = pup_client.send_cmd(config.command_kind().execute, cmd_data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'list' == self.input_args.command:
-                    # Query status info
-                    status_resp_data = self.send_governor_status_command(governor_client(self.server_addr), self.input_args.taskid)
+                    pup_client = self.get_puppet_client(self.input_args.taskid)
+                    cmd_data = config.list_command_request_data(self.input_args.taskid,
+                                                                self.input_args.dstdir)
 
-                    # Original command
-                    cmd_data = config.list_command_request_data(self.input_args.taskid, self.input_args.dstdir)
-                    response_capsule = puppet_client(status_resp_data.server_info.socket_addr).request_puppet_command(config.command_kind().list, cmd_data)
+                    response_capsule = pup_client.send_cmd(config.command_kind().list, cmd_data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'upload' == self.input_args.command:
-                    # Query status info
-                    status_resp_data = self.send_governor_status_command(governor_client(self.server_addr), self.input_args.taskid)
-
-                    # Original command
-                    cmd_data = config.upload_command_request_data(self.input_args.taskid, self.input_args.files, self.input_args.dstdir)
-                    response_capsule = puppet_client(status_resp_data.server_info.socket_addr).request_puppet_command(config.command_kind().upload, cmd_data)
+                    pup_client = self.get_puppet_client(self.input_args.taskid)
+                    cmd_data = config.upload_command_request_data(self.input_args.taskid,
+                                                                  self.input_args.files,
+                                                                  self.input_args.dstdir)
+                    response_capsule = pup_client.send_cmd(config.command_kind().upload, cmd_data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'download' == self.input_args.command:
-                    # Query status info
-                    status_resp_data = self.send_governor_status_command(governor_client(self.server_addr), self.input_args.taskid)
-
-                    # Original command
-                    cmd_data = config.download_command_request_data(self.input_args.taskid, self.input_args.files, self.input_args.dstdir)
-                    response_capsule = puppet_client(status_resp_data.server_info.socket_addr).request_puppet_command(config.command_kind().download, cmd_data)
+                    pup_client = self.get_puppet_client(self.input_args.taskid)
+                    cmd_data = config.download_command_request_data(self.input_args.taskid,
+                                                                    self.input_args.files,
+                                                                    self.input_args.dstdir)
+                    response_capsule = pup_client.send_cmd(config.command_kind().download, cmd_data)
                     process_capsule(self.input_args, response_capsule)
 
 
@@ -250,8 +244,17 @@ class main():
             logging.exception(e)
 
 
-    def send_governor_status_command(self, gov_client:governor_client, taskid:int) -> config.status_command_response_data:
+    def send_governor_status_command(self, gov_client:governor_client, taskid:int):
         cmd_data = config.status_command_request_data(taskid)
         response_capsule = gov_client.send_control_command(config.command_kind().status, cmd_data, None)
         status_data:config.status_command_response_data = response_capsule.data
         return status_data
+
+    def get_puppet_client(self, taskid:int):
+        # Query status info
+        status_resp_data = self.send_governor_status_command(governor_client(self.server_addr), taskid)
+        cmd_data = config.upload_command_request_data(self.input_args.taskid, self.input_args.files, self.input_args.dstdir)
+        pup_client = puppet_client(status_resp_data.server_info.socket_addr)
+        pup_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.pup)
+        pup_client.connect_cmd(pup_socket_info)
+        return pup_client
