@@ -16,10 +16,6 @@
         {
             "Cmd" : 12802,
             "Ftp" : 12803
-        },
-        "FtpClient": {
-            "UserName" : "dougpuob",
-            "Password" : "dougpuob"
-            }
+        }
     }
 }

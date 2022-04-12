@@ -159,13 +159,7 @@ class main():
                     config_start_data = config.config().toCLASS(json.dumps(json.load(open(self.input_args.config))))
                     cmd_data = config.start_command_request_data(config_start_data.longlife,
                                                                  config_start_data.qcow2filename,
-                                                                 config_start_data.ssh,
                                                                  config_start_data.cmd)
-                    # Update arguments from command line
-                    if self.input_args.host:
-                        cmd_data.ssh.target.address = self.input_args.host
-                    if self.input_args.port:
-                        cmd_data.ssh.target.port = self.input_args.port
                     response_capsule = governor_client(self.server_addr).send_control_command(config.command_kind().start, cmd_data, self.input_args.jsonreport)
                     process_capsule(self.input_args, response_capsule)
 

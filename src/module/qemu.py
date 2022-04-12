@@ -21,7 +21,6 @@ import time
 
 from datetime import datetime
 from module import config
-from module.sshclient import ssh_link
 from module.path import OsdpPath
 from module.qmp import QEMUMonitorProtocol
 from module.puppet_client import puppet_client
@@ -87,16 +86,9 @@ class qemu_instance:
 
         self.guest_info = config.guest_environment_information()
 
-
-        # SSH
-        self.ssh_obj = ssh_link()
-        self.qmp_obj = QEMUMonitorProtocol((self.socket_gov_addr.address, self.forward_port.qmp), server=True)
-        self.ssh_info = start_data.ssh
-
-
-        self.pup_obj = puppet_client(config.socket_address(self.setting.Governor.Address, self.forward_port.pup))
-
         # Connections status
+        self.qmp_obj = QEMUMonitorProtocol((self.socket_gov_addr.address, self.forward_port.qmp), server=True)
+        self.pup_obj = puppet_client(config.socket_address(self.setting.Governor.Address, self.forward_port.pup))
         self.connections_status = config.connections_status()
 
         #
@@ -166,55 +158,6 @@ class qemu_instance:
         return ret_ports
 
 
-    def send_exec(self, cmd_data:config.exec_command_request_data, is_base64:bool):
-        self.clear()
-
-        logging.info("QEMU (taskid={}) send_exec()".format(self.taskid))
-        logging.info("QEMU (taskid={}) cmd_data.program={}".format(self.taskid, cmd_data.program))
-        logging.info("QEMU (taskid={}) cmd_data.argument={}".format(self.taskid, cmd_data.argument))
-        logging.info("QEMU (taskid={}) cmd_data.is_base64={}".format(self.taskid, cmd_data.is_base64))
-
-        if None == self.ssh_obj.tcp_socket:
-            return False
-
-        self.status = config.task_status().processing
-
-        cmd_str = cmd_data.program
-        arg_str = ""
-        if cmd_data.argument:
-            if is_base64:
-                b64 = base64.b64decode(cmd_data.argument)
-                utf8 = b64.decode("utf-8")
-                arg_str = utf8
-            else:
-                arg_str = cmd_data.argument
-
-            cmd_str = cmd_str + " " + arg_str
-
-        logging.info("cmd_str={}".format(cmd_str))
-
-        try:
-            cmdret = self.ssh_obj.execute(cmd_str)
-
-            self.result.info_lines.extend(cmdret.info_lines)
-            self.result.error_lines.extend(cmdret.error_lines)
-            self.result.errcode = cmdret.errcode
-
-            retval = True
-
-        except Exception as e:
-            retval = False
-            frameinfo = getframeinfo(currentframe())
-            errmsg = ("exception={0}".format(e)) + '\n' + \
-                     ("frameinfo.filename={0}".format(frameinfo.filename)) + '\n' + \
-                     ("frameinfo.lineno={0}".format(frameinfo.lineno))
-            logging.exception(errmsg)
-
-
-        self.status = config.task_status().ready
-        return retval
-
-
     def send_qmp(self, cmd_data:config.qmp_command_request_data):
         self.clear()
 
@@ -261,16 +204,16 @@ class qemu_instance:
             else:
                 logging.error("Path not found ({}) !!!".format(fullpath))
 
-        if self.is_ssh_connected():
+        if self.is_ftp_connected():
             for file_from in selected_files:
                 basename = os.path.basename(file_from)
                 file_to = os.path.join(self.guest_info.pushpool_name, basename)
                 file_to = self.path_obj.normpath(file_to)
 
-                cmdret = self.ssh_obj.upload(file_from, file_to)
-                self.result.error_lines.extend(cmdret.info_lines)
-                self.result.error_lines.extend(cmdret.error_lines)
-                self.result.errcode = cmdret.errcode
+                # cmdret = self.socket_pup_ftp.upload(file_from, file_to)
+                # self.result.error_lines.extend(cmdret.info_lines)
+                # self.result.error_lines.extend(cmdret.error_lines)
+                # self.result.errcode = cmdret.errcode
 
                 if 0 != cmdret.errcode:
                     break
@@ -281,10 +224,6 @@ class qemu_instance:
 
     def is_qmp_connected(self):
         return (self.connections_status.QMP == config.connection_kind().connected)
-
-
-    def is_ssh_connected(self):
-        return (self.connections_status.SSH == config.connection_kind().connected)
 
 
     def is_pup_connected(self):
@@ -302,8 +241,6 @@ class qemu_instance:
         hostfwd_ssh    = "hostfwd=tcp::{}-:{}".format(self.forward_port.ssh, ssh_listen_port)
         hostfwd_pupcmd = "hostfwd=tcp::{}-:{}".format(self.forward_port.pup, pup_listen_port)
         hostfwd_pupftp = "hostfwd=tcp::{}-:{}".format(self.forward_port.ftp, ftp_listen_port)
-        #arg1 = ["-netdev", "user,id=network0,hostfwd={},{},{}".format(hostfwd_ssh, hostfwd_pupcmd, hostfwd_pupftp)]
-        #arg2 = ["-net", "nic,model=e1000,netdev=network0"]
         arg1 = ["-net", "nic,model=e1000"]
         arg2 = ["-net", "user,{},{},{}".format(hostfwd_ssh, hostfwd_pupcmd, hostfwd_pupftp)]
         self.qemu_base_args.extend(arg1)
@@ -446,14 +383,6 @@ class qemu_instance:
         logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
 
 
-        # Set working directory.
-        # self.ssh_obj.apply_os_kind(guest_info_os_kind)
-        # self.ssh_obj.apply_workdir_name(guest_info_workdir_name)
-        # self.ssh_obj.apply_pushdir_name(guest_info_pushdir_name)
-        # self.ssh_obj.apply_workdir_path(guest_info_workdir_path)
-        # self.ssh_obj.apply_pushdir_path(guest_info_pushdir_path)
-
-
         # Create Guest Information.
         # C:\\Users\\dougpuob\\qemu-tasker\\pushpool
         # ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^ <-- pushdir_name
@@ -480,28 +409,15 @@ class qemu_instance:
         logging.info("QEMU(taskid={0}) self.status={1}".format(self.taskid, self.status))
 
 
-    def connect_ssh(self):
-        logging.info("Connecting SSH ...")
-        if self.is_ssh_connected():
-            return
-
-        wait_ssh_thread = threading.Thread(target = self.thread_ssh_try_connect, args=(self.socket_gov_addr.address,
-                                                                                       self.forward_port.ssh,
-                                                                                       self.start_data.ssh.account.username,
-                                                                                       self.start_data.ssh.account.password))
-        wait_ssh_thread.setDaemon(True)
-        wait_ssh_thread.start()
-
-
     def connect_puppet(self):
         logging.info("Connecting Puppet ...")
         if self.is_pup_connected():
             return
 
-        wait_ssh_thread = threading.Thread(target = self.thread_pup_try_connect, args=(self.socket_gov_addr.address,
-                                                                                       self.forward_port.pup))
-        wait_ssh_thread.setDaemon(True)
-        wait_ssh_thread.start()
+        wait_puttet_thread = threading.Thread(target = self.thread_pup_try_connect, args=(self.socket_gov_addr.address,
+                                                                                          self.forward_port.pup))
+        wait_puttet_thread.setDaemon(True)
+        wait_puttet_thread.start()
 
 
     def connect_qmp(self):
@@ -533,7 +449,6 @@ class qemu_instance:
         self.qemu_pid = self.qemu_proc.pid
 
         self.status = config.task_status().connecting
-        #self.connect_ssh()
         self.connect_puppet();
 
 

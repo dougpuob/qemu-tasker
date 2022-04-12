@@ -62,7 +62,6 @@ class puppet_server(puppet_server_base):
         # Servers
         self.cmd_host = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Cmd)
         self.ftp_server_addr_info = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Ftp)
-        self.ftp_client_addr_info = config.account_information(self.setting.Puppet.FtpClient.UserName, self.setting.Puppet.FtpClient.Password)
 
 
     def __del__(self):
@@ -242,21 +241,21 @@ class puppet_server(puppet_server_base):
 
     def handle_list_command(self, cmd_data:config.list_command_request_data):
         if self.client == None:
-            self.client = ftpclient(self.ftp_server_addr_info, self.ftp_client_addr_info)
+            self.client = ftpclient(self.ftp_server_addr_info)
         cmdret = self.client.list(cmd_data.dstdir)
         return cmdret
 
 
     def handle_download_command(self, cmd_data:config.download_command_request_data):
         if self.client == None:
-            self.client = ftpclient(self.ftp_server_addr_info, self.ftp_client_addr_info)
+            self.client = ftpclient(self.ftp_server_addr_info)
         cmdret = self.client.download(cmd_data.files, cmd_data.dstdir)
         return cmdret
 
 
     def handle_upload_command(self, cmd_data:config.upload_command_request_data):
         if self.client == None:
-            self.client = ftpclient(self.ftp_server_addr_info, self.ftp_client_addr_info)
+            self.client = ftpclient(self.ftp_server_addr_info)
         cmdret = self.client.upload(cmd_data.files, cmd_data.dstdir)
         return cmdret
 

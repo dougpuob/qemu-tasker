@@ -154,7 +154,6 @@ class command_return:
 class connections_status:
     def __init__(self):
         self.QMP:connection_kind = connection_kind().unknown
-        self.SSH:connection_kind = connection_kind().unknown
         self.PUP:connection_kind = connection_kind().unknown
         self.FTP:connection_kind = connection_kind().unknown
 
@@ -229,14 +228,12 @@ class start_command_request_data(config):
     def __init__(self,
                  longlife:int,
                  qcow2filename:str,
-                 ssh_info:ssh_information,
                  cmd_info:command_arguments):
         self.name = self.__class__.__name__
 
         self.longlife = longlife
         self.qcow2filename = qcow2filename
         self.cmd = cmd_info
-        self.ssh = ssh_info
 
 
 class start_command_response_data(config):
@@ -244,7 +241,6 @@ class start_command_response_data(config):
                  taskid:int,
                  pid:int,
                  port_fwd:forward_port,
-                 ssh_conn_info:ssh_information,
                  server_info:server_environment_information,
                  guest_info:guest_environment_information,
                  conns_status:connections_status,
@@ -259,7 +255,6 @@ class start_command_response_data(config):
 
         # Resource
         self.forward     = port_fwd
-        self.ssh         = ssh_conn_info
         self.server_info = server_info
         self.guest_info  = guest_info
         self.qemu_full_cmdargs = qemu_full_cmdargs
@@ -267,7 +262,6 @@ class start_command_response_data(config):
         # Connections
         self.conns_status = conns_status
         self.is_connected_qmp = conns_status.QMP
-        self.is_connected_ssh = conns_status.SSH
 
 
 # Kill command

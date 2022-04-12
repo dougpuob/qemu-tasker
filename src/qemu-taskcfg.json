@@ -17,15 +17,5 @@
       "-drive",
       "file=${SERVER_QCOW2_IMAGE_DIR}/${qcow2filename},format=qcow2,snapshot=on"
     ]
-  },
-  "ssh": {
-    "target": {
-      "address": "192.168.0.201",
-      "port": 12801
-    },
-    "account": {
-      "username": "gliuser",
-      "password": "gliuser"
-    }
   }
 }

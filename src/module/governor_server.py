@@ -249,16 +249,14 @@ class governor_server(governor_server_base):
 
                 if qemu_inst.longlife > 0:
                     is_qmp_connected = self.get_bool(qemu_inst.connections_status.QMP)
-                    is_ssh_connected = self.get_bool(qemu_inst.connections_status.SSH)
                     is_pup_connected = self.get_bool(qemu_inst.connections_status.PUP)
                     is_ftp_connected = self.get_bool(qemu_inst.connections_status.FTP)
 
-                    print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} SSH:{} PUP:{} FTP:{} OS:{} Longlife:{}(s) {}'.format(
+                    print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} PUP:{} FTP:{} OS:{} Longlife:{}(s) {}'.format(
                             qemu_inst.taskid,
                             qemu_inst.qemu_pid,
                             qemu_inst.forward_port.toJSON(),
                             is_qmp_connected,
-                            is_ssh_connected,
                             is_pup_connected,
                             is_ftp_connected,
                             qemu_inst.guest_info.os_kind,
@@ -293,23 +291,13 @@ class governor_server(governor_server_base):
         return self.task_base_id + (self.task_index * 10)
 
 
-    def find_target_instance(self, taskid) -> qemu.qemu_instance:
+    def find_target_instance(self, taskid):
         target_qemu_inst = None
         for qemu_inst in self.qemu_instance_list:
             if qemu_inst.taskid == taskid:
                 target_qemu_inst = qemu_inst
                 break
         return target_qemu_inst
-
-
-    def command_to_exec(self,
-                        qemu_inst:qemu.qemu_instance,
-                        cmd_data:config.exec_command_request_data):
-        if qemu_inst and cmd_data:
-            result = qemu_inst.send_exec(cmd_data, cmd_data.is_base64)
-            resp_data = config.exec_command_response_data(cmd_data.taskid)
-            return resp_data
-        return None
 
 
     def command_to_kill(self,
@@ -355,7 +343,6 @@ class governor_server(governor_server_base):
                                         status_data.taskid,
                                         qemu_inst.qemu_pid,
                                         qemu_inst.forward_port,
-                                        qemu_inst.ssh_info,
                                         qemu_inst.server_info,
                                         qemu_inst.guest_info,
                                         qemu_inst.connections_status,
@@ -490,7 +477,6 @@ class governor_server(governor_server_base):
                                                         qemu_inst.taskid,
                                                         qemu_inst.qemu_pid,
                                                         qemu_inst.forward_port,
-                                                        qemu_inst.ssh_info,
                                                         qemu_inst.server_info,
                                                         qemu_inst.guest_info,
                                                         qemu_inst.connections_status,
@@ -622,7 +608,7 @@ class governor_server(governor_server_base):
         return cmdret
 
 
-    def check_and_clear_qemu_instance(self, taskid:int, qemu_inst:qemu.qemu_instance) -> config.command_return:
+    def check_and_clear_qemu_instance(self, taskid:int, qemu_inst:qemu.qemu_instance):
         cmdret = config.command_return()
         cmdret.info_lines.append('taskid={}'.format(taskid))
 
@@ -632,9 +618,6 @@ class governor_server(governor_server_base):
             logging.warning(cmdret)
         else:
             qemu_inst.clear()
-            if not qemu_inst.is_ssh_connected():
-                cmdret.errcode = -11
-                cmdret.error_lines.append('The SSH connection is not created !!!')
 
         return cmdret
 
