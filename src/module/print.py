@@ -10,6 +10,6 @@ class process_capsule():
             print(json.dumps(response_capsule.toJSON(), indent=2, sort_keys=True))
         else:
             print("[qemu-tasker] returned errcode: {}".format(response_capsule.result.errcode))
-            print("json_capsule={}".format(response_capsule))
+            print(json.dumps(response_capsule.toJSON(), indent=2, sort_keys=True))
 
 

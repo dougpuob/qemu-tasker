@@ -41,9 +41,6 @@ class main():
         self.screen = logging.StreamHandler()
         self.screen.setLevel(logging.INFO)
         self.screen.setFormatter(self.formatter)
-        self.logger.addHandler(self.screen)
-
-
 
     def main(self):
 
@@ -85,32 +82,43 @@ class main():
 
             if 'server' == self.input_args.command:
 
-                logging.info('--------------------------------------------------------------------------------')
+                # Log to file
                 filename = datetime.datetime.now().strftime("qemu-tasker-server--%Y%m%d_%H%M%S.log")
-                logging.info("filename={}".format(filename))
-
                 logfile = logging.FileHandler(os.path.join(logdir, filename))
                 logfile.setLevel(logging.INFO)
                 logfile.setFormatter(self.formatter)
                 self.logger.addHandler(logfile)
+
+                # Log to screen
+                self.logger.addHandler(self.screen)
+
+                # Print init log text
+                logging.info('--------------------------------------------------------------------------------')
+                logging.info("filename={}".format(filename))
                 logging.info(self.input_args)
 
+                # Start
                 governor_server(self.setting).start()
 
 
             elif 'puppet' == self.input_args.command:
 
-                self.logger.addHandler(self.screen)
-                logging.info('--------------------------------------------------------------------------------')
+                # Log to file
                 filename = datetime.datetime.now().strftime("qemu-tasker-puppet--%Y%m%d_%H%M%S.log")
-                logging.info("filename={}".format(filename))
-
                 logfile = logging.FileHandler(os.path.join(logdir, filename))
                 logfile.setLevel(logging.INFO)
                 logfile.setFormatter(self.formatter)
                 self.logger.addHandler(logfile)
+
+                # Log to screen
+                self.logger.addHandler(self.screen)
+
+                # Print init log text
+                logging.info('--------------------------------------------------------------------------------')
+                logging.info("filename={}".format(filename))
                 logging.info(self.input_args)
 
+                # Start
                 puppet_server(self.setting).start()
 
 
@@ -120,19 +128,23 @@ class main():
                 # Control commands
                 # =========================================================================
 
-                # Setup log mechanism
+                # Log to file
                 filename = datetime.datetime.now().strftime("qemu-tasker-client--%Y%m%d_%H%M%S.log")
-
-
                 logfile = logging.FileHandler(os.path.join(logdir, filename))
                 logfile.setLevel(logging.INFO)
                 logfile.setFormatter(self.formatter)
                 self.logger.addHandler(logfile)
 
+                # Log to screen
                 if not self.input_args.jsonreport:
-                    logging.info("filename={}".format(filename))
-                    logging.info(self.input_args)
+                    self.logger.addHandler(self.screen)
 
+                # Print init log text
+                logging.info('--------------------------------------------------------------------------------')
+                logging.info("filename={}".format(filename))
+                logging.info(self.input_args)
+
+                # Start
                 if 'info' == self.input_args.command:
                     # Create a INFO command request
                     cmd_data = config.info_command_request_data()

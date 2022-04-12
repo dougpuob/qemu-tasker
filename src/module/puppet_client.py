@@ -160,10 +160,14 @@ class puppet_client(puppet_client_base):
       else:
         cmd_ret = config.return_unsupported_command()
 
-      resp_capsule = config.transaction_capsule(cmd_data.act_kind,
-                                                 cmd_data.cmd_kind,
-                                                 cmd_ret,
-                                                 cmd_ret.data)
+      # Tidy cmd_ret.data because it will be returned from another field.
+      cmd_ret_data = cmd_ret.data
+      cmd_ret.data = None
+
+      resp_capsule = config.transaction_capsule(config.action_kind().response,
+                                                cmd_kind,
+                                                cmd_ret,
+                                                cmd_ret_data)
       return resp_capsule
 
 
@@ -211,10 +215,14 @@ class puppet_client(puppet_client_base):
       else:
         cmd_ret = config.return_unsupported_command()
 
+      # Tidy cmd_ret.data because it will be returned from another field.
+      cmd_ret_data = cmd_ret.data
+      cmd_ret.data = None
+
       resp_capsule = config.transaction_capsule(config.action_kind().response,
                                                 cmd_kind,
                                                 cmd_ret,
-                                                cmd_ret.data)
+                                                cmd_ret_data)
       return resp_capsule
 
 
