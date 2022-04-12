@@ -361,7 +361,7 @@ class governor_server(governor_server_base):
                 qcow2_files.append(file)
 
         resp_data = config.info_command_response_data(
-                                    self.server_variables_dict,
+                                    self.setting.Governor.Variables,
                                     qcow2_files)
         return resp_data
 

@@ -214,9 +214,9 @@ class qemu_instance:
                 # self.result.error_lines.extend(cmdret.info_lines)
                 # self.result.error_lines.extend(cmdret.error_lines)
                 # self.result.errcode = cmdret.errcode
-
-                if 0 != cmdret.errcode:
-                    break
+                #
+                # if 0 != cmdret.errcode:
+                #     break
 
         self.status = config.task_status().ready
         return (final_cmdret.errcode == 0)

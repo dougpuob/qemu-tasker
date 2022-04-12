@@ -275,7 +275,7 @@ class info_command_request_data(config):
         self.name = self.__class__.__name__
 
 class info_command_response_data(config):
-    def __init__(self, variables:map, image_files:list):
+    def __init__(self, variables:json, image_files:list):
         self.name = self.__class__.__name__
 
         self.variables = variables
