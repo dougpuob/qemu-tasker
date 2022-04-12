@@ -5,6 +5,8 @@ from queue import Queue, Empty
 from concurrent.futures import ThreadPoolExecutor
 
 import subprocess
+import base64
+
 from time import sleep
 from tokenize import Ignore
 
@@ -50,11 +52,19 @@ class execproc():
 
 
 
-    def run(self, cmdargs:config.command_argument, cwd:str=None):
+    def run(self, cmdargs:config.command_argument, cwd:str=None, is_base64:bool=False):
 
         cmdstr:str = cmdargs.program
         if cmdargs.argument:
-             cmdstr = cmdstr + ' ' + cmdargs.argument
+            args = cmdargs.argument
+            if is_base64:
+                b64 = base64.b64decode(cmdargs.argument)
+                utf8 = b64.decode("utf-8")
+                args = utf8
+
+            cmdstr = cmdstr + ' ' + args
+
+
         logging.info("cmdstr={}".format(cmdstr))
 
         cmdret:config.command_return = config.command_return()
