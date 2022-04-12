@@ -143,7 +143,8 @@ class puppet_client(puppet_client_base):
 
       elif cmd_kind == config.command_kind().list or \
            cmd_kind == config.command_kind().download or \
-           cmd_kind == config.command_kind().upload:
+           cmd_kind == config.command_kind().upload or \
+           cmd_kind == config.command_kind().breakup:
         return self.send_to_puppet_server(cmd_kind, cmd_data)
 
       else:
@@ -164,6 +165,9 @@ class puppet_client(puppet_client_base):
       elif cmd_kind == config.command_kind().upload:
         new_cmd_data:config.upload_command_request_data = cmd_data
         cmd_ret = self.upload(new_cmd_data.files, new_cmd_data.dstdir)
+
+      elif cmd_kind == config.command_kind().breakup:
+        cmd_ret = self.disconnect()
 
       else:
         cmd_ret = config.return_unsupported_command()
