@@ -553,7 +553,7 @@ class governor_server(governor_server_base):
                 # Summary result then create coresponding error handling.
                 #
                 cmd_ret = None
-                if None == qemu_inst:
+                if None == qemu_inst and (config.command_kind().info != incoming_capsule.cmd_kind):
                     cmd_ret = config.return_command_no_qemu_inst
                 elif None == resp_data:
                     cmd_ret = config.return_command_no_resp_data
