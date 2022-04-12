@@ -97,9 +97,6 @@ class puppet_server(puppet_server_base):
 
 
     def start_ftp_server(self, ftp_host:config.socket_address):
-
-        ftp_username = 'dougpuob'
-        ftp_password = 'dougpuob'
         ftp_homedir  = os.path.expanduser('~')
 
         authorizer = DummyAuthorizer()
@@ -120,9 +117,9 @@ class puppet_server(puppet_server_base):
 
 
     def thread_routine_listening_connections(self):
-        logging.info("thread_routine_listening_connections ...")
-        logging.info("  self.cmd_host.address={}".format(self.cmd_host.address))
-        logging.info("  self.cmd_host.port   ={}".format(self.cmd_host.port))
+        logging.info("[puppet_server.py] thread_routine_listening_connections ...")
+        logging.info("[puppet_server.py]   self.cmd_host.address={}".format(self.cmd_host.address))
+        logging.info("[puppet_server.py]   self.cmd_host.port   ={}".format(self.cmd_host.port))
 
         try:
             self.listen_tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -132,7 +129,7 @@ class puppet_server(puppet_server_base):
                 self.is_started = True
 
             while self.is_started:
-                logging.info("puppet server is waiting for connection ...")
+                logging.info("[puppet_server.py] puppet server is waiting for connection ...")
                 new_conn, new_addr = self.listen_tcp_conn.accept()
                 #self.accepted_list.append(new_conn)
                 thread_for_command = threading.Thread(target = self.thread_routine_processing_command, args=(new_conn,))
@@ -148,9 +145,9 @@ class puppet_server(puppet_server_base):
 
 
     def thread_routine_processing_command(self, new_conn):
-        logging.info("thread_routine_processing_command ...")
+        logging.info("[puppet_server.py] thread_routine_processing_command ...")
 
-        logging.info("new_conn={}".format(new_conn))
+        logging.info("[puppet_server.py] new_conn={}".format(new_conn))
         _keep_going = True
 
         try:
@@ -164,10 +161,10 @@ class puppet_server(puppet_server_base):
                     continue
 
                 incoming_message = str(incoming_data, encoding='utf-8')
-                logging.info("incoming_message={}".format(incoming_message))
+                logging.info("[puppet_server.py] incoming_message={}".format(incoming_message))
 
                 if not incoming_message.startswith("{\"act_kind\": \"request\""):
-                    logging.info("Received an unknow message !!! (len(incoming_message)={})".format(len(incoming_message)))
+                    logging.info("[puppet_server.py] Received an unknow message !!! (len(incoming_message)={})".format(len(incoming_message)))
                     logging.info("{}".format(incoming_message))
 
                 else:
@@ -223,7 +220,7 @@ class puppet_server(puppet_server_base):
                                                         incoming_capsule.cmd_kind,
                                                         cmd_ret)
                     return_capsule_text = return_capsule.toTEXT()
-                    logging.info("return_capsule_text={}".format(return_capsule_text))
+                    logging.info("[puppet_server.py] return_capsule_text={}".format(return_capsule_text))
                     new_conn.send(bytes(return_capsule_text, encoding="utf-8"))
 
         except Exception as e:

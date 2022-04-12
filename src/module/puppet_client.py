@@ -119,7 +119,7 @@ class puppet_client(puppet_client_base):
             ret = self.ftp_obj.connect()
             if ret and self.WORK_DIR:
 
-              cmd_ret = self.ftp_obj.try_mkdir(self.WORK_DIR)
+              cmd_ret = self.ftp_obj.mkdir(self.WORK_DIR)
               logging.info("self.ftp_obj.try_mkdir() cmd_ret.errcode={}".format(cmd_ret.errcode))
 
               cmd_ret = self.ftp_obj.cd(self.WORK_DIR)
@@ -248,14 +248,14 @@ class puppet_client(puppet_client_base):
       return response_capsule.result
 
 
-    def execute(self, program:str, argument:str=None, work_dirpath:str=None, is_base64:bool=False):
-      cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, is_base64)
+    def execute(self, program:str, argument:str=None, work_dir:str=None, is_base64:bool=False):
+      cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dir, is_base64)
       response_capsule = self.handle_cmd_request(config.command_kind().execute, cmd_data)
       return response_capsule.result
 
 
     def mkdir(self, dirpath:str):
-      return self.ftp_obj.try_mkdir(dirpath)
+      return self.ftp_obj.mkdir(dirpath)
 
 
     def upload(self, files:list, dstdir:str):
