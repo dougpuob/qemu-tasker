@@ -396,7 +396,7 @@ class qemu_instance:
 
 
         # Create filepool directory.
-        cmdret = self.pup_obj.mkdir('pushpool')
+        cmdret = self.pup_obj.mkdir('guest_info_pushdir_name')
         logging.info("QEMU(taskid={0}) create filepool directory ({1})".format(self.taskid, guest_info_pushdir_name))
         logging.info("  cmdret.errcode={0}".format(cmdret.errcode))
         logging.info("  cmdret.info_lines={0}".format(cmdret.info_lines))
