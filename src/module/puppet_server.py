@@ -235,7 +235,7 @@ class puppet_server(puppet_server_base):
 
     def handle_execute_command(self, cmd_data:config.execute_command_request_data):
         cmdargs:config.command_argument = config.command_argument(cmd_data.program, cmd_data.argument)
-        cmdret = self.execproc.run(cmdargs, cmd_data.cwd, cmd_data.is_base64)
+        cmdret = self.execproc.run(cmdargs, cmd_data.workdir, cmd_data.is_base64)
         return cmdret
 
 

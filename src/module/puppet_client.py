@@ -144,13 +144,11 @@ class puppet_client(puppet_client_base):
                                           config.return_command_socket_not_ready,
                                           None)
 
-      if cmd_kind == config.command_kind().execute:
-        return self.send_to_governor_server(cmd_kind, cmd_data)
-
-      elif cmd_kind == config.command_kind().list or \
-           cmd_kind == config.command_kind().download or \
-           cmd_kind == config.command_kind().upload or \
-           cmd_kind == config.command_kind().breakup:
+      if cmd_kind == config.command_kind().execute or \
+         cmd_kind == config.command_kind().list or \
+         cmd_kind == config.command_kind().download or \
+         cmd_kind == config.command_kind().upload or \
+         cmd_kind == config.command_kind().breakup:
         return self.send_to_puppet_server(cmd_kind, cmd_data)
 
       else:
@@ -160,7 +158,11 @@ class puppet_client(puppet_client_base):
     def send_to_puppet_server(self, cmd_kind:config.command_kind, cmd_data):
       cmd_ret = None
 
-      if cmd_kind == config.command_kind().list:
+      if cmd_kind == config.command_kind().execute:
+        new_cmd_data:config.exec_command_request_data = cmd_data
+        cmd_ret = self.execute(new_cmd_data.program, new_cmd_data.arguments, new_cmd_data.workdir, new_cmd_data.is_base64)
+
+      elif cmd_kind == config.command_kind().list:
         new_cmd_data:config.list_command_request_data = cmd_data
         cmd_ret = self.list(new_cmd_data.dstdir)
 
@@ -246,22 +248,18 @@ class puppet_client(puppet_client_base):
 
     def disconnect(self):
       cmd_data = config.generic_command_request_data(self.taskid)
-      response_capsule = self.send_to_governor_server(config.command_kind().breakup, cmd_data)
+      response_capsule = self.send_to_puppet_server(config.command_kind().breakup, cmd_data)
       return response_capsule.result
 
 
-    def execute(self, program:str, argument:str=None, work_dirpath:str=None):
-      cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
-      response_capsule = self.send_to_governor_server(config.command_kind().execute, cmd_data)
+    def execute(self, program:str, argument:str=None, work_dirpath:str=None, is_base64:bool=False):
+      cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, is_base64)
+      response_capsule = self.send_to_puppet_server(config.command_kind().execute, cmd_data)
       return response_capsule.result
 
 
     def mkdir(self, dirpath:str):
       return self.ftp_obj.try_mkdir(dirpath)
-
-
-    # def cd(self, dirpath:str):
-    #   return self.ftp_obj.cd(dirpath)
 
 
     def upload(self, files:list, dstdir:str):

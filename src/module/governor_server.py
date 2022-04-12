@@ -492,15 +492,15 @@ class governor_server(governor_server_base):
                     if cmdret.errcode == 0:
                         resp_data = self.command_to_kill(qemu_inst, cmd_data)
 
-                # ------
-                # Exec
-                # ------
-                elif config.command_kind().exec == incoming_capsule.cmd_kind:
-                    cmd_data:config.exec_command_request_data = incoming_capsule.data
-                    qemu_inst = self.find_target_instance(cmd_data.taskid)
-                    cmdret = self.check_and_clear_qemu_instance(cmd_data.taskid, qemu_inst)
-                    if cmdret.errcode == 0:
-                        resp_data = self.command_to_exec(qemu_inst, cmd_data)
+                # # ------
+                # # Exec
+                # # ------
+                # elif config.command_kind().exec == incoming_capsule.cmd_kind:
+                #     cmd_data:config.exec_command_request_data = incoming_capsule.data
+                #     qemu_inst = self.find_target_instance(cmd_data.taskid)
+                #     cmdret = self.check_and_clear_qemu_instance(cmd_data.taskid, qemu_inst)
+                #     if cmdret.errcode == 0:
+                #         resp_data = self.command_to_exec(qemu_inst, cmd_data)
 
                 # ------
                 # Status

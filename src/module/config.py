@@ -24,7 +24,6 @@ class command_kind:
         self.server   = "server"
         self.start    = "start"
         self.kill     = "kill"
-        self.exec     = "exec"
         self.qmp      = "qmp"
         self.status   = "status"
         self.info     = "info"
@@ -308,14 +307,14 @@ class exec_command_request_data(config):
     def __init__(self, taskid:int,
                        program:str,
                        argument:str,
-                       cwd:str=None,
+                       workdir:str=None,
                        is_base64:bool=False):
         self.name = self.__class__.__name__
 
         self.taskid    = taskid
         self.program   = program
         self.argument  = argument
-        self.cwd       = cwd
+        self.workdir   = workdir
         self.is_base64 = is_base64
 
 exec_command_response_data = generic_command_response_data

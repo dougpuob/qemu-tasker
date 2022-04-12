@@ -197,7 +197,7 @@ class main():
                     cmd_data = config.execute_command_request_data(self.input_args.taskid,
                                                                    self.input_args.program,
                                                                    self.input_args.argument,
-                                                                   self.input_args.cwd,
+                                                                   self.input_args.workdir,
                                                                    self.input_args.base64)
                     response_capsule = pup_client.send_request(config.command_kind().execute, cmd_data)
                     process_capsule(self.input_args, response_capsule)

@@ -52,10 +52,10 @@ class execproc():
 
 
 
-    def run(self, cmdargs:config.command_argument, cwd:str=None, is_base64:bool=False):
+    def run(self, cmdargs:config.command_argument, workdir:str=None, is_base64:bool=False):
 
         logging.info("cmdargs={}".format(cmdargs))
-        logging.info("cwd={}".format(cwd))
+        logging.info("workdir={}".format(workdir))
         logging.info("is_base64={}".format(is_base64))
 
         cmdstr:str = cmdargs.program
@@ -75,7 +75,7 @@ class execproc():
         cmdret:config.command_return = config.command_return()
 
         try:
-            proc = subprocess.Popen(cmdstr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, cwd=cwd)
+            proc = subprocess.Popen(cmdstr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, cwd=workdir)
             if proc:
                 cmdret.data = proc
 
