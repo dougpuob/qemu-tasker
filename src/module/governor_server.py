@@ -462,6 +462,7 @@ class governor_server(governor_server_base):
                 # ------
                 if config.command_kind().info == incoming_capsule.cmd_kind:
                     cmd_data:config.info_command_request_data = incoming_capsule.data
+                    qemu_inst =  qemu.qemu_instance(self.setting, None, None, None)
                     resp_data = self.command_to_info(cmd_data)
 
                 # ------
@@ -553,27 +554,12 @@ class governor_server(governor_server_base):
                 # Summary result then create coresponding error handling.
                 #
                 cmd_ret = None
-                if None == qemu_inst and (config.command_kind().info != incoming_capsule.cmd_kind):
+                if None == qemu_inst:
                     cmd_ret = config.return_command_no_qemu_inst
                 elif None == resp_data:
                     cmd_ret = config.return_command_no_resp_data
                 else:
                     cmd_ret = qemu_inst.result
-
-                # if resp_data:
-                #     result = ''
-                #     if qemu_inst:
-                #         result = qemu_inst.result
-                #     else:
-                #         result = config.return_command_no_qemu_inst()
-                # else:
-                #     if qemu_inst:
-                #         result = qemu_inst.result
-                #         err_text = "the resp_data is None !!!"
-                #     else:
-                #         result = config.return_command_no_qemu_inst()
-                #         err_text = result
-                #     logging.error(err_text)
 
                 resp_capcsule = config.transaction_capsule(config.action_kind().response,
                                                            incoming_capsule.cmd_kind,
