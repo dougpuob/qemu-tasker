@@ -80,7 +80,7 @@ class main():
 
 
             # =========================================================================
-            # Daemon commands
+            # Server daemon commands
             # =========================================================================
 
             if 'server' == self.input_args.command:
@@ -189,7 +189,7 @@ class main():
                                                                    self.input_args.argument,
                                                                    self.input_args.cwd,
                                                                    self.input_args.base64)
-                    response_capsule = pup_client.send_cmd(config.command_kind().execute, cmd_data)
+                    response_capsule = pup_client.send_request(config.command_kind().execute, cmd_data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'list' == self.input_args.command:
@@ -197,7 +197,7 @@ class main():
                     cmd_data = config.list_command_request_data(self.input_args.taskid,
                                                                 self.input_args.dstdir)
 
-                    response_capsule = pup_client.send_cmd(config.command_kind().list, cmd_data)
+                    response_capsule = pup_client.send_request(config.command_kind().list, cmd_data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'upload' == self.input_args.command:
@@ -205,7 +205,7 @@ class main():
                     cmd_data = config.upload_command_request_data(self.input_args.taskid,
                                                                   self.input_args.files,
                                                                   self.input_args.dstdir)
-                    response_capsule = pup_client.send_cmd(config.command_kind().upload, cmd_data)
+                    response_capsule = pup_client.send_request(config.command_kind().upload, cmd_data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'download' == self.input_args.command:
@@ -213,7 +213,7 @@ class main():
                     cmd_data = config.download_command_request_data(self.input_args.taskid,
                                                                     self.input_args.files,
                                                                     self.input_args.dstdir)
-                    response_capsule = pup_client.send_cmd(config.command_kind().download, cmd_data)
+                    response_capsule = pup_client.send_request(config.command_kind().download, cmd_data)
                     process_capsule(self.input_args, response_capsule)
 
 
@@ -256,5 +256,7 @@ class main():
         status_resp_data = self.send_governor_status_command(governor_client(self.server_addr), taskid)
         pup_client = puppet_client(status_resp_data.server_info.socket_addr)
         pup_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.pup)
+        ftp_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.ftp)
         pup_client.connect_cmd(pup_socket_info)
+        pup_client.connect_ftp(ftp_socket_info)
         return pup_client

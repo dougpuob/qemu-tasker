@@ -128,8 +128,50 @@ class puppet_client(puppet_client_base):
         return self._is_ftp_connected
 
 
-    def send_cmd(self, cmd_kind:config.command_kind, cmd_data):
+    def send_request(self, cmd_kind:config.command_kind, cmd_data):
 
+      if cmd_kind == config.command_kind().execute:
+        return self.send_to_governor_server(cmd_kind, cmd_data)
+
+      elif cmd_kind == config.command_kind().list or \
+           cmd_kind == config.command_kind().download or \
+           cmd_kind == config.command_kind().upload:
+        return self.send_to_puppet_server(cmd_kind, cmd_data)
+
+      else:
+        assert 'Handle this wrong case !!!'
+
+
+    def send_to_puppet_server(self, cmd_kind:config.command_kind, cmd_data):
+      cmd_ret = None
+
+      if cmd_kind == config.command_kind().list:
+        new_cmd_data:config.list_command_request_data = cmd_data
+        cmd_ret = self.ftp_obj.list(new_cmd_data.dstdir)
+
+      elif cmd_kind == config.command_kind().download:
+        new_cmd_data:config.download_command_request_data = cmd_data
+        cmd_ret = self.ftp_obj.download(new_cmd_data.files, new_cmd_data.dstdir)
+
+      elif cmd_kind == config.command_kind().upload:
+        new_cmd_data:config.upload_command_request_data = cmd_data
+        cmd_ret = self.ftp_obj.upload(new_cmd_data.files, new_cmd_data.dstdir)
+
+      else:
+        cmd_ret = config.return_unsupported_command()
+
+      new_resp_data = config.transaction_capsule(cmd_data.act_kind,
+                                                 cmd_data.cmd_kind,
+                                                 cmd_ret,
+                                                 cmd_ret.data)
+      return new_resp_data
+
+
+    def send_to_governor_server(self, cmd_kind:config.command_kind, cmd_data):
+
+      #
+      # Check conditions
+      #
       assert self.cmd_socket, 'self.cmd_socket is None !!!'
       assert self.is_cmd_connected, 'self.is_cmd_connected is FALSE !!!'
 
@@ -141,56 +183,66 @@ class puppet_client(puppet_client_base):
         unknown_capsule = config.transaction_capsule(config.action_kind().response, cmd_kind, cmdret, None)
         return unknown_capsule
 
-      request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
-      self.cmd_socket.send(request_capsule.toTEXT().encode())
+      #
+      # Send request to governor server
+      #
+      cmd_ret = None
+      if cmd_kind == config.command_kind().execute:
 
-      received = b''
-      while True:
-        time.sleep(1)
-        part = self.cmd_socket.recv(self.BUFF_SIZE)
-        received = received + part
-        if len(part) < self.BUFF_SIZE:
-            try:
-                json.loads(str(received, encoding='utf-8'))
-                break
-            except Exception as e:
-                continue
+        request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
+        self.cmd_socket.send(request_capsule.toTEXT().encode())
 
-      response_text = str(received, encoding='utf-8')
-      resp_data = config.config().toCLASS(response_text)
-      new_resp_data = config.transaction_capsule(resp_data.act_kind,
-                                                 resp_data.cmd_kind,
-                                                 resp_data.result,
-                                                 resp_data.data)
+        received = b''
+        while True:
+          time.sleep(1)
+          part = self.cmd_socket.recv(self.BUFF_SIZE)
+          received = received + part
+          if len(part) < self.BUFF_SIZE:
+              try:
+                  json.loads(str(received, encoding='utf-8'))
+                  break
+              except Exception as e:
+                  continue
+
+        response_text = str(received, encoding='utf-8')
+        resp_data = config.config().toCLASS(response_text)
+        cmd_ret = resp_data.result
+
+      else:
+        cmd_ret = config.return_unsupported_command()
+
+      new_resp_data = config.transaction_capsule(config.action_kind().response,
+                                                 cmd_kind,
+                                                 cmd_ret,
+                                                 cmd_ret.data)
       return new_resp_data
-
 
     def disconnect(self):
       cmd_data = config.generic_command_request_data(self.taskid)
-      response_capsule = self.send_cmd(config.command_kind().breakup, cmd_data)
+      response_capsule = self.send_to_governor_server(config.command_kind().breakup, cmd_data)
       return response_capsule.result
 
 
-    def execute(self, program:str, argument:str=None, work_dirpath:str=None):
-      cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
-      response_capsule = self.send_cmd(config.command_kind().execute, cmd_data)
-      return response_capsule.result
+    # def execute(self, program:str, argument:str=None, work_dirpath:str=None):
+    #   cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
+    #   response_capsule = self.send_cmd_to_gov(config.command_kind().execute, cmd_data)
+    #   return response_capsule.result
 
 
-    def mkdir(self, dirpath:str):
-      return self.ftp_obj.try_mkdir(dirpath)
+    # def mkdir(self, dirpath:str):
+    #   return self.ftp_obj.try_mkdir(dirpath)
 
 
-    def upload(self, files:list, dstdir:str):
-      return self.ftp_obj.upload(files, dstdir)
+    # def upload(self, files:list, dstdir:str):
+    #   return self.ftp_obj.upload(files, dstdir)
 
 
-    def download(self, files:list, dstdir:str):
-      return self.ftp_obj.download(files, dstdir)
+    # def download(self, files:list, dstdir:str):
+    #   return self.ftp_obj.download(files, dstdir)
 
 
-    def list(self, files:list, dstdir:str):
-      return self.ftp_obj.list(dstdir)
+    # def list(self, files:list, dstdir:str):
+    #   return self.ftp_obj.list(dstdir)
 
 
     # def request_puppet_command(self, cmd_kind:config.command_kind, cmd_data):
