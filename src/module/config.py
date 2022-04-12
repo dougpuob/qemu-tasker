@@ -169,6 +169,7 @@ return_command_unsupported  = customized_return_command('unsupported command')
 return_command_wrong_taskid = customized_return_command('wrong taskid')
 return_command_no_qemu_inst = customized_return_command('Failed to find the specific QEMU instance')
 return_command_no_resp_data = customized_return_command('No response data')
+return_command_socket_not_ready = customized_return_command('Socket is not ready')
 
 
 class transaction_capsule(config):

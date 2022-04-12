@@ -120,10 +120,10 @@ class puppet_client(puppet_client_base):
             if ret and self.WORK_DIR:
 
               cmd_ret = self.ftp_obj.try_mkdir(self.WORK_DIR)
-              logging.info("self.ftp_obj.try_mkdir() cmd_ret={}".format(cmd_ret))
+              logging.info("self.ftp_obj.try_mkdir() cmd_ret.errcode={}".format(cmd_ret.errcode))
 
               cmd_ret = self.ftp_obj.cd(self.WORK_DIR)
-              logging.info("self.ftp_obj.cd() cmd_ret={}".format(cmd_ret))
+              logging.info("self.ftp_obj.cd() cmd_ret.errcode={}".format(cmd_ret.errcode))
 
         if self.ftp_obj:
           self._is_ftp_connected = self.ftp_obj.is_connected()
@@ -137,6 +137,12 @@ class puppet_client(puppet_client_base):
 
 
     def send_request(self, cmd_kind:config.command_kind, cmd_data):
+
+      if self.cmd_socket == None or self.ftp_obj == None:
+        return config.transaction_capsule(config.action_kind().response,
+                                          cmd_kind,
+                                          config.return_command_socket_not_ready,
+                                          None)
 
       if cmd_kind == config.command_kind().execute:
         return self.send_to_governor_server(cmd_kind, cmd_data)

@@ -209,7 +209,6 @@ class main():
                     pup_client = self.get_puppet_client(self.input_args.taskid)
                     cmd_data = config.list_command_request_data(self.input_args.taskid,
                                                                 self.input_args.dstdir)
-
                     response_capsule = pup_client.send_request(config.command_kind().list, cmd_data)
                     process_capsule(self.input_args, response_capsule)
 
@@ -280,5 +279,4 @@ class main():
             logging.error('result.errcode={}'.format(status_resp_capsule.result.errcode))
             logging.error('result.info_lines={}'.format(status_resp_capsule.result.info_lines))
             logging.error('result.error_lines={}'.format(status_resp_capsule.result.error_lines))
-
-            return None
+            return puppet_client(taskid)

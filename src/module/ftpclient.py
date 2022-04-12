@@ -68,7 +68,7 @@ class ftpclient():
     #         return cmdret
 
     def try_mkdir(self, dir_path:str):
-        cmdret = config.command_return ()
+        cmdret = config.command_return()
 
         try:
             full_pathname = self.ftp.mkd(dir_path)
