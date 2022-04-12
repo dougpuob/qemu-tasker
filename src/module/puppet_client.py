@@ -217,32 +217,33 @@ class puppet_client(puppet_client_base):
                                                  cmd_ret.data)
       return new_resp_data
 
+
     def disconnect(self):
       cmd_data = config.generic_command_request_data(self.taskid)
       response_capsule = self.send_to_governor_server(config.command_kind().breakup, cmd_data)
       return response_capsule.result
 
 
-    # def execute(self, program:str, argument:str=None, work_dirpath:str=None):
-    #   cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
-    #   response_capsule = self.send_cmd_to_gov(config.command_kind().execute, cmd_data)
-    #   return response_capsule.result
+    def execute(self, program:str, argument:str=None, work_dirpath:str=None):
+      cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
+      response_capsule = self.send_to_puppet_server(config.command_kind().execute, cmd_data)
+      return response_capsule.result
 
 
-    # def mkdir(self, dirpath:str):
-    #   return self.ftp_obj.try_mkdir(dirpath)
+    def mkdir(self, dirpath:str):
+      return self.ftp_obj.try_mkdir(dirpath)
 
 
-    # def upload(self, files:list, dstdir:str):
-    #   return self.ftp_obj.upload(files, dstdir)
+    def upload(self, files:list, dstdir:str):
+      return self.ftp_obj.upload(files, dstdir)
 
 
-    # def download(self, files:list, dstdir:str):
-    #   return self.ftp_obj.download(files, dstdir)
+    def download(self, files:list, dstdir:str):
+      return self.ftp_obj.download(files, dstdir)
 
 
-    # def list(self, files:list, dstdir:str):
-    #   return self.ftp_obj.list(dstdir)
+    def list(self, files:list, dstdir:str):
+      return self.ftp_obj.list(dstdir)
 
 
     # def request_puppet_command(self, cmd_kind:config.command_kind, cmd_data):
