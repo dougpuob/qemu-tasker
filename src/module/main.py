@@ -167,7 +167,8 @@ class main():
                 elif 'kill' == self.input_args.command:
                     # Create a KILL command request
                     cmd_data = config.kill_command_request_data(self.input_args.taskid)
-                    governor_client(self.server_addr).send_control_command(config.command_kind().kill, cmd_data, self.input_args.jsonreport)
+                    response_capsule = governor_client(self.server_addr).send_control_command(config.command_kind().kill, cmd_data, self.input_args.jsonreport)
+                    process_capsule(self.input_args, response_capsule)
 
 
                 elif 'qmp' == self.input_args.command:
@@ -176,13 +177,15 @@ class main():
                                                                     self.input_args.execute,
                                                                     self.input_args.argsjson,
                                                                     self.input_args.base64)
-                    governor_client(self.server_addr).send_control_command(config.command_kind().qmp, cmd_data, self.input_args.jsonreport)
+                    response_capsule = governor_client(self.server_addr).send_control_command(config.command_kind().qmp, cmd_data, self.input_args.jsonreport)
+                    process_capsule(self.input_args, response_capsule)
 
 
                 elif 'status' == self.input_args.command:
                     # Create a STATUS command request
                     cmd_data = config.status_command_request_data(self.input_args.taskid)
-                    governor_client(self.server_addr).send_control_command(config.command_kind().status, cmd_data, self.input_args.jsonreport)
+                    response_capsule = governor_client(self.server_addr).send_control_command(config.command_kind().status, cmd_data, self.input_args.jsonreport)
+                    process_capsule(self.input_args, response_capsule)
 
 
                 # =========================================================================
