@@ -147,24 +147,24 @@ class puppet_client(puppet_client_base):
 
       if cmd_kind == config.command_kind().list:
         new_cmd_data:config.list_command_request_data = cmd_data
-        cmd_ret = self.ftp_obj.list(new_cmd_data.dstdir)
+        cmd_ret = self.list(new_cmd_data.dstdir)
 
       elif cmd_kind == config.command_kind().download:
         new_cmd_data:config.download_command_request_data = cmd_data
-        cmd_ret = self.ftp_obj.download(new_cmd_data.files, new_cmd_data.dstdir)
+        cmd_ret = self.download(new_cmd_data.files, new_cmd_data.dstdir)
 
       elif cmd_kind == config.command_kind().upload:
         new_cmd_data:config.upload_command_request_data = cmd_data
-        cmd_ret = self.ftp_obj.upload(new_cmd_data.files, new_cmd_data.dstdir)
+        cmd_ret = self.upload(new_cmd_data.files, new_cmd_data.dstdir)
 
       else:
         cmd_ret = config.return_unsupported_command()
 
-      new_resp_data = config.transaction_capsule(cmd_data.act_kind,
+      resp_capsule = config.transaction_capsule(cmd_data.act_kind,
                                                  cmd_data.cmd_kind,
                                                  cmd_ret,
                                                  cmd_ret.data)
-      return new_resp_data
+      return resp_capsule
 
 
     def send_to_governor_server(self, cmd_kind:config.command_kind, cmd_data):
@@ -211,11 +211,11 @@ class puppet_client(puppet_client_base):
       else:
         cmd_ret = config.return_unsupported_command()
 
-      new_resp_data = config.transaction_capsule(config.action_kind().response,
-                                                 cmd_kind,
-                                                 cmd_ret,
-                                                 cmd_ret.data)
-      return new_resp_data
+      resp_capsule = config.transaction_capsule(config.action_kind().response,
+                                                cmd_kind,
+                                                cmd_ret,
+                                                cmd_ret.data)
+      return resp_capsule
 
 
     def disconnect(self):
@@ -226,7 +226,7 @@ class puppet_client(puppet_client_base):
 
     def execute(self, program:str, argument:str=None, work_dirpath:str=None):
       cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, False)
-      response_capsule = self.send_to_puppet_server(config.command_kind().execute, cmd_data)
+      response_capsule = self.send_to_governor_server(config.command_kind().execute, cmd_data)
       return response_capsule.result
 
 
@@ -242,7 +242,7 @@ class puppet_client(puppet_client_base):
       return self.ftp_obj.download(files, dstdir)
 
 
-    def list(self, files:list, dstdir:str):
+    def list(self, dstdir:str):
       return self.ftp_obj.list(dstdir)
 
 
