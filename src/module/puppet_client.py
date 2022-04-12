@@ -144,13 +144,13 @@ class puppet_client(puppet_client_base):
                                           config.return_command_socket_not_ready,
                                           None)
 
-      if cmd_kind == config.command_kind().execute:
+      if cmd_kind == config.command_kind().execute or \
+         cmd_kind == config.command_kind().breakup:
         return self.handle_cmd_request(cmd_kind, cmd_data)
 
       elif cmd_kind == config.command_kind().list or \
            cmd_kind == config.command_kind().download or \
-           cmd_kind == config.command_kind().upload or \
-           cmd_kind == config.command_kind().breakup:
+           cmd_kind == config.command_kind().upload:
         return self.handle_ftp_request(cmd_kind, cmd_data)
 
       else:
@@ -171,9 +171,6 @@ class puppet_client(puppet_client_base):
       elif cmd_kind == config.command_kind().upload:
         new_cmd_data:config.upload_command_request_data = cmd_data
         cmd_ret = self.upload(new_cmd_data.files, new_cmd_data.dstdir)
-
-      elif cmd_kind == config.command_kind().breakup:
-        cmd_ret = self.disconnect()
 
       else:
         cmd_ret = config.return_command_unsupported
