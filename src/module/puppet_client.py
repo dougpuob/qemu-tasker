@@ -50,13 +50,14 @@ class puppet_client_mock(puppet_client_base):
 class puppet_client(puppet_client_base):
 
 
-    def __init__(self, taskid:int):
+    def __init__(self, taskid:int, word_dir:str=None):
       self.BUFF_SIZE = 4096
       self.taskid = taskid
       self.cmd_socket = None
       self.ftp_obj = None
       self._is_cmd_connected = False
       self._is_ftp_connected = False
+      self.WORK_DIR = word_dir
 
 
     def __del__(self):
@@ -115,7 +116,14 @@ class puppet_client(puppet_client_base):
           logging.info("puppet client is trying to connect FTP socket (anonymous)  ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
           self.ftp_obj = ftpclient(ftp_socket_addr)
           if self.ftp_obj:
-            self.ftp_obj.connect()
+            ret = self.ftp_obj.connect()
+            if ret and self.WORK_DIR:
+
+              cmd_ret = self.ftp_obj.try_mkdir(self.WORK_DIR)
+              logging.info("self.ftp_obj.try_mkdir() cmd_ret={}".format(cmd_ret))
+
+              cmd_ret = self.ftp_obj.cd(self.WORK_DIR)
+              logging.info("self.ftp_obj.cd() cmd_ret={}".format(cmd_ret))
 
         if self.ftp_obj:
           self._is_ftp_connected = self.ftp_obj.is_connected()
@@ -242,6 +250,10 @@ class puppet_client(puppet_client_base):
       return self.ftp_obj.try_mkdir(dirpath)
 
 
+    # def cd(self, dirpath:str):
+    #   return self.ftp_obj.cd(dirpath)
+
+
     def upload(self, files:list, dstdir:str):
       return self.ftp_obj.upload(files, dstdir)
 
@@ -252,13 +264,3 @@ class puppet_client(puppet_client_base):
 
     def list(self, dstdir:str):
       return self.ftp_obj.list(dstdir)
-
-
-    # def request_puppet_command(self, cmd_kind:config.command_kind, cmd_data):
-    #     response_capsule = self.send(cmd_kind, cmd_data)
-    #     new_capsulre:config.transaction_capsule = config.transaction_capsule(response_capsule.act_kind,
-    #                                                                          response_capsule.cmd_kind,
-    #                                                                          response_capsule.result,
-    #                                                                          response_capsule.data)
-    #     return new_capsulre
-

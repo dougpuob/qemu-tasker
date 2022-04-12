@@ -22,6 +22,7 @@ class main():
     def __init__(self, parsed_args, governor_client_obj=None):
         self.input_args = parsed_args
         self.setting = None
+        self.WORK_DIR = 'qemu-tasker'
 
         #
         # Objects
@@ -266,7 +267,7 @@ class main():
     def get_puppet_client(self, taskid:int):
         # Query status info
         status_resp_data = self.send_governor_status_command(governor_client(self.server_addr), taskid)
-        pup_client = puppet_client(status_resp_data.server_info.socket_addr)
+        pup_client = puppet_client(taskid, self.WORK_DIR)
         pup_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.pup)
         ftp_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.ftp)
         pup_client.connect_cmd(pup_socket_info)

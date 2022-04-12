@@ -101,6 +101,22 @@ class ftpclient():
         finally:
             return cmdret
 
+    def cd(self, dir_path:str):
+        cmdret = config.command_return ()
+
+        try:
+            new_dir_path = self.ftp.cwd(dir_path)
+            cmdret.data = new_dir_path
+
+        except Exception as e:
+            cmdret.error_lines.append('exception occured at {} function !!!'.cd("list()"))
+            cmdret.error_lines.append(str(e))
+            cmdret.errcode = -1
+            logging.info(cmdret.error_lines)
+
+        finally:
+            return cmdret
+
 
     def download(self, filepath_list:list, save_to_path:str):
         cmdret = config.command_return ()
