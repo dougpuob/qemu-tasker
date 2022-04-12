@@ -67,7 +67,7 @@ class ftpclient():
     #     finally:
     #         return cmdret
 
-    def try_mkdir(self, dir_path:str):
+    def mkdir(self, dir_path:str):
         cmdret = config.command_return()
 
         try:
@@ -170,7 +170,7 @@ class ftpclient():
             # Try to create the directory then change directory
             #
             pwd = self.ftp.pwd()
-            cmdret_mkdir = self.try_mkdir(dir_to_save)
+            cmdret_mkdir = self.mkdir(dir_to_save)
             cmdret.info_lines.extend(cmdret_mkdir.info_lines)
             if cmdret_mkdir.errcode != 0:
                 cmdret.error_lines.extend(cmdret_mkdir.error_lines)
