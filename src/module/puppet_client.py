@@ -144,25 +144,23 @@ class puppet_client(puppet_client_base):
                                           config.return_command_socket_not_ready,
                                           None)
 
-      if cmd_kind == config.command_kind().execute or \
-         cmd_kind == config.command_kind().list or \
-         cmd_kind == config.command_kind().download or \
-         cmd_kind == config.command_kind().upload or \
-         cmd_kind == config.command_kind().breakup:
-        return self.send_to_puppet_server(cmd_kind, cmd_data)
+      if cmd_kind == config.command_kind().execute:
+        return self.handle_cmd_request(cmd_kind, cmd_data)
+
+      elif cmd_kind == config.command_kind().list or \
+           cmd_kind == config.command_kind().download or \
+           cmd_kind == config.command_kind().upload or \
+           cmd_kind == config.command_kind().breakup:
+        return self.handle_ftp_request(cmd_kind, cmd_data)
 
       else:
         assert 'Handle this wrong case !!!'
 
 
-    def send_to_puppet_server(self, cmd_kind:config.command_kind, cmd_data):
+    def handle_ftp_request(self, cmd_kind:config.command_kind, cmd_data):
       cmd_ret = None
 
-      if cmd_kind == config.command_kind().execute:
-        new_cmd_data:config.exec_command_request_data = cmd_data
-        cmd_ret = self.execute(new_cmd_data.program, new_cmd_data.arguments, new_cmd_data.workdir, new_cmd_data.is_base64)
-
-      elif cmd_kind == config.command_kind().list:
+      if cmd_kind == config.command_kind().list:
         new_cmd_data:config.list_command_request_data = cmd_data
         cmd_ret = self.list(new_cmd_data.dstdir)
 
@@ -191,7 +189,7 @@ class puppet_client(puppet_client_base):
       return resp_capsule
 
 
-    def send_to_governor_server(self, cmd_kind:config.command_kind, cmd_data):
+    def handle_cmd_request(self, cmd_kind:config.command_kind, cmd_data):
 
       #
       # Check conditions
@@ -211,7 +209,8 @@ class puppet_client(puppet_client_base):
       # Send request to governor server
       #
       cmd_ret = None
-      if cmd_kind == config.command_kind().execute:
+      if cmd_kind == config.command_kind().execute or \
+         cmd_kind == config.command_kind().breakup:
 
         request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
         self.cmd_socket.send(request_capsule.toTEXT().encode())
@@ -248,13 +247,13 @@ class puppet_client(puppet_client_base):
 
     def disconnect(self):
       cmd_data = config.generic_command_request_data(self.taskid)
-      response_capsule = self.send_to_puppet_server(config.command_kind().breakup, cmd_data)
+      response_capsule = self.handle_cmd_request(config.command_kind().breakup, cmd_data)
       return response_capsule.result
 
 
     def execute(self, program:str, argument:str=None, work_dirpath:str=None, is_base64:bool=False):
       cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dirpath, is_base64)
-      response_capsule = self.send_to_puppet_server(config.command_kind().execute, cmd_data)
+      response_capsule = self.handle_cmd_request(config.command_kind().execute, cmd_data)
       return response_capsule.result
 
 
@@ -272,3 +271,4 @@ class puppet_client(puppet_client_base):
 
     def list(self, dstdir:str):
       return self.ftp_obj.list(dstdir)
+
