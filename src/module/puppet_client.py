@@ -170,7 +170,7 @@ class puppet_client(puppet_client_base):
         cmd_ret = self.disconnect()
 
       else:
-        cmd_ret = config.return_unsupported_command()
+        cmd_ret = config.return_command_unsupported
 
       # Tidy cmd_ret.data because it will be returned from another field.
       cmd_ret_data = cmd_ret.data
@@ -225,7 +225,7 @@ class puppet_client(puppet_client_base):
         cmd_ret = resp_data.result
 
       else:
-        cmd_ret = config.return_unsupported_command()
+        cmd_ret = config.return_command_unsupported
 
       # Tidy cmd_ret.data because it will be returned from another field.
       cmd_ret_data = cmd_ret.data

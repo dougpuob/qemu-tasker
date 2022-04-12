@@ -158,18 +158,17 @@ class connections_status:
         self.PUP:connection_kind = connection_kind().unknown
         self.FTP:connection_kind = connection_kind().unknown
 
-class template_return_command(command_return):
+class customized_return_command(command_return):
     def __init__(self, customized_error_message):
         self.error_lines = [customized_error_message]
         self.info_lines = []
         self.errcode = -99999
         self.data = None
 
-return_unsupported_command = template_return_command('unsupported command')
-return_command_unsupported = return_unsupported_command
-return_command_wrong_taskid = template_return_command('wrong taskid')
-return_command_no_qemu_inst = template_return_command('Failed to find the specific QEMU instance')
-return_command_no_resp_data = template_return_command('No response data')
+return_command_unsupported  = customized_return_command('unsupported command')
+return_command_wrong_taskid = customized_return_command('wrong taskid')
+return_command_no_qemu_inst = customized_return_command('Failed to find the specific QEMU instance')
+return_command_no_resp_data = customized_return_command('No response data')
 
 
 class transaction_capsule(config):

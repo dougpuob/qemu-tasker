@@ -568,9 +568,9 @@ class governor_server(governor_server_base):
                 #
                 cmd_ret = None
                 if None == qemu_inst:
-                    cmd_ret = config.return_command_no_qemu_inst()
+                    cmd_ret = config.return_command_no_qemu_inst
                 elif None == resp_data:
-                    cmd_ret = config.return_command_no_resp_data()
+                    cmd_ret = config.return_command_no_resp_data
                 else:
                     cmd_ret = qemu_inst.result
 

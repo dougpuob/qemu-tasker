@@ -216,7 +216,7 @@ class puppet_server(puppet_server_base):
                     # Unsupported commands
                     # ------
                     else:
-                        cmd_ret = config.return_unsupported_command()
+                        cmd_ret = config.return_command_unsupported
 
 
                     return_capsule = config.transaction_capsule(
