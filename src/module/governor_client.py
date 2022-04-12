@@ -78,14 +78,6 @@ class governor_client(governor_client_base):
         self.conn_tcp.close()
 
         response_text = str(received, encoding='utf-8')
-        response_json = json.loads(response_text)
-
-        if is_json_report:
-            if True == is_json_report:
-                print(json.dumps(response_json, indent=2, sort_keys=True))
-            else:
-                print("[qemu-tasker] returned errcode: {}".format(response_json.result.errcode))
-
         resp_capsule = config.config().toCLASS(response_text)
         new_resp_capsule = config.transaction_capsule(resp_capsule.act_kind,
                                                       resp_capsule.cmd_kind,
