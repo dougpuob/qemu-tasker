@@ -54,12 +54,17 @@ class execproc():
 
     def run(self, cmdargs:config.command_argument, cwd:str=None, is_base64:bool=False):
 
+        logging.info("cmdargs={}".format(cmdargs))
+        logging.info("cwd={}".format(cwd))
+        logging.info("is_base64={}".format(is_base64))
+
         cmdstr:str = cmdargs.program
         if cmdargs.argument:
             args = cmdargs.argument
             if is_base64:
                 b64 = base64.b64decode(cmdargs.argument)
                 utf8 = b64.decode("utf-8")
+                logging.info("utf8={}".format(utf8))
                 args = utf8
 
             cmdstr = cmdstr + ' ' + args
