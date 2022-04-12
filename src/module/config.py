@@ -261,6 +261,7 @@ class start_command_response_data(config):
         # Connections
         self.conns_status = conns_status
         self.is_connected_qmp = conns_status.QMP
+        self.is_connected_pup = conns_status.PUP
 
 
 # Kill command
