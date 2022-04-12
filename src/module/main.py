@@ -260,16 +260,25 @@ class main():
     def send_governor_status_command(self, gov_client:governor_client, taskid:int):
         cmd_data = config.status_command_request_data(taskid)
         response_capsule = gov_client.send_control_command(config.command_kind().status, cmd_data, None)
-        status_data:config.status_command_response_data = response_capsule.data
-        return status_data
+        return response_capsule
 
 
     def get_puppet_client(self, taskid:int):
         # Query status info
-        status_resp_data = self.send_governor_status_command(governor_client(self.server_addr), taskid)
-        pup_client = puppet_client(taskid, self.WORK_DIR)
-        pup_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.pup)
-        ftp_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.ftp)
-        pup_client.connect_cmd(pup_socket_info)
-        pup_client.connect_ftp(ftp_socket_info)
-        return pup_client
+        status_resp_capsule:config.transaction_capsule = self.send_governor_status_command(governor_client(self.server_addr), taskid)
+        if 0 == status_resp_capsule.result.errcode:
+            status_resp_data:config.status_command_response_data = status_resp_capsule.data
+            pup_client = puppet_client(taskid, self.WORK_DIR)
+            pup_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.pup)
+            ftp_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.ftp)
+            pup_client.connect_cmd(pup_socket_info)
+            pup_client.connect_ftp(ftp_socket_info)
+            return pup_client
+
+        else:
+            logging.error('Failed to get status command !!!')
+            logging.error('result.errcode={}'.format(status_resp_capsule.result.errcode))
+            logging.error('result.info_lines={}'.format(status_resp_capsule.result.info_lines))
+            logging.error('result.error_lines={}'.format(status_resp_capsule.result.error_lines))
+
+            return None

@@ -467,7 +467,7 @@ class governor_server(governor_server_base):
 
                 qemu_inst = None
                 resp_data = None
-                return_capsule = None
+                resp_capcsule = None
                 incoming_capsule:config.transaction_capsule = config.config().toCLASS(incoming_message)
 
                 # ------
@@ -522,9 +522,10 @@ class governor_server(governor_server_base):
                 elif config.command_kind().status == incoming_capsule.cmd_kind:
                     cmd_data:config.status_command_request_data = incoming_capsule.data
                     qemu_inst = self.find_target_instance(cmd_data.taskid)
-                    cmdret = self.clear_qemu_instance(cmd_data.taskid, qemu_inst)
-                    if cmdret.errcode == 0:
-                        resp_data = self.command_to_status(qemu_inst, cmd_data)
+                    if qemu_inst:
+                        cmdret = self.clear_qemu_instance(cmd_data.taskid, qemu_inst)
+                        if cmdret.errcode == 0:
+                            resp_data = self.command_to_status(qemu_inst, cmd_data)
 
                 # ------
                 # QMP
@@ -553,33 +554,46 @@ class governor_server(governor_server_base):
                      config.command_kind().upload == incoming_capsule.cmd_kind or \
                      config.command_kind().download == incoming_capsule.cmd_kind:
                     error_text = "the '{}' command should not handle on server !!!".format(incoming_capsule.cmd_kind)
-                    return_capsule = config.transaction_capsule(
+                    resp_capcsule = config.transaction_capsule(
                                                     config.action_kind().response,
                                                     incoming_capsule.cmd_kind,
                                                     self.get_command_return(-1, error_text),
                                                     resp_data)
-                    return_capsule_text = return_capsule.toTEXT()
+                    return_capsule_text = resp_capcsule.toTEXT()
                     logging.error(error_text)
 
 
-                # ------------------------------------------------------------------------
-                if resp_data:
-                    result = ''
-                    if qemu_inst:
-                        result = qemu_inst.result
-                    else:
-                        result = self.get_command_return(0, '')
+                #
+                # Summary result then create coresponding error handling.
+                #
+                cmd_ret = None
+                if None == qemu_inst:
+                    cmd_ret = config.return_command_no_qemu_inst()
+                elif None == resp_data:
+                    cmd_ret = config.return_command_no_resp_data()
                 else:
-                    err_text = "the resp_data is None !!!"
-                    logging.error(err_text)
-                    result = self.get_command_return(-9999, err_text)
+                    cmd_ret = qemu_inst.result
 
-                return_capsule = config.transaction_capsule(
-                                                    config.action_kind().response,
-                                                    incoming_capsule.cmd_kind,
-                                                    result,
-                                                    resp_data)
-                return_capsule_text = return_capsule.toTEXT()
+                # if resp_data:
+                #     result = ''
+                #     if qemu_inst:
+                #         result = qemu_inst.result
+                #     else:
+                #         result = config.return_command_no_qemu_inst()
+                # else:
+                #     if qemu_inst:
+                #         result = qemu_inst.result
+                #         err_text = "the resp_data is None !!!"
+                #     else:
+                #         result = config.return_command_no_qemu_inst()
+                #         err_text = result
+                #     logging.error(err_text)
+
+                resp_capcsule = config.transaction_capsule(config.action_kind().response,
+                                                           incoming_capsule.cmd_kind,
+                                                           cmd_ret,
+                                                           resp_data)
+                return_capsule_text = resp_capcsule.toTEXT()
                 logging.info("return_capsule_text={}".format(return_capsule_text))
                 conn.send(bytes(return_capsule_text, encoding="utf-8"))
 

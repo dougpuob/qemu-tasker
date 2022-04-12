@@ -98,8 +98,12 @@ class governor_client(governor_client_base):
             else:
                 print("[qemu-tasker] returned errcode: {}".format(response_json.result.errcode))
 
-        response_capsule = config.config().toCLASS(response_text)
-        return response_capsule
+        resp_capsule = config.config().toCLASS(response_text)
+        new_resp_capsule = config.transaction_capsule(resp_capsule.act_kind,
+                                                      resp_capsule.cmd_kind,
+                                                      resp_capsule.result,
+                                                      resp_capsule.data)
+        return new_resp_capsule
 
 
     # def send_transfer_command(self,
