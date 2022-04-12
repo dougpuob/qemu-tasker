@@ -462,7 +462,6 @@ class governor_server(governor_server_base):
                 # ------
                 if config.command_kind().info == incoming_capsule.cmd_kind:
                     cmd_data:config.info_command_request_data = incoming_capsule.data
-                    qemu_inst =  qemu.qemu_instance(self.setting, None, None, None)
                     resp_data = self.command_to_info(cmd_data)
 
                 # ------
@@ -554,7 +553,9 @@ class governor_server(governor_server_base):
                 # Summary result then create coresponding error handling.
                 #
                 cmd_ret = None
-                if None == qemu_inst:
+                if config.command_kind().info == incoming_capsule.cmd_kind :
+                    cmd_ret = config.command_return()
+                elif None == qemu_inst:
                     cmd_ret = config.return_command_no_qemu_inst
                 elif None == resp_data:
                     cmd_ret = config.return_command_no_resp_data

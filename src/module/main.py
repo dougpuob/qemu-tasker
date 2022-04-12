@@ -149,8 +149,8 @@ class main():
                 if 'info' == self.input_args.command:
                     # Create a INFO command request
                     cmd_data = config.info_command_request_data()
-                    governor_client(self.server_addr).send_control_command(config.command_kind().info, cmd_data, self.input_args.jsonreport)
-
+                    response_capsule = governor_client(self.server_addr).send_control_command(config.command_kind().info, cmd_data, self.input_args.jsonreport)
+                    process_capsule(self.input_args, response_capsule)
 
                 elif 'start' == self.input_args.command:
                     assert self.input_args.config, "Please specific a config file !!!"
