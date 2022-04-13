@@ -124,7 +124,7 @@ class ftpclient():
                 basename = os.path.basename(filepath)
                 target_path = os.path.join(save_to_path, basename)
                 resp = self.ftp.retrbinary("RETR " + filepath, open(target_path, 'wb').write)
-                cmdret.info_lines.append(resp)
+                #cmdret.info_lines.append(resp)
 
         except Exception as e:
             cmdret.error_lines.append('exception occured at {} function !!!'.format("download()"))
