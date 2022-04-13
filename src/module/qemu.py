@@ -197,7 +197,7 @@ class qemu_instance:
         logging.info("self.server_info.pushpool_path={0}".format(self.server_info.pushpool_path))
         dirlist = os.listdir(self.server_info.pushpool_path)
         for file_from in dirlist:
-            fullpath = self.path_obj.normpath_posix(os.path.join('pushpool', file_from))
+            fullpath = self.path_obj.normpath_posix(os.path.join(self.server_info.pushpool_path, file_from))
 
             if os.path.exists(fullpath):
                 selected_files.append(fullpath)
