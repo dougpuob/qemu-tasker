@@ -190,6 +190,8 @@ class puppet_client(puppet_client_base):
 
     def handle_cmd_request(self, cmd_kind:config.command_kind, cmd_data):
 
+      logging.info('handle_cmd_request() (==')
+
       #
       # Check conditions
       #
@@ -204,16 +206,21 @@ class puppet_client(puppet_client_base):
         unknown_capsule = config.transaction_capsule(config.action_kind().response, cmd_kind, cmdret, None)
         return unknown_capsule
 
+      logging.info('handle_cmd_request() 1')
+
       #
       # Send request to governor server
       #
       cmd_ret = None
       if cmd_kind == config.command_kind().execute or \
          cmd_kind == config.command_kind().breakup:
-
+        logging.info('handle_cmd_request() 2')
         request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
+        logging.info('handle_cmd_request() 3')
         logging.info('{}'.format(request_capsule.toTEXT()))
+        logging.info('handle_cmd_request() 4')
         self.cmd_socket.send(request_capsule.toTEXT().encode())
+        logging.info('handle_cmd_request() 5')
 
         received = b''
         while True:

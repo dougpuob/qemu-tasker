@@ -327,26 +327,9 @@ class qemu_instance:
 
 
         #
-        # Create filepool directory.
-        #
-        guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
-        logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
-
-        guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
-        logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
-
-        cmdret = self.pup_obj.mkdir('pushpool')
-
-
-        #
         # Query OS information
         #
         logging.info("QEMU(taskid={0}) is trying to query information from current guest OS. (puppet)".format(self.taskid))
-
-
-        guest_info_os_kind = config.os_kind().unknown
-        guest_info_homedir_path =''
-        guest_info_pushdir_name =''
 
 
         #
@@ -358,6 +341,7 @@ class qemu_instance:
         cmdret = self.pup_obj.execute('uname')
         logging.info('`uname` (cmdret.errcode={})'.format(cmdret.errcode))
 
+        guest_info_os_kind = config.os_kind().unknown
         if cmdret.errcode == 0:
             stdout = ''.join(cmdret.info_lines).strip()
             if stdout.find("Linux") > 0:
@@ -377,6 +361,7 @@ class qemu_instance:
         #
         # Get guest current working directory path
         #
+        guest_info_homedir_path =''
         if guest_info_os_kind == config.os_kind().windows:
             cmdret = self.pup_obj.execute('(Get-Location).Path')
             guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
@@ -384,11 +369,24 @@ class qemu_instance:
             cmdret = self.pup_obj.execute('pwd')
             guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
 
+
+        guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
+        logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
+
+        guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
+        logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
+
         guest_info_pushdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, guest_info_pushdir_name))
         logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_path))
 
         guest_info_workdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, self.WORKDIR_NAME))
         logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
+
+
+        #
+        # Create filepool directory.
+        #
+        cmdret = self.pup_obj.mkdir('pushpool')
 
 
         # Create Guest Information.
