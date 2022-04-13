@@ -1,5 +1,6 @@
 from base64 import decode
 import logging
+import os
 
 from queue import Queue, Empty
 from concurrent.futures import ThreadPoolExecutor
@@ -58,6 +59,7 @@ class execproc():
         logging.info("cmdargs.argument={}".format(cmdargs.argument))
         logging.info("workdir={}".format(workdir))
         logging.info("is_base64={}".format(is_base64))
+        logging.info("os.getcwd()={0}".format(os.getcwd()))
 
         cmdstr:str = cmdargs.program
         if cmdargs.argument:
