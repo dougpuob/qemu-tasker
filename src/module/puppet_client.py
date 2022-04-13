@@ -79,28 +79,27 @@ class puppet_client(puppet_client_base):
 
 
     def connect_cmd(self, cmd_socket_addr:config.socket_address):
-      result:bool = False
 
       try:
         logging.info("puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
         self.cmd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        ret = self.cmd_socket.connect_ex((cmd_socket_addr.address, cmd_socket_addr.port))
+        self.cmd_socket.connect((cmd_socket_addr.address, cmd_socket_addr.port))
+        self.cmd_socket.send("{}".encode())
 
-        if ret:
-          result = False
-          self._is_cmd_connected = False
-          logging.error("failed to connect to command channel !!!")
-        else:
-          result = True
-          self._is_cmd_connected = True
-          logging.info("connected to command channel !!!")
+        self._is_cmd_connected = True
+        # if ret:
+        #   self._is_cmd_connected = False
+        #   logging.error("failed to connect to command channel !!!")
+        # else:
+        #   self._is_cmd_connected = True
+        #   logging.info("connected to command channel !!!")
 
       except Exception as e:
-        result = False
-        logging.exception(str(e))
+        self._is_cmd_connected = False
+        logging.exception('Failed to connect to command socket !!!')
 
       finally:
-        return result
+        return self._is_cmd_connected
 
 
     def connect_ftp(self,
@@ -132,7 +131,7 @@ class puppet_client(puppet_client_base):
 
       except Exception as e:
         self._is_ftp_connected = False
-        logging.exception(str(e))
+        logging.exception('Failed to connect to FTP socket !!!')
 
       finally:
         return self._is_ftp_connected

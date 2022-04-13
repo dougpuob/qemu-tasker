@@ -131,10 +131,11 @@ class puppet_server(puppet_server_base):
             while self.is_started:
                 logging.info("puppet server is waiting for connection ...")
                 new_conn, new_addr = self.listen_tcp_conn.accept()
+                logging.info("puppet server accepted a new connection ... (new_addr={})".format(new_addr))
                 #self.accepted_list.append(new_conn)
-                thread_for_command = threading.Thread(target = self.thread_routine_processing_command, args=(new_conn,))
-                thread_for_command.setDaemon(True)
-                thread_for_command.start()
+                thread_handling_commands = threading.Thread(target = self.thread_routine_processing_command, args=(new_conn,))
+                thread_handling_commands.setDaemon(True)
+                thread_handling_commands.start()
 
         except Exception as e:
             frameinfo = getframeinfo(currentframe())
