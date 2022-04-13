@@ -188,6 +188,20 @@ class main():
                     process_capsule(self.input_args, response_capsule)
 
 
+                elif 'push' == self.input_args.command:
+                    # Create a PUSH command request
+                    cmd_data = config.push_command_request_data(self.input_args.taskid)
+                    response_capsule = governor_client(self.server_addr).send_control_command(config.command_kind().push, cmd_data, self.input_args.jsonreport)
+                    process_capsule(self.input_args, response_capsule)
+
+
+                elif 'signal' == self.input_args.command:
+                    # Create a SIGNAL command request
+                    cmd_data = config.signal_command_request_data(self.input_args.taskid)
+                    response_capsule = governor_client(self.server_addr).send_control_command(config.command_kind().signal, cmd_data, self.input_args.jsonreport)
+                    process_capsule(self.input_args, response_capsule)
+
+
                 # =========================================================================
                 # Puppet commands
                 # =========================================================================
@@ -224,21 +238,6 @@ class main():
                                                                     self.input_args.dstdir)
                     response_capsule = pup_client.send_request(config.command_kind().download, cmd_data)
                     process_capsule(self.input_args, response_capsule)
-
-
-                # =========================================================================
-                # Synchronization commands
-                # =========================================================================
-
-                elif 'push' == self.input_args.command:
-                    # Create a PUSH command request
-                    cmd_data = config.push_command_request_data(self.input_args.taskid)
-                    governor_client(self.server_addr).send_control_command(config.command_kind().push, cmd_data, self.input_args.jsonreport)
-
-                elif 'signal' == self.input_args.command:
-                    # Create a SIGNAL command request
-                    cmd_data = config.signal_command_request_data(self.input_args.taskid)
-                    governor_client(self.server_addr).send_control_command(config.command_kind().signal, cmd_data, self.input_args.jsonreport)
 
 
                 # =========================================================================
