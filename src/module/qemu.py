@@ -74,7 +74,7 @@ class qemu_instance:
 
         self.socket_gov_addr = config.socket_address(self.setting.Governor.Address, self.setting.Governor.Port)
         self.socket_pup_cmd = config.socket_address(self.setting.Puppet.Address, self.forward_port.pup)
-        self.socket_pup_ftp = config.socket_address(self.setting.Puppet.Address, self.forward_port.ftp)
+        self.socket_pup_ftp = config.socket_address(self.setting.Governor.Address, self.forward_port.ftp)
 
         workdir_path = self.path_obj.realpath('.')
         pushdir_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
@@ -199,6 +199,7 @@ class qemu_instance:
         logging.info("dirlist={0}".format(dirlist))
         for filepath in dirlist:
             fullpath = self.path_obj.normpath_posix(os.path.join(self.server_info.pushpool_path, filepath))
+            logging.info("fullpath={0}".format(fullpath))
 
             if os.path.exists(fullpath):
                 selected_files.append(fullpath)
