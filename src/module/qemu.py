@@ -210,13 +210,12 @@ class qemu_instance:
                 file_to = os.path.join(self.guest_info.pushpool_name, basename)
                 file_to = self.path_obj.normpath(file_to)
 
-                # cmdret = self.socket_pup_ftp.upload(file_from, file_to)
-                # self.result.error_lines.extend(cmdret.info_lines)
-                # self.result.error_lines.extend(cmdret.error_lines)
-                # self.result.errcode = cmdret.errcode
-                #
-                # if 0 != cmdret.errcode:
-                #     break
+                cmdret = self.pup_obj.ftp_obj.upload(file_to, 'pushpool')
+                self.result.error_lines.extend(cmdret.info_lines)
+                self.result.error_lines.extend(cmdret.error_lines)
+                self.result.errcode = cmdret.errcode
+                if 0 != cmdret.errcode:
+                    break
 
         self.status = config.task_status().ready
         return (final_cmdret.errcode == 0)
