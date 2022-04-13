@@ -161,10 +161,12 @@ class puppet_server(puppet_server_base):
                     time.sleep(1)
                     continue
 
+                #
+                # Convert byte buffers to string
+                #
                 incoming_message = ''
                 try:
                     incoming_message = str(received, encoding='utf-8')
-                    json.loads(incoming_message)
                 except Exception as e:
                     logging.exception("incoming_message={}".format(incoming_message))
                     continue
@@ -184,6 +186,18 @@ class puppet_server(puppet_server_base):
 
                 else:
                     cmd_ret = None
+
+                    #
+                    # Convert string to JSON object
+                    #
+                    try:
+                        json.loads(incoming_message)
+                    except Exception as e:
+                        logging.exception("incoming_message={}".format(incoming_message))
+                        continue
+                    finally:
+                        received = b''
+
                     incoming_capsule:config.transaction_capsule = config.config().toCLASS(incoming_message)
 
                     logging.info("Recoginzed command, ready to handle it. (incoming_capsule.cmd_kind={})".format(incoming_capsule.cmd_kind))
