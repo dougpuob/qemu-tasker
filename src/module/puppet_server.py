@@ -157,7 +157,7 @@ class puppet_server(puppet_server_base):
             while _keep_going:
 
                 received = new_conn.recv(self.BUFF_SIZE)
-                if 0 == len(received) > 0:
+                if 0 == len(received):
                     time.sleep(1)
                     continue
 
@@ -214,9 +214,7 @@ class puppet_server(puppet_server_base):
                     # ------
                     elif config.command_kind().execute == incoming_capsule.cmd_kind:
                         cmd_data:config.execute_command_request_data = incoming_capsule.data
-                        logging.info("self.handle_execute_command(cmd_data) 1")
                         cmd_ret = self.handle_execute_command(cmd_data)
-                        logging.info("self.handle_execute_command(cmd_data) 2")
 
                     # ------
                     # List

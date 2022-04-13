@@ -191,8 +191,6 @@ class puppet_client(puppet_client_base):
 
     def handle_cmd_request(self, cmd_kind:config.command_kind, cmd_data):
 
-      logging.info('handle_cmd_request() (==')
-
       #
       # Check conditions
       #
@@ -207,21 +205,15 @@ class puppet_client(puppet_client_base):
         unknown_capsule = config.transaction_capsule(config.action_kind().response, cmd_kind, cmdret, None)
         return unknown_capsule
 
-      logging.info('handle_cmd_request() 1')
-
       #
       # Send request to governor server
       #
       cmd_ret = None
       if cmd_kind == config.command_kind().execute or \
          cmd_kind == config.command_kind().breakup:
-        logging.info('handle_cmd_request() 2')
         request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
-        logging.info('handle_cmd_request() 3')
         logging.info('{}'.format(request_capsule.toTEXT()))
-        logging.info('handle_cmd_request() 4')
         self.cmd_socket.send(request_capsule.toTEXT().encode())
-        logging.info('handle_cmd_request() 5')
 
         received = b''
         while True:
@@ -235,17 +227,13 @@ class puppet_client(puppet_client_base):
               except Exception as e:
                   continue
 
-        logging.info('handle_cmd_request() 6')
         response_text = str(received, encoding='utf-8')
-        logging.info('handle_cmd_request() 7 response_text={}'.format(response_text))
         resp_data = config.config().toCLASS(response_text)
         cmd_ret = resp_data.result
-        logging.info('handle_cmd_request() 8')
 
       else:
         cmd_ret = config.return_command_unsupported
 
-      logging.info('handle_cmd_request() 9')
       # Tidy cmd_ret.data because it will be returned from another field.
       cmd_ret_data = cmd_ret.data
       cmd_ret.data = None
@@ -264,10 +252,8 @@ class puppet_client(puppet_client_base):
 
 
     def execute(self, program:str, argument:str=None, work_dir:str=None, is_base64:bool=False):
-      logging.info('1')
       cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dir, is_base64)
       response_capsule = self.handle_cmd_request(config.command_kind().execute, cmd_data)
-      logging.info('2')
       return response_capsule.result
 
 
