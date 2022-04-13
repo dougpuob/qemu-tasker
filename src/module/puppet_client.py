@@ -83,16 +83,18 @@ class puppet_client(puppet_client_base):
       try:
         logging.info("puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
         self.cmd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.cmd_socket.connect((cmd_socket_addr.address, cmd_socket_addr.port))
-        self.cmd_socket.send("{}".encode())
+        ret = self.cmd_socket.connect_ex((cmd_socket_addr.address, cmd_socket_addr.port))
 
-        self._is_cmd_connected = True
-        # if ret:
-        #   self._is_cmd_connected = False
-        #   logging.error("failed to connect to command channel !!!")
-        # else:
-        #   self._is_cmd_connected = True
-        #   logging.info("connected to command channel !!!")
+        if ret:
+          self._is_cmd_connected = False
+          logging.error("failed to connect to command channel !!!")
+        else:
+          self.cmd_socket.send("{}".encode())
+          received = self.cmd_socket.recv(100)
+          logging.info("received={0}".format(received))
+
+          self._is_cmd_connected = True
+          logging.info("connected to command channel !!!")
 
       except Exception as e:
         self._is_cmd_connected = False
