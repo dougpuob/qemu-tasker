@@ -272,18 +272,13 @@ class puppet_server(puppet_server_base):
     def handle_execute_command(self, cmd_data:config.execute_command_request_data):
         cmdargs:config.command_argument = config.command_argument(cmd_data.program, cmd_data.argument)
         workdir = self.osdppath.normpath(cmd_data.workdir, self.oskind)
-        if self.oskind == config.os_kind().windows:
-            full_workdir = self.osdppath.realpath_windows(workdir)
-        else:
-            full_workdir = self.osdppath.realpath_posix(workdir)
-
         homedir  = os.path.expanduser('~')
         logging.info("homedir={0}".format(homedir))
         logging.info("os.getcwd()={0}".format(os.getcwd()))
         logging.info("cmd_data.workdir={0}".format(cmd_data.workdir))
-        logging.info("full_workdir={0}".format(full_workdir))
+        logging.info("workdir={0}".format(workdir))
 
-        cmdret = self.execproc.run(cmdargs, full_workdir, cmd_data.is_base64)
+        cmdret = self.execproc.run(cmdargs, workdir, cmd_data.is_base64)
         return cmdret
 
 
