@@ -175,6 +175,7 @@ class puppet_server(puppet_server_base):
 
 
                 cmd_ret = None
+                incoming_capsule:config.transaction_capsule = None
                 if not incoming_message.startswith("{\"act_kind\": \"request\""):
                     logging.info("Received an unknow message !!! (len(incoming_message)={})".format(len(incoming_message)))
                     logging.info("{}".format(incoming_message))
@@ -185,7 +186,7 @@ class puppet_server(puppet_server_base):
                     cmd_ret = config.return_command_unknown
 
                 else:
-                    incoming_capsule:config.transaction_capsule = config.config().toCLASS(incoming_message)
+                    incoming_capsule = config.config().toCLASS(incoming_message)
 
                     logging.info("Recoginzed command, ready to handle it. (incoming_capsule.cmd_kind={})".format(incoming_capsule.cmd_kind))
 
