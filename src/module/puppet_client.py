@@ -234,13 +234,17 @@ class puppet_client(puppet_client_base):
               except Exception as e:
                   continue
 
+        logging.info('handle_cmd_request() 6')
         response_text = str(received, encoding='utf-8')
+        logging.info('handle_cmd_request() 7 response_text={}'.format(response_text))
         resp_data = config.config().toCLASS(response_text)
         cmd_ret = resp_data.result
+        logging.info('handle_cmd_request() 8')
 
       else:
         cmd_ret = config.return_command_unsupported
 
+      logging.info('handle_cmd_request() 9')
       # Tidy cmd_ret.data because it will be returned from another field.
       cmd_ret_data = cmd_ret.data
       cmd_ret.data = None
