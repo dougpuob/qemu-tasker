@@ -57,11 +57,11 @@ class ftpclient():
 
         try:
             full_pathname = self.ftp.mkd(dir_path)
-            cmdret.info_lines.append("[ftpclient.py] full_pathname={}".format(full_pathname))
+            cmdret.info_lines.append("full_pathname={}".format(full_pathname))
 
 
         except Exception as e:
-            cmdret.error_lines.append('[ftpclient.py] exception occured at {} function !!!'.format("mkdir()"))
+            cmdret.error_lines.append('exception occured at {} function !!!'.format("mkdir()"))
             cmdret.error_lines.append(str(e))
             cmdret.errcode = -1
             logging.info(cmdret.error_lines)
@@ -78,7 +78,7 @@ class ftpclient():
             cmdret.data = dir_list
 
         except Exception as e:
-            cmdret.error_lines.append('[ftpclient.py] exception occured at {} function !!!'.format("list()"))
+            cmdret.error_lines.append('exception occured at {} function !!!'.format("list()"))
             cmdret.error_lines.append(str(e))
             cmdret.errcode = -1
             logging.info(cmdret.error_lines)
@@ -94,7 +94,7 @@ class ftpclient():
             cmdret.data = new_dir_path
 
         except Exception as e:
-            cmdret.error_lines.append('[ftpclient.py] exception occured at {} function !!!'.cd("list()"))
+            cmdret.error_lines.append('exception occured at {} function !!!'.cd("list()"))
             cmdret.error_lines.append(str(e))
             cmdret.errcode = -1
             logging.info(cmdret.error_lines)
@@ -115,7 +115,7 @@ class ftpclient():
                 os.makedirs(save_to_path)
 
             if not os.path.exists(save_to_path):
-                raise "[ftpclient.py] Directory is not there !!! (save_to_path={})".format(save_to_path)
+                raise "Directory is not there !!! (save_to_path={})".format(save_to_path)
 
             #
             # Download files
@@ -127,7 +127,7 @@ class ftpclient():
                 cmdret.info_lines.append(resp)
 
         except Exception as e:
-            cmdret.error_lines.append('[ftpclient.py] exception occured at {} function !!!'.format("download()"))
+            cmdret.error_lines.append('exception occured at {} function !!!'.format("download()"))
             cmdret.error_lines.append(str(e))
             cmdret.errcode = -1
             logging.info(cmdret.error_lines)
@@ -146,10 +146,10 @@ class ftpclient():
             for filepath in filepath_list:
                 if not os.path.exists(filepath):
                     cmdret.errcode = -1
-                    cmdret.error_lines.append("[ftpclient.py] File not found !!! (filepath={})".format(filepath))
+                    cmdret.error_lines.append("File not found !!! (filepath={})".format(filepath))
 
             if cmdret.errcode != 0:
-                raise "[ftpclient.py] File not found !!!"
+                raise "File not found !!!"
 
             #
             # Try to create the directory then change directory
@@ -178,7 +178,7 @@ class ftpclient():
             cmdret.info_lines.append(resp)
 
         except Exception as e:
-            cmdret.error_lines.append('[ftpclient.py] exception occured at {} function !!!'.format("upload()"))
+            cmdret.error_lines.append('exception occured at {} function !!!'.format("upload()"))
             cmdret.error_lines.append(str(e))
             cmdret.errcode = -1
             logging.info(cmdret.error_lines)

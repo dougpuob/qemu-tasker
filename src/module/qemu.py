@@ -88,7 +88,7 @@ class qemu_instance:
 
         # Connections status
         self.qmp_obj = QEMUMonitorProtocol((self.socket_gov_addr.address, self.forward_port.qmp), server=True)
-        self.pup_obj = puppet_client(config.socket_address(self.setting.Governor.Address, self.forward_port.pup))
+        self.pup_obj = puppet_client(config.socket_address(self.setting.Governor.Address, self.forward_port.pup), self.WORKDIR_NAME)
         self.connections_status = config.connections_status()
 
         #
@@ -326,11 +326,21 @@ class qemu_instance:
                 time.sleep(1)
 
 
-
+        #
         # Create filepool directory.
+        #
+        guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
+        logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
+
+        guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
+        logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
+
         cmdret = self.pup_obj.mkdir('pushpool')
 
 
+        #
+        # Query OS information
+        #
         logging.info("QEMU(taskid={0}) is trying to query information from current guest OS. (puppet)".format(self.taskid))
 
 
@@ -373,13 +383,6 @@ class qemu_instance:
         else:
             cmdret = self.pup_obj.execute('pwd')
             guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
-
-
-        guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
-        logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
-
-        guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
-        logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
 
         guest_info_pushdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, guest_info_pushdir_name))
         logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_path))
