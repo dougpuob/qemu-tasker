@@ -302,7 +302,7 @@ class qemu_instance:
 
                 if not self.pup_obj.is_ftp_connected():
                     logging.info("QEMU(taskid={0}) is trying to connect puppet (ftp) ...)".format(self.taskid))
-                    ret = self.pup_obj.connect_ftp(self.socket_pup_ftp)
+                    ret = self.pup_obj.connect_ftp(self.socket_pup_ftp, self.WORKDIR_NAME)
                     logging.info("ret={0}".format(ret))
                     logging.info("pup_obj.is_ftp_connected={0}".format(self.pup_obj.is_ftp_connected()))
 
@@ -324,6 +324,11 @@ class qemu_instance:
 
             finally:
                 time.sleep(1)
+
+
+
+        # Create filepool directory.
+        cmdret = self.pup_obj.mkdir('pushpool')
 
 
         logging.info("QEMU(taskid={0}) is trying to query information from current guest OS. (puppet)".format(self.taskid))
@@ -395,12 +400,12 @@ class qemu_instance:
                                         guest_info_pushdir_name)
 
 
-        # Create filepool directory.
-        cmdret = self.pup_obj.mkdir('qemu-tasker/pushpool')
-        logging.info("QEMU(taskid={0}) create filepool directory ({1})".format(self.taskid, guest_info_pushdir_name))
-        logging.info("  cmdret.errcode={0}".format(cmdret.errcode))
-        logging.info("  cmdret.info_lines={0}".format(cmdret.info_lines))
-        logging.info("  cmdret.error_lines={0}".format(cmdret.error_lines))
+
+        # cmdret = self.pup_obj.mkdir('qemu-tasker/pushpool')
+        # logging.info("QEMU(taskid={0}) create filepool directory ({1})".format(self.taskid, guest_info_pushdir_name))
+        # logging.info("  cmdret.errcode={0}".format(cmdret.errcode))
+        # logging.info("  cmdret.info_lines={0}".format(cmdret.info_lines))
+        # logging.info("  cmdret.error_lines={0}".format(cmdret.error_lines))
 
 
         # Update status of QEMU instance.
