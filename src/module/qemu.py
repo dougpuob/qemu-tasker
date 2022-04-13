@@ -209,7 +209,7 @@ class qemu_instance:
         logging.info("self.pup_obj.ftp_obj.is_connected()={0}".format(self.pup_obj.ftp_obj.is_connected()))
         if self.is_ftp_connected():
             cmdret = self.pup_obj.ftp_obj.upload(selected_files, 'pushpool')
-            self.result.error_lines.extend(cmdret.info_lines)
+            self.result.info_lines.extend(cmdret.info_lines)
             self.result.error_lines.extend(cmdret.error_lines)
             self.result.errcode = cmdret.errcode
         else:
