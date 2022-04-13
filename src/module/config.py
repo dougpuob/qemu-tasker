@@ -163,7 +163,9 @@ class customized_return_command(command_return):
         self.errcode = -99999
         self.data = None
 
+
 return_command_unsupported  = customized_return_command('unsupported command')
+return_command_unknown      = customized_return_command('unknown command')
 return_command_wrong_taskid = customized_return_command('wrong taskid')
 return_command_no_qemu_inst = customized_return_command('Failed to find the specific QEMU instance')
 return_command_no_resp_data = customized_return_command('No response data')
