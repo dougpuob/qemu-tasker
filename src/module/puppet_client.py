@@ -89,7 +89,7 @@ class puppet_client(puppet_client_base):
           self._is_cmd_connected = False
           logging.error("failed to connect to command channel !!!")
         else:
-          self.cmd_socket.send("{}".encode())
+          self.cmd_socket.send("## Hello for testing ##".encode())
           received = self.cmd_socket.recv(100)
           logging.info("received={0}".format(received))
 

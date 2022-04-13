@@ -173,20 +173,18 @@ class puppet_server(puppet_server_base):
 
                 logging.info("incoming_message={}".format(incoming_message))
 
-
-                cmd_ret = None
-                incoming_capsule:config.transaction_capsule = None
                 if not incoming_message.startswith("{\"act_kind\": \"request\""):
                     logging.info("Received an unknow message !!! (len(incoming_message)={})".format(len(incoming_message)))
                     logging.info("{}".format(incoming_message))
 
                     # ------
-                    # Unknown commands
+                    # Unknown commands, reply the same thing.
                     # ------
-                    cmd_ret = config.return_command_unknown
+                    new_conn.send(bytes(incoming_message, encoding="utf-8"))
 
                 else:
-                    incoming_capsule = config.config().toCLASS(incoming_message)
+                    cmd_ret = None
+                    incoming_capsule:config.transaction_capsule = config.config().toCLASS(incoming_message)
 
                     logging.info("Recoginzed command, ready to handle it. (incoming_capsule.cmd_kind={})".format(incoming_capsule.cmd_kind))
 
@@ -234,12 +232,12 @@ class puppet_server(puppet_server_base):
                         cmd_ret = config.return_command_unsupported
 
 
-                return_capsule = config.transaction_capsule(config.action_kind().response,
-                                                            incoming_capsule.cmd_kind,
-                                                            cmd_ret)
-                return_capsule_text = return_capsule.toTEXT()
-                logging.info("return_capsule_text={}".format(return_capsule_text))
-                new_conn.send(bytes(return_capsule_text, encoding="utf-8"))
+                    return_capsule = config.transaction_capsule(config.action_kind().response,
+                                                                incoming_capsule.cmd_kind,
+                                                                cmd_ret)
+                    return_capsule_text = return_capsule.toTEXT()
+                    logging.info("return_capsule_text={}".format(return_capsule_text))
+                    new_conn.send(bytes(return_capsule_text, encoding="utf-8"))
 
         except Exception as e:
             frameinfo = getframeinfo(currentframe())
