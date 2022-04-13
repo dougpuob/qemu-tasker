@@ -157,8 +157,10 @@ class ftpclient():
             prev_dir = self.ftp.pwd()
             logging.info("prev_dir={0}".format(prev_dir))
 
+            logging.info("dir_to_save={0}".format(dir_to_save))
             if dir_to_save:
                 resp = self.ftp.cwd(dir_to_save)
+                cmdret.info_lines.append(resp)
                 logging.info("resp={0}".format(resp))
 
 
@@ -167,6 +169,8 @@ class ftpclient():
             #
             for filepath in filepath_list:
                 basename = os.path.basename(filepath)
+                logging.info("filepath={0}".format(filepath))
+                logging.info("basename={0}".format(basename))
                 file = open(filepath,'rb')
                 if file:
                     resp = self.ftp.storbinary('STOR ' + basename, file)
@@ -178,8 +182,8 @@ class ftpclient():
             #
             if dir_to_save:
                 resp = self.ftp.cwd(prev_dir)
-
-            cmdret.info_lines.append(resp)
+                logging.info("resp={0}".format(resp))
+                cmdret.info_lines.append(resp)
 
         except Exception as e:
             cmdret.error_lines.append('exception occured at {} function !!!'.format("upload()"))
