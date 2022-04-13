@@ -327,6 +327,12 @@ class qemu_instance:
 
 
         #
+        # Create filepool directory.
+        #
+        cmdret = self.pup_obj.mkdir('pushpool')
+
+
+        #
         # Query OS information
         #
         logging.info("QEMU(taskid={0}) is trying to query information from current guest OS. (puppet)".format(self.taskid))
@@ -383,10 +389,6 @@ class qemu_instance:
         logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
 
 
-        #
-        # Create filepool directory.
-        #
-        cmdret = self.pup_obj.mkdir('pushpool')
 
 
         # Create Guest Information.
