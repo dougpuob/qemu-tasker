@@ -54,10 +54,10 @@ class execproc():
 
     def run(self, cmdargs:config.command_argument, workdir:str=None, is_base64:bool=False):
 
-        logging.info("[execproc.py] cmdargs.program={}".format(cmdargs.program))
-        logging.info("[execproc.py] cmdargs.argument={}".format(cmdargs.argument))
-        logging.info("[execproc.py] workdir={}".format(workdir))
-        logging.info("[execproc.py] is_base64={}".format(is_base64))
+        logging.info("cmdargs.program={}".format(cmdargs.program))
+        logging.info("cmdargs.argument={}".format(cmdargs.argument))
+        logging.info("workdir={}".format(workdir))
+        logging.info("is_base64={}".format(is_base64))
 
         cmdstr:str = cmdargs.program
         if cmdargs.argument:
@@ -71,7 +71,7 @@ class execproc():
             cmdstr = cmdstr + ' ' + args
 
 
-        logging.info("[execproc.py] cmdstr={}".format(cmdstr))
+        logging.info("cmdstr={}".format(cmdstr))
 
         cmdret:config.command_return = config.command_return()
 
@@ -98,7 +98,7 @@ class execproc():
             cmdret.error_lines.append("exception={0}".format(e))
             cmdret.error_lines.append("frameinfo.filename={0}".format(frameinfo.filename))
             cmdret.error_lines.append("frameinfo.lineno={0}".format(frameinfo.lineno))
-            logging.exception("[execproc.py] " + str(e))
+            logging.exception("" + str(e))
 
         finally:
             return cmdret

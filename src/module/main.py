@@ -35,7 +35,7 @@ class main():
         #
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.INFO)
-        self.formatter = logging.Formatter('[%(asctime)s][%(levelname)-8s] [%(filename)s:%(lineno)d] %(message)s',
+        self.formatter = logging.Formatter('[%(asctime)s][%(levelname)s][%(filename)s:%(lineno)d] %(message)s',
                                         datefmt='%Y%m%d %H:%M:%S')
 
         # Setup log mechanism

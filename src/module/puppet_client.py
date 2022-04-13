@@ -82,18 +82,18 @@ class puppet_client(puppet_client_base):
       result:bool = False
 
       try:
-        logging.info("[pupet_client.py] puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
+        logging.info("puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
         self.cmd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         ret = self.cmd_socket.connect_ex((cmd_socket_addr.address, cmd_socket_addr.port))
 
         if ret:
           result = False
           self._is_cmd_connected = False
-          logging.error("[pupet_client.py] failed to connect to command channel !!!")
+          logging.error("failed to connect to command channel !!!")
         else:
           result = True
           self._is_cmd_connected = True
-          logging.info("[pupet_client.py] connected to command channel !!!")
+          logging.info("connected to command channel !!!")
 
       except Exception as e:
         result = False
@@ -115,17 +115,17 @@ class puppet_client(puppet_client_base):
             self.ftp_obj.connect()
         else:
           # anonymous
-          logging.info("[pupet_client.py] puppet client is trying to connect FTP socket (anonymous)  ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
+          logging.info("puppet client is trying to connect FTP socket (anonymous)  ... (addr={0} port={1})".format(ftp_socket_addr.address, ftp_socket_addr.port))
           self.ftp_obj = ftpclient(ftp_socket_addr)
           if self.ftp_obj:
             ret = self.ftp_obj.connect()
             if ret and self.WORK_DIR:
 
               cmd_ret = self.ftp_obj.mkdir(self.WORK_DIR)
-              logging.info("[pupet_client.py] self.ftp_obj.mkdir() cmd_ret.errcode={}".format(cmd_ret.errcode))
+              logging.info("self.ftp_obj.mkdir() cmd_ret.errcode={}".format(cmd_ret.errcode))
 
               cmd_ret = self.ftp_obj.cd(self.WORK_DIR)
-              logging.info("[pupet_client.py] self.ftp_obj.cd() cmd_ret.errcode={}".format(cmd_ret.errcode))
+              logging.info("self.ftp_obj.cd() cmd_ret.errcode={}".format(cmd_ret.errcode))
 
         if self.ftp_obj:
           self._is_ftp_connected = self.ftp_obj.is_connected()
@@ -156,7 +156,7 @@ class puppet_client(puppet_client_base):
         return self.handle_ftp_request(cmd_kind, cmd_data)
 
       else:
-        assert '[pupet_client.py] Handle this wrong case !!!'
+        assert 'Handle this wrong case !!!'
 
 
     def handle_ftp_request(self, cmd_kind:config.command_kind, cmd_data):
@@ -193,14 +193,14 @@ class puppet_client(puppet_client_base):
       #
       # Check conditions
       #
-      assert self.cmd_socket, '[pupet_client.py] self.cmd_socket is None !!!'
-      assert self.is_cmd_connected, '[pupet_client.py] self.is_cmd_connected is FALSE !!!'
+      assert self.cmd_socket, 'self.cmd_socket is None !!!'
+      assert self.is_cmd_connected, 'self.is_cmd_connected is FALSE !!!'
 
       if None == self.cmd_socket:
-        logging.error('[pupet_client.py] self.cmd_socket is None !!!')
+        logging.error('self.cmd_socket is None !!!')
         cmdret = config.command_return()
         cmdret.errcode = -1
-        cmdret.error_lines.append('[pupet_client.py] The TCP connection is not established !!!')
+        cmdret.error_lines.append('The TCP connection is not established !!!')
         unknown_capsule = config.transaction_capsule(config.action_kind().response, cmd_kind, cmdret, None)
         return unknown_capsule
 
@@ -212,7 +212,7 @@ class puppet_client(puppet_client_base):
          cmd_kind == config.command_kind().breakup:
 
         request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
-        logging.info('[pupet_client.py] {}'.format(request_capsule.toTEXT()))
+        logging.info('{}'.format(request_capsule.toTEXT()))
         self.cmd_socket.send(request_capsule.toTEXT().encode())
 
         received = b''
@@ -252,10 +252,10 @@ class puppet_client(puppet_client_base):
 
 
     def execute(self, program:str, argument:str=None, work_dir:str=None, is_base64:bool=False):
-      logging.info('[pupet_client.py] 1')
+      logging.info('1')
       cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dir, is_base64)
       response_capsule = self.handle_cmd_request(config.command_kind().execute, cmd_data)
-      logging.info('[pupet_client.py] 2')
+      logging.info('2')
       return response_capsule.result
 
 

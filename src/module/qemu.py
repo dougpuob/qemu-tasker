@@ -302,7 +302,7 @@ class qemu_instance:
 
                 if not self.pup_obj.is_ftp_connected():
                     logging.info("QEMU(taskid={0}) is trying to connect puppet (ftp) ...)".format(self.taskid))
-                    ret = self.pup_obj.connect_ftp(self.socket_pup_ftp, self.WORKDIR_NAME)
+                    ret = self.pup_obj.connect_ftp(self.socket_pup_ftp)
                     logging.info("ret={0}".format(ret))
                     logging.info("pup_obj.is_ftp_connected={0}".format(self.pup_obj.is_ftp_connected()))
 
