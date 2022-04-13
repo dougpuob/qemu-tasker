@@ -52,6 +52,7 @@ class puppet_server(puppet_server_base):
         self.is_started = False
         self.osdppath = OsdpPath()
 
+        # Resource
         if platform.system() == 'Linux':
             self.oskind = config.os_kind().linux
         elif platform.system() == 'Darwin':
@@ -60,6 +61,12 @@ class puppet_server(puppet_server_base):
             self.oskind = config.os_kind().windows
         else:
             self.oskind = config.os_kind().unknown
+
+        self.WORK_DIR = os.path.join(os.path.expanduser('~'), 'qemu-tasker')
+        self.WORK_DIR = self.osdppath.normpath(self.WORK_DIR, self.oskind)
+        if not os.path.exists(self.WORK_DIR):
+            os.mkdir(self.WORK_DIR)
+        os.chdir(self.WORK_DIR)
 
         # Process
         self.puppet_proc = None
@@ -271,14 +278,9 @@ class puppet_server(puppet_server_base):
 
     def handle_execute_command(self, cmd_data:config.execute_command_request_data):
         cmdargs:config.command_argument = config.command_argument(cmd_data.program, cmd_data.argument)
-        workdir = self.osdppath.normpath(cmd_data.workdir, self.oskind)
-        homedir  = os.path.expanduser('~')
-        logging.info("homedir={0}".format(homedir))
+        logging.info("self.WORK_DIR={0}".format(self.WORK_DIR))
         logging.info("os.getcwd()={0}".format(os.getcwd()))
-        logging.info("cmd_data.workdir={0}".format(cmd_data.workdir))
-        logging.info("workdir={0}".format(workdir))
-
-        cmdret = self.execproc.run(cmdargs, workdir, cmd_data.is_base64)
+        cmdret = self.execproc.run(cmdargs, cmd_data.workdir, cmd_data.is_base64)
         return cmdret
 
 
