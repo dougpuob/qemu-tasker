@@ -63,7 +63,7 @@ class puppet_client(puppet_client_base):
     def __del__(self):
 
       if self.cmd_socket:
-        self.disconnect()
+        #self.disconnect()
         self.cmd_socket.close()
 
       if self.ftp_obj:

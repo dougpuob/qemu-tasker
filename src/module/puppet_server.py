@@ -156,15 +156,17 @@ class puppet_server(puppet_server_base):
             received = b''
             while _keep_going:
 
+                time.sleep(1)
+
                 part = new_conn.recv(self.BUFF_SIZE)
                 received = received + part
                 if len(part) > 0:
                     continue
 
-                time.sleep(1)
                 incoming_message = ''
                 try:
                     incoming_message = str(received, encoding='utf-8')
+                    received = b''
                 except Exception as e:
                     received = b''
                     logging.exception("incoming_message={}".format(incoming_message))
@@ -231,7 +233,6 @@ class puppet_server(puppet_server_base):
                     return_capsule_text = return_capsule.toTEXT()
                     logging.info("return_capsule_text={}".format(return_capsule_text))
                     new_conn.send(bytes(return_capsule_text, encoding="utf-8"))
-                    received = b''
 
         except Exception as e:
             frameinfo = getframeinfo(currentframe())
