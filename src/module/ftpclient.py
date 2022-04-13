@@ -152,13 +152,14 @@ class ftpclient():
                 raise "File not found !!!"
 
             #
-            # Try to create the directory then change directory
+            # Change to target directory.
             #
-            pwd = self.ftp.pwd()
-            logging.info("pwd={0}".format(pwd))
+            prev_dir = self.ftp.pwd()
+            logging.info("prev_dir={0}".format(prev_dir))
 
-            resp = self.ftp.cwd(dir_to_save)
-            logging.info("resp={0}".format(resp))
+            if dir_to_save:
+                resp = self.ftp.cwd(dir_to_save)
+                logging.info("resp={0}".format(resp))
 
 
             #
@@ -175,7 +176,9 @@ class ftpclient():
             #
             # Change directory to the origin
             #
-            resp = self.ftp.cwd(pwd)
+            if dir_to_save:
+                resp = self.ftp.cwd(prev_dir)
+
             cmdret.info_lines.append(resp)
 
         except Exception as e:
