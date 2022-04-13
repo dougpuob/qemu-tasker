@@ -212,6 +212,7 @@ class puppet_client(puppet_client_base):
          cmd_kind == config.command_kind().breakup:
 
         request_capsule = config.transaction_capsule(config.action_kind().request, cmd_kind, data=cmd_data)
+        logging.info('[pupet_client.py] {}'.format(request_capsule.toTEXT()))
         self.cmd_socket.send(request_capsule.toTEXT().encode())
 
         received = b''
@@ -251,8 +252,10 @@ class puppet_client(puppet_client_base):
 
 
     def execute(self, program:str, argument:str=None, work_dir:str=None, is_base64:bool=False):
+      logging.info('[pupet_client.py] 1')
       cmd_data = config.execute_command_request_data(self.taskid, program, argument, work_dir, is_base64)
       response_capsule = self.handle_cmd_request(config.command_kind().execute, cmd_data)
+      logging.info('[pupet_client.py] 2')
       return response_capsule.result
 
 

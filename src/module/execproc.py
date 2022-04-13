@@ -18,45 +18,46 @@ class execproc():
     def __init__(self):
         pass
 
-    def enqueue_output(self, file, queue):
-        for line in iter(file.readline, ''):
-            queue.put(line)
-        file.close()
+    # def enqueue_output(self, file, queue):
+    #     for line in iter(file.readline, ''):
+    #         queue.put(line)
+    #     file.close()
 
 
-    def read_popen_pipes(self, p):
+    # def read_popen_pipes(self, p):
 
-        with ThreadPoolExecutor(2) as pool:
-            q_stdout, q_stderr = Queue(), Queue()
+    #     with ThreadPoolExecutor(2) as pool:
+    #         q_stdout, q_stderr = Queue(), Queue()
 
-            pool.submit(self.enqueue_output, p.stdout, q_stdout)
-            pool.submit(self.enqueue_output, p.stderr, q_stderr)
+    #         pool.submit(self.enqueue_output, p.stdout, q_stdout)
+    #         pool.submit(self.enqueue_output, p.stderr, q_stderr)
 
-            while True:
+    #         while True:
 
-                if p.poll() is not None and q_stdout.empty() and q_stderr.empty():
-                    break
+    #             if p.poll() is not None and q_stdout.empty() and q_stderr.empty():
+    #                 break
 
-                out_line = err_line = ''
+    #             out_line = err_line = ''
 
-                try:
-                    out_line = str(q_stdout.get_nowait(), encoding='utf-8')
-                except Empty:
-                    pass
-                try:
-                    err_line = str(q_stderr.get_nowait(), encoding='utf-8')
-                except Empty:
-                    pass
+    #             try:
+    #                 out_line = str(q_stdout.get_nowait(), encoding='utf-8')
+    #             except Empty:
+    #                 pass
+    #             try:
+    #                 err_line = str(q_stderr.get_nowait(), encoding='utf-8')
+    #             except Empty:
+    #                 pass
 
-                yield (out_line, err_line)
+    #             yield (out_line, err_line)
 
 
 
     def run(self, cmdargs:config.command_argument, workdir:str=None, is_base64:bool=False):
 
-        logging.info("cmdargs={}".format(cmdargs))
-        logging.info("workdir={}".format(workdir))
-        logging.info("is_base64={}".format(is_base64))
+        logging.info("[execproc.py] cmdargs.program={}".format(cmdargs.program))
+        logging.info("[execproc.py] cmdargs.argument={}".format(cmdargs.argument))
+        logging.info("[execproc.py] workdir={}".format(workdir))
+        logging.info("[execproc.py] is_base64={}".format(is_base64))
 
         cmdstr:str = cmdargs.program
         if cmdargs.argument:
@@ -70,7 +71,7 @@ class execproc():
             cmdstr = cmdstr + ' ' + args
 
 
-        logging.info("cmdstr={}".format(cmdstr))
+        logging.info("[execproc.py] cmdstr={}".format(cmdstr))
 
         cmdret:config.command_return = config.command_return()
 
@@ -97,7 +98,7 @@ class execproc():
             cmdret.error_lines.append("exception={0}".format(e))
             cmdret.error_lines.append("frameinfo.filename={0}".format(frameinfo.filename))
             cmdret.error_lines.append("frameinfo.lineno={0}".format(frameinfo.lineno))
-            #logging.exception(str(e))
+            logging.exception("[execproc.py] " + str(e))
 
         finally:
             return cmdret
