@@ -158,7 +158,7 @@ class puppet_server(puppet_server_base):
 
                 received = new_conn.recv(self.BUFF_SIZE)
                 if 0 == len(received):
-                    time.sleep(1)
+                    time.sleep(0.5)
                     continue
 
                 #
