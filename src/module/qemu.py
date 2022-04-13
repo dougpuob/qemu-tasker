@@ -196,8 +196,9 @@ class qemu_instance:
 
         logging.info("self.server_info.pushpool_path={0}".format(self.server_info.pushpool_path))
         dirlist = os.listdir(self.server_info.pushpool_path)
-        for file_from in dirlist:
-            fullpath = self.path_obj.normpath_posix(os.path.join(self.server_info.pushpool_path, file_from))
+        logging.info("dirlist={0}".format(dirlist))
+        for filepath in dirlist:
+            fullpath = self.path_obj.normpath_posix(os.path.join(self.server_info.pushpool_path, filepath))
 
             if os.path.exists(fullpath):
                 selected_files.append(fullpath)
@@ -205,13 +206,10 @@ class qemu_instance:
                 logging.error("Path not found ({}) !!!".format(fullpath))
 
         if self.is_ftp_connected():
-            for file_from in selected_files:
-                cmdret = self.pup_obj.ftp_obj.upload(file_from, 'pushpool')
-                self.result.error_lines.extend(cmdret.info_lines)
-                self.result.error_lines.extend(cmdret.error_lines)
-                self.result.errcode = cmdret.errcode
-                if 0 != cmdret.errcode:
-                    break
+            cmdret = self.pup_obj.ftp_obj.upload(selected_files, 'pushpool')
+            self.result.error_lines.extend(cmdret.info_lines)
+            self.result.error_lines.extend(cmdret.error_lines)
+            self.result.errcode = cmdret.errcode
 
         self.status = config.task_status().ready
         return (final_cmdret.errcode == 0)

@@ -146,7 +146,7 @@ class ftpclient():
             for filepath in filepath_list:
                 if not os.path.exists(filepath):
                     cmdret.errcode = -1
-                    cmdret.error_lines.append("File not found !!! (filepath={})".format(filepath))
+                    cmdret.error_lines.append("File not found !!! (filepath={0})".format(filepath))
 
             if cmdret.errcode != 0:
                 raise "File not found !!!"
