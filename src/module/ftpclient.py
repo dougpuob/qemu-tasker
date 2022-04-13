@@ -151,14 +151,14 @@ class ftpclient():
             if cmdret.errcode != 0:
                 raise "File not found !!!"
 
-            #
-            # Try to create the directory then change directory
-            #
-            pwd = self.ftp.pwd()
-            cmdret_mkdir = self.mkdir(dir_to_save)
-            cmdret.info_lines.extend(cmdret_mkdir.info_lines)
-            if cmdret_mkdir.errcode != 0:
-                cmdret.error_lines.extend(cmdret_mkdir.error_lines)
+            # #
+            # # Try to create the directory then change directory
+            # #
+            # pwd = self.ftp.pwd()
+            # cmdret_mkdir = self.mkdir(dir_to_save)
+            # cmdret.info_lines.extend(cmdret_mkdir.info_lines)
+            # if cmdret_mkdir.errcode != 0:
+            #     cmdret.error_lines.extend(cmdret_mkdir.error_lines)
 
             #
             # Upload files
