@@ -197,8 +197,7 @@ class qemu_instance:
         logging.info("self.server_info.pushpool_path={0}".format(self.server_info.pushpool_path))
         dirlist = os.listdir(self.server_info.pushpool_path)
         for file_from in dirlist:
-            fullpath = os.path.join(self.server_info.pushpool_path, file_from)
-            fullpath = self.path_obj.normpath_posix(fullpath)
+            fullpath = self.path_obj.normpath_posix(os.path.join('pushpool', file_from))
 
             if os.path.exists(fullpath):
                 selected_files.append(fullpath)
@@ -209,8 +208,10 @@ class qemu_instance:
             for file_from in selected_files:
                 basename = os.path.basename(file_from)
                 file_to = os.path.join(self.guest_info.pushpool_name, basename)
+                logging.info("self.guest_info.pushpool_name={0}".format(self.guest_info.pushpool_name))
+                logging.info("1 file_to={0}".format(file_to))
                 file_to = self.path_obj.normpath(file_to)
-                logging.info("file_to={0}".format(file_to))
+                logging.info("2 file_to={0}".format(file_to))
 
                 cmdret = self.pup_obj.ftp_obj.upload(file_to, 'pushpool')
                 self.result.error_lines.extend(cmdret.info_lines)
