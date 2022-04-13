@@ -194,6 +194,7 @@ class qemu_instance:
         final_cmdret = config.command_return()
         selected_files = []
 
+        logging.info("self.server_info.pushpool_path={0}".format(self.server_info.pushpool_path))
         dirlist = os.listdir(self.server_info.pushpool_path)
         for file_from in dirlist:
             fullpath = os.path.join(self.server_info.pushpool_path, file_from)
@@ -209,6 +210,7 @@ class qemu_instance:
                 basename = os.path.basename(file_from)
                 file_to = os.path.join(self.guest_info.pushpool_name, basename)
                 file_to = self.path_obj.normpath(file_to)
+                logging.info("file_to={0}".format(file_to))
 
                 cmdret = self.pup_obj.ftp_obj.upload(file_to, 'pushpool')
                 self.result.error_lines.extend(cmdret.info_lines)
