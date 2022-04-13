@@ -155,22 +155,20 @@ class puppet_server(puppet_server_base):
 
             received = b''
             while _keep_going:
-
-                time.sleep(1)
-
-                part = new_conn.recv(self.BUFF_SIZE)
-                received = received + part
-                if len(part) > 0:
+                received = new_conn.recv(self.BUFF_SIZE)
+                if 0 == len(received) > 0:
+                    time.sleep(1)
                     continue
 
                 incoming_message = ''
                 try:
                     incoming_message = str(received, encoding='utf-8')
-                    received = b''
+                    json.loads(incoming_message)
                 except Exception as e:
-                    received = b''
                     logging.exception("incoming_message={}".format(incoming_message))
                     continue
+                finally:
+                    received = b''
 
                 logging.info("incoming_message={}".format(incoming_message))
 
