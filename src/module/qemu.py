@@ -206,11 +206,14 @@ class qemu_instance:
             else:
                 logging.error("Path not found ({}) !!!".format(fullpath))
 
+        logging.info("self.pup_obj.ftp_obj.is_connected()={0}".format(self.pup_obj.ftp_obj.is_connected()))
         if self.is_ftp_connected():
             cmdret = self.pup_obj.ftp_obj.upload(selected_files, 'pushpool')
             self.result.error_lines.extend(cmdret.info_lines)
             self.result.error_lines.extend(cmdret.error_lines)
             self.result.errcode = cmdret.errcode
+        else:
+            logging.error("FTP is not connected !!!")
 
         self.status = config.task_status().ready
         return (final_cmdret.errcode == 0)
