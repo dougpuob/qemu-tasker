@@ -79,7 +79,7 @@ class puppet_server(puppet_server_base):
 
         # Servers
         self.cmd_host = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Cmd)
-        self.ftp_server_addr_info = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Ftp)
+        self.ftp_server_addr_info = config.socket_address(self.setting.Governor.Address, self.setting.Puppet.Port.Ftp)
 
 
     def __del__(self):
@@ -115,6 +115,10 @@ class puppet_server(puppet_server_base):
 
 
     def start_ftp_server(self, ftp_host:config.socket_address):
+
+        logging.info("ftp_host.address={0}".format(ftp_host.address))
+        logging.info("ftp_host.port={0}".format(ftp_host.port))
+
         ftp_homedir  = os.path.expanduser('~')
 
         authorizer = DummyAuthorizer()
@@ -123,6 +127,7 @@ class puppet_server(puppet_server_base):
 
         handler = FTPHandler
         handler.authorizer = authorizer
+        handler.masquerade_address =ftp_host.address
 
         ftp_server = FTPServer(('0.0.0.0', ftp_host.port), handler)
 
