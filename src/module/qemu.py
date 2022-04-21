@@ -349,19 +349,18 @@ class qemu_instance:
             cmdret = self.pup_obj.execute('pwd')
             guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
 
+        if 0 == cmdret.errcode:
+            guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
+            logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
 
-        guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
-        logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
+            guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
+            logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
 
-        guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
-        logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
+            guest_info_pushdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, guest_info_pushdir_name))
+            logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_path))
 
-        guest_info_pushdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, guest_info_pushdir_name))
-        logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_path))
-
-        guest_info_workdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, self.WORKDIR_NAME))
-        logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
-
+            guest_info_workdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, self.WORKDIR_NAME))
+            logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
 
 
 
