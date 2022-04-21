@@ -317,6 +317,7 @@ class qemu_instance:
         # - `uname` for Linux and macOS
         # - `systeminfo` for Windows
         #
+        cmdret.clear()
         logging.info('trying to execute `uname` command ...')
         cmdret = self.pup_obj.execute('uname')
         logging.info('`uname` (cmdret.errcode={})'.format(cmdret.errcode))
@@ -341,6 +342,7 @@ class qemu_instance:
         #
         # Get guest current working directory path
         #
+        cmdret.clear()
         guest_info_homedir_path =''
         if guest_info_os_kind == config.os_kind().windows:
             cmdret = self.pup_obj.execute('(Get-Location).Path')

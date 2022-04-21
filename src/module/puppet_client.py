@@ -97,7 +97,7 @@ class puppet_client():
       except Exception as Err:
         logging.exception(Err)
         cmdret.error_lines.append('Exception occured !!!')
-        cmdret.error_lines.append(str(Err))
+        cmdret.error_lines.append(Err)
 
       finally:
         return cmdret

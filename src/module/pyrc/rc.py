@@ -558,13 +558,34 @@ class header_execute():
         hdr.argument_utf8 = base64.b64decode(data)
         hdr.argument = hdr.argument_utf8.decode()
 
-        pos1 = hdr.length_program + hdr.length_argument
+        pos1 = pos2
         pos2 = hdr.length_program + hdr.length_argument + hdr.length_workdir
         hdr.workdir = str(hdr.payload[pos1:pos2], 'utf-8')
 
-        pos1 = hdr.length_program + hdr.length_argument + hdr.length_workdir
+        pos1 = pos2
         data = hdr.payload[pos1:]
-        hdr.data = config().toCLASS(data)
+        data_obj: execresult = config().toCLASS(data)
+        hdr.data = execresult()
+
+        try:
+            hdr.data.errcode = data_obj.errcode
+        except Exception:
+            hdr.data.stdout.append('internal error when collecting errcode !!!')
+
+        try:
+            hdr.data.data = data_obj.data
+        except Exception:
+            hdr.data.stdout.append('internal error when collecting data !!!')
+
+        try:
+            hdr.data.stderr.extend(data_obj.stderr)
+        except Exception:
+            hdr.data.stdout.append('internal error when collecting stderr data !!!')
+
+        try:
+            hdr.data.stdout.extend(data_obj.stdout)
+        except Exception:
+            hdr.data.stdout.append('internal error when collecting stdout data !!!')
 
         return hdr
 
