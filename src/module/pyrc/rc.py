@@ -52,7 +52,7 @@ class execresult(config):
         self.data = None
 
 
-class rcresult(config):
+class rcresult():
     def __init__(self, errcode: int = 0, errmsg: str = ''):
         self.errcode = errcode
         self.text = errmsg
