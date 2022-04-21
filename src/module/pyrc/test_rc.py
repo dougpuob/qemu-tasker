@@ -464,7 +464,10 @@ class Test_service(unittest.TestCase):
         if platform.system() == 'Windows':
             result: rcresult = client.execute('ipconfig', '/all')
             self.assertEqual(0, result.errcode)
-        else:
+        elif platform.system() == 'Darwin':
+            result: rcresult = client.execute('ifconfig')
+            self.assertEqual(0, result.errcode)
+        elif platform.system() == 'Linux':
             result: rcresult = client.execute('ip', 'a')
             self.assertEqual(0, result.errcode)
 
