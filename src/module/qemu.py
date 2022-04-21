@@ -303,7 +303,7 @@ class qemu_instance:
         #
         # Create filepool directory.
         #
-        cmdret = self.pup_obj.mkdir('pushpool')
+        self.pup_obj.mkdir('pushpool')
 
 
         #
@@ -317,7 +317,6 @@ class qemu_instance:
         # - `uname` for Linux and macOS
         # - `systeminfo` for Windows
         #
-        cmdret.clear()
         logging.info('trying to execute `uname` command ...')
         cmdret = self.pup_obj.execute('uname')
         logging.info('`uname` (cmdret.errcode={})'.format(cmdret.errcode))
