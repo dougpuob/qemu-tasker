@@ -90,7 +90,6 @@ class puppet_client():
         cmdret.errcode = execrs.errcode
 
       except Exception as Err:
-        cmdret.errcode = 999
         cmdret.error_lines.append('Exception occured !!!')
         cmdret.error_lines.append(str(Err))
 
