@@ -248,8 +248,8 @@ class governor_server(governor_server_base):
                 qemu_inst:qemu.qemu_instance = qemu_inst_obj
 
                 if qemu_inst.longlife > 0:
-                    is_qmp_connected = self.get_bool(qemu_inst.connections_status.QMP)
-                    is_pup_connected = self.get_bool(qemu_inst.connections_status.PUP)
+                    is_qmp_connected = self.get_bool(qemu_inst.is_qmp_connected())
+                    is_pup_connected = self.get_bool(qemu_inst.is_pup_connected())
 
                     print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} PUP:{} OS:{} Longlife:{}(s) {}'.format(
                             qemu_inst.taskid,

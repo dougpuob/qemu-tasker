@@ -274,16 +274,18 @@ class qemu_instance:
 
         while True:
             try:
-                if not self.pup_obj.is_connected():
+                is_connected_to_puppet = self.pup_obj.is_connected()
+                logging.info("QEMU(taskid={}) is_connected_to_puppet={}".format(self.taskid, is_connected_to_puppet))
+
+                if is_connected_to_puppet:
+                    self.connections_status.PUP = config.connection_kind().connected
+                    self.status = config.task_status().querying
+                    break
+                else:
                     logging.info("QEMU(taskid={0}) is trying to connect puppet (cmd) ...)".format(self.taskid))
                     ret = self.pup_obj.connect(self.socket_pup_cmd)
                     logging.info("ret={0}".format(ret))
                     logging.info("pup_obj.is_cmd_connected={0}".format(self.pup_obj.is_connected()))
-
-                if self.pup_obj.is_connected():
-                    self.connections_status.PUP = config.connection_kind().connected
-                    self.status = config.task_status().querying
-                    break
 
             except ConnectionRefusedError as e:
                 logging.warning("Failed to establish puppet connection, is going to retry again !!!")

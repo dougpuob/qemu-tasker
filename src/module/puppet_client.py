@@ -50,11 +50,10 @@ class puppet_client():
         logging.info("puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
         self._is_connected = self.pyrc_client.connect(cmd_socket_addr.address,
                                                       cmd_socket_addr.port)
-
         if self._is_connected:
-          logging.error("failed to connect to command channel !!!")
-        else:
           logging.info("connected to command channel !!!")
+        else:
+          logging.error("failed to connect to command channel !!!")
 
       except Exception as e:
         self._is_connected = False
