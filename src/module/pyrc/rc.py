@@ -52,7 +52,7 @@ class execresult(config):
         self.data = None
 
 
-class rcresult(config):
+class rcresult():
     def __init__(self, errcode: int = 0, errmsg: str = ''):
         self.errcode = errcode
         self.text = errmsg
@@ -1230,12 +1230,15 @@ class rcclient():
         self.send(ask_chunk.pack())
 
         is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
-                                           self.sock.chunk_list)
+                                            self.sock.chunk_list)
         if is_there_a_chunk:
             chunk: header_execute = self.sock.chunk_list.pop(0)
 
             result = rcresult()
-            result.data = config().toCLASS(chunk.data)
+            data: execresult = config().toCLASS(chunk.data)
+            result.data = data
+            result.errcode = data.errcode
+
             return result
 
         return error_unknown

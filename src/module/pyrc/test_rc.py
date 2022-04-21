@@ -480,6 +480,15 @@ class Test_service(unittest.TestCase):
             result: rcresult = client.execute('ls')
             self.assertEqual(0, result.errcode)
 
+    def test_connect_then_execute_unknown(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        result: rcresult = client.execute('unknown')
+        self.assertEqual(result.data.errcode, result.errcode)
+        self.assertIsNot(0, result.errcode)
+
 
 if __name__ == '__main__':
     unittest.main()
