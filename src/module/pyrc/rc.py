@@ -875,7 +875,9 @@ class rcserver():
     def _handle_list_command(self, conn: rcsock, ask_chunk: header_list):
 
         fileloc = os.path.abspath(ask_chunk.dstdirpath)
-        logging.info("fileloc={}".format(fileloc))
+
+        logfmt = 'fileloc={}'
+        logging.info(logfmt.format(fileloc))
 
         if not os.path.exists(fileloc):
             return error_file_not_found
@@ -947,9 +949,12 @@ class rcserver():
                                sock: rcsock,
                                data_chunk: header_upload,
                                overwrite: bool = True):
-        logfmt = 'write ... (data_chunk.data={})'
-        logging.info(logfmt.format(len(data_chunk.data)))
 
+        logfmt = 'chunk_index={}/{} file_size={} chunk_size={}'
+        logging.info(logfmt.format(data_chunk.chunk_index + 1,
+                                   data_chunk.chunk_count,
+                                   data_chunk.file_size,
+                                   data_chunk.chunk_size))
         try:
 
             if not sock.file_handle:
@@ -980,6 +985,11 @@ class rcserver():
             fullcmd = ask_chunk.program
             if len(ask_chunk.argument) > 0:
                 fullcmd = fullcmd + ' ' + ask_chunk.argument
+
+            logfmt = 'program={} argument={} workdir={}'
+            logging.info(logfmt.format(ask_chunk.program,
+                                       ask_chunk.argument,
+                                       ask_chunk.workdir))
 
             proc = subprocess.Popen(fullcmd,
                                     stdout=subprocess.PIPE,
