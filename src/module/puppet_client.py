@@ -71,7 +71,7 @@ class puppet_client():
 
     def execute(self, program:str, argument:str='', workdir:str='.'):
       result: rcresult = self.pyrc_client.execute(program, argument, workdir)
-      logging.info('result.data={}', result.data)
+      logging.info('result={}', result)
       return result.data
 
 

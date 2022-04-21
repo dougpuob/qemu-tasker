@@ -1271,8 +1271,11 @@ if __name__ == '__main__':
                 # result = rcclt.list('README.md')
                 # result = rcclt.execute('ifconfig')
 
-                # Windows commands
-                result = rcclt.execute('ipconfig')
+                # # # # # # # # # # #
+                # Windows commands  #
+                # # # # # # # # # # #
+                # result = rcclt.execute('ipconfig')
+                result = rcclt.execute('systeminfo')
 
                 if 0 == result.errcode:
                     logging.info("errcode={}".format(result.errcode))
