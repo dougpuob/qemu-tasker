@@ -13,6 +13,7 @@ from module.print import process_capsule
 from module.governor_server import governor_server
 from module.governor_client import governor_client
 
+from module.pyrc.rc import rcresult
 from module.puppet_server import puppet_server
 from module.puppet_client import puppet_client
 
@@ -208,37 +209,39 @@ class main():
 
                 elif 'execute' == self.input_args.command:
                     pup_client = self.get_puppet_client(self.input_args.taskid)
-                    cmd_data = config.execute_command_request_data(self.input_args.taskid,
-                                                                   self.input_args.program,
-                                                                   self.input_args.argument,
-                                                                   self.input_args.workdir,
-                                                                   self.input_args.base64)
-                    response_capsule = pup_client.send_request(config.command_kind().execute, cmd_data)
+                    result: rcresult = pup_client.execute(self.input_args.program,
+                                                          self.input_args.argument,
+                                                          self.input_args.workdir)
+                    response_capsule = config.execute_command_response_data(config.action_kind().response,
+                                                                            config.command_kind().execute,
+                                                                            data=result.data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'list' == self.input_args.command:
                     pup_client = self.get_puppet_client(self.input_args.taskid)
-                    cmd_data = config.list_command_request_data(self.input_args.taskid,
-                                                                self.input_args.dstdir)
-                    response_capsule = pup_client.send_request(config.command_kind().list, cmd_data)
+                    result: rcresult = pup_client.list(self.input_args.dstdir)
+                    response_capsule = config.execute_command_response_data(config.action_kind().response,
+                                                                            config.command_kind().list,
+                                                                            data=result.data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'upload' == self.input_args.command:
                     pup_client = self.get_puppet_client(self.input_args.taskid)
-                    cmd_data = config.upload_command_request_data(self.input_args.taskid,
-                                                                  self.input_args.files,
-                                                                  self.input_args.dstdir)
-                    response_capsule = pup_client.send_request(config.command_kind().upload, cmd_data)
+                    result: rcresult = pup_client.upload(self.input_args.files,
+                                                         self.input_args.dstdir)
+                    response_capsule = config.execute_command_response_data(config.action_kind().response,
+                                                                            config.command_kind().upload,
+                                                                            data=result.data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'download' == self.input_args.command:
                     pup_client = self.get_puppet_client(self.input_args.taskid)
-                    cmd_data = config.download_command_request_data(self.input_args.taskid,
-                                                                    self.input_args.files,
-                                                                    self.input_args.dstdir)
-                    response_capsule = pup_client.send_request(config.command_kind().download, cmd_data)
+                    result: rcresult = pup_client.download(self.input_args.files,
+                                                           self.input_args.dstdir)
+                    response_capsule = config.execute_command_response_data(config.action_kind().response,
+                                                                            config.command_kind().download,
+                                                                            data=result.data)
                     process_capsule(self.input_args, response_capsule)
-
 
                 # =========================================================================
                 # Unknown
@@ -266,8 +269,7 @@ class main():
             pup_client = puppet_client(taskid, self.WORK_DIR)
             pup_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.pup)
             ftp_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.ftp)
-            pup_client.connect_cmd(pup_socket_info)
-            pup_client.connect_ftp(ftp_socket_info)
+            pup_client.connect(pup_socket_info)
             return pup_client
 
         else:
