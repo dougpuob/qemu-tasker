@@ -213,7 +213,7 @@ class qemu_instance:
 
 
     def is_pup_connected(self):
-        self.pup_obj.is_connected()
+        return self.pup_obj.is_connected()
 
 
     def attach_qemu_device_nic(self):
