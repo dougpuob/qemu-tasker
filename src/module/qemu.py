@@ -95,7 +95,6 @@ class qemu_instance:
         self.attach_qemu_device_nic()
         self.attach_qemu_device_qmp()
 
-
         #
         # Final step to launch QEMU.
         #
@@ -209,7 +208,8 @@ class qemu_instance:
 
 
     def is_qmp_connected(self):
-        return (self.connections_status.QMP == config.connection_kind().connected)
+        is_connected = (self.connections_status.QMP == config.connection_kind().connected)
+        return is_connected
 
 
     def is_pup_connected(self):
@@ -264,6 +264,7 @@ class qemu_instance:
         if self.qmp_obj:
             self.qmp_obj.accept()
             self.connections_status.QMP = config.connection_kind().connected
+            logging.info("QMP is connected.")
 
 
     def thread_pup_try_connect(self, target_addr, target_port):

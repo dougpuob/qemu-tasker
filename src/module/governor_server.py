@@ -229,7 +229,7 @@ class governor_server(governor_server_base):
 
 
     def get_bool(self, result):
-        if result == config.connection_kind().connected:
+        if result:
             return "True "
         else:
             return "False"
@@ -250,7 +250,6 @@ class governor_server(governor_server_base):
                 if qemu_inst.longlife > 0:
                     is_qmp_connected = self.get_bool(qemu_inst.is_qmp_connected())
                     is_pup_connected = self.get_bool(qemu_inst.is_pup_connected())
-
                     print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} PUP:{} OS:{} Longlife:{}(s) {}'.format(
                             qemu_inst.taskid,
                             qemu_inst.qemu_pid,
