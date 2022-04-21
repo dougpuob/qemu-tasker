@@ -71,23 +71,29 @@ class puppet_client():
 
 
     def execute(self, program:str, argument:str='', workdir:str='.'):
-      ret_result = config.command_return()
+      cmdret = config.command_return()
 
       try:
-        result: rcresult = self.pyrc_client.execute(program, argument, workdir)
-        result2: execresult = result.data
+        cmdret.errcode = 111
+        rcrs: rcresult = self.pyrc_client.execute(program, argument, workdir)
+        cmdret.errcode = 222
+        execrs: execresult = rcrs.data
+        cmdret.errcode = 333
 
-        ret_result.errcode = result2.errcode
-        ret_result.error_lines = result2.stderr
-        ret_result.info_lines = result2.stdout
+        cmdret.errcode = execrs.errcode
+        cmdret.errcode = 444
+        cmdret.error_lines = execrs.stderr
+        cmdret.errcode = 555
+        cmdret.info_lines = execrs.stdout
+        cmdret.errcode = 666
 
       except Exception as Err:
-        ret_result.errcode = 999
-        ret_result.error_lines.append('Exception occured !!!')
-        ret_result.error_lines.append(str(Err))
+        cmdret.errcode = 999
+        cmdret.error_lines.append('Exception occured !!!')
+        cmdret.error_lines.append(str(Err))
 
       finally:
-        return ret_result
+        return cmdret
 
 
     def mkdir(self, dirpath:str):

@@ -482,6 +482,18 @@ class Test_service(unittest.TestCase):
             result: rcresult = client.execute('ls')
             self.assertEqual(0, result.errcode)
 
+    def test_connect_then_execute_systeminfo(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        if platform.system() == 'Windows':
+            result: rcresult = client.execute('systeminfo')
+            self.assertEqual(0, result.errcode)
+        else:
+            result: rcresult = client.execute('uname')
+            self.assertEqual(0, result.errcode)
+
     def test_connect_then_execute_unknown(self):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
@@ -508,6 +520,23 @@ class Test_service(unittest.TestCase):
         os.removedirs('mkdir')
         self.assertEqual(os.path.exists('mkdir'), False)
 
+    def test_connect_then_execute_pwsh_cmd(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        result: rcresult = client.execute('(Get-Location).Path')
+        self.assertEqual(result.data.errcode, result.errcode)
+        self.assertEqual(2, result.errcode)
+
+    def test_connect_then_execute_pwd(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        result: rcresult = client.execute('pwd')
+        self.assertEqual(result.data.errcode, result.errcode)
+        self.assertEqual(0, result.errcode)
 
 if __name__ == '__main__':
     unittest.main()
