@@ -64,17 +64,15 @@ class qemu_instance:
         self.status = config.task_status().waiting
         self.result = config.command_return()
 
-        avail_tcp_ports = self.find_avaliable_ports(taskid, 4) # QMP,SSH,PUP,FTP
+        avail_tcp_ports = self.find_avaliable_ports(taskid, 3) # QMP,SSH,PUP
         self.forward_port = config.forward_port(avail_tcp_ports[0], # QMP
                                                 avail_tcp_ports[1], # SSH
                                                 avail_tcp_ports[2], # PUP
-                                                avail_tcp_ports[3]  # FTP
                                                 )
 
 
         self.socket_gov_addr = config.socket_address(self.setting.Governor.Address, self.setting.Governor.Port)
         self.socket_pup_cmd = config.socket_address(self.setting.Puppet.Address, self.forward_port.pup)
-        self.socket_pup_ftp = config.socket_address(self.setting.Governor.Address, self.forward_port.ftp)
 
         workdir_path = self.path_obj.realpath('.')
         pushdir_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
@@ -206,15 +204,6 @@ class qemu_instance:
             else:
                 logging.error("Path not found ({}) !!!".format(fullpath))
 
-        logging.info("self.pup_obj.ftp_obj.is_connected()={0}".format(self.pup_obj.ftp_obj.is_connected()))
-        if self.is_ftp_connected():
-            cmdret = self.pup_obj.ftp_obj.upload(selected_files, 'pushpool')
-            self.result.info_lines.extend(cmdret.info_lines)
-            self.result.error_lines.extend(cmdret.error_lines)
-            self.result.errcode = cmdret.errcode
-        else:
-            logging.error("FTP is not connected !!!")
-
         self.status = config.task_status().ready
         return (final_cmdret.errcode == 0)
 
@@ -227,19 +216,13 @@ class qemu_instance:
         return (self.connections_status.PUP == config.connection_kind().connected)
 
 
-    def is_ftp_connected(self):
-        return (self.connections_status.FTP == config.connection_kind().connected)
-
-
     def attach_qemu_device_nic(self):
         ssh_listen_port = 22
         pup_listen_port = self.setting.Puppet.Port.Cmd
-        ftp_listen_port = self.setting.Puppet.Port.Ftp
         hostfwd_ssh    = "hostfwd=tcp::{}-:{}".format(self.forward_port.ssh, ssh_listen_port)
         hostfwd_pupcmd = "hostfwd=tcp::{}-:{}".format(self.forward_port.pup, pup_listen_port)
-        hostfwd_pupftp = "hostfwd=tcp::{}-:{}".format(self.forward_port.ftp, ftp_listen_port)
         arg1 = ["-net", "nic,model=e1000"]
-        arg2 = ["-net", "user,{},{},{}".format(hostfwd_ssh, hostfwd_pupcmd, hostfwd_pupftp)]
+        arg2 = ["-net", "user,{},{},{}".format(hostfwd_ssh, hostfwd_pupcmd)]
         self.qemu_base_args.extend(arg1)
         self.qemu_base_args.extend(arg2)
 
@@ -297,9 +280,8 @@ class qemu_instance:
                     logging.info("ret={0}".format(ret))
                     logging.info("pup_obj.is_cmd_connected={0}".format(self.pup_obj.is_connected()))
 
-                if self.pup_obj.is_connected() and self.pup_obj.is_ftp_connected():
+                if self.pup_obj.is_connected():
                     self.connections_status.PUP = config.connection_kind().connected
-                    self.connections_status.FTP = config.connection_kind().connected
                     self.status = config.task_status().querying
                     break
 

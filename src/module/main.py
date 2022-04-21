@@ -75,7 +75,6 @@ class main():
 
             # Puppet socket address information
             puppet_cmd_addr_info = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Cmd)
-            puppet_ftp_addr_info = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Ftp)
 
 
             # =========================================================================
@@ -268,7 +267,6 @@ class main():
             status_resp_data:config.status_command_response_data = status_resp_capsule.data
             pup_client = puppet_client(taskid, self.WORK_DIR)
             pup_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.pup)
-            ftp_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.ftp)
             pup_client.connect(pup_socket_info)
             return pup_client
 

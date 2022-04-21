@@ -99,11 +99,10 @@ class server_name(config):
 
 
 class forward_port(config):
-    def __init__(self, qmp_port:int, ssh_port:int, puppet_port:int, ftp_port:int):
+    def __init__(self, qmp_port:int, ssh_port:int, puppet_port:int):
         self.qmp = qmp_port
         self.ssh = ssh_port
         self.pup = puppet_port
-        self.ftp = ftp_port
 
 
 class socket_address(config):

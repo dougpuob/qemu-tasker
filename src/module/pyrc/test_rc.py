@@ -358,13 +358,13 @@ class Test_service(unittest.TestCase):
         self.assertEqual(_DATA_, output_hdr.data)
 
     def test_connect(self):
-        client = rcclient(_HOST_, _PORT_)
-        self.assertEqual(client.connect(), True)
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
     def test_connect_then_list(self):
-        client = rcclient(_HOST_, _PORT_)
-        self.assertEqual(client.connect(), True)
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
         result: rcresult = client.list(_TESTDIR_)
@@ -372,8 +372,8 @@ class Test_service(unittest.TestCase):
         self.assertEqual(0, result.errcode)
 
     def test_connect_then_list_cwd(self):
-        client = rcclient(_HOST_, _PORT_)
-        self.assertEqual(client.connect(), True)
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
         result: rcresult = client.list(_TESTDIR_)
@@ -381,8 +381,8 @@ class Test_service(unittest.TestCase):
         self.assertEqual(len(pattern_name_list), len(result.data))
 
     def test_connect_then_download_all_testdata(self):
-        client = rcclient(_HOST_, _PORT_)
-        self.assertEqual(client.connect(), True)
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
         for file in pattern_name_list:
@@ -398,8 +398,8 @@ class Test_service(unittest.TestCase):
             self.assertTrue(os.path.exists(fileloc))
 
     def test_connect_then_upload_all_testdata(self):
-        client = rcclient(_HOST_, _PORT_)
-        self.assertEqual(client.connect(), True)
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
         # Check not existing
@@ -440,8 +440,8 @@ class Test_service(unittest.TestCase):
             index += 1
 
     def test_connect_then_execute_ifconfig(self):
-        client = rcclient(_HOST_, _PORT_)
-        self.assertEqual(client.connect(), True)
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
         if platform.system() == 'Windows':
@@ -452,8 +452,8 @@ class Test_service(unittest.TestCase):
             self.assertEqual(0, result.errcode)
 
     def test_connect_then_execute_dir(self):
-        client = rcclient(_HOST_, _PORT_)
-        self.assertEqual(client.connect(), True)
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
         if platform.system() == 'Windows':

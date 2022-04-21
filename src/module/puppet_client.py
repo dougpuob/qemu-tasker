@@ -30,7 +30,7 @@ class puppet_client():
       self._is_connected = False
       self.WORK_DIR = word_dir
 
-      self.pyrc_client:rcclient = None
+      self.pyrc_client = rcclient()
 
 
     def __del__(self):
@@ -45,12 +45,11 @@ class puppet_client():
 
 
     def connect(self, cmd_socket_addr:config.socket_address):
-      self.pyrc_client = rcclient(cmd_socket_addr.address,
-                                  cmd_socket_addr.port)
 
       try:
         logging.info("puppet client is trying to connect command socket ... (addr={0} port={1})".format(cmd_socket_addr.address, cmd_socket_addr.port))
-        self._is_connected = self.pyrc_client.connect()
+        self._is_connected = self.pyrc_client.connect(cmd_socket_addr.address,
+                                                      cmd_socket_addr.port)
 
         if self._is_connected:
           logging.error("failed to connect to command channel !!!")

@@ -250,15 +250,13 @@ class governor_server(governor_server_base):
                 if qemu_inst.longlife > 0:
                     is_qmp_connected = self.get_bool(qemu_inst.connections_status.QMP)
                     is_pup_connected = self.get_bool(qemu_inst.connections_status.PUP)
-                    is_ftp_connected = self.get_bool(qemu_inst.connections_status.FTP)
 
-                    print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} PUP:{} FTP:{} OS:{} Longlife:{}(s) {}'.format(
+                    print('  QEMU TaskId:{} Pid:{} Ports:{} QMP:{} PUP:{} OS:{} Longlife:{}(s) {}'.format(
                             qemu_inst.taskid,
                             qemu_inst.qemu_pid,
                             qemu_inst.forward_port.toJSON(),
                             is_qmp_connected,
                             is_pup_connected,
-                            is_ftp_connected,
                             qemu_inst.guest_info.os_kind,
                             qemu_inst.longlife,
                             qemu_inst.status))

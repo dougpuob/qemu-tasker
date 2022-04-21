@@ -929,13 +929,13 @@ class rcserver():
 
 class rcclient():
 
-    def __init__(self, host: str, port: int):
+    def __init__(self):
         self.CHUNK_SIZE = _CHUNK_SIZE_
         self.BUFF_SIZE = _BUFF_SIZE_
         self.TIMEOUT_TIMES = 10
 
-        self.__HOST__ = host
-        self.__PORT__ = port
+        self.__HOST__ = None
+        self.__PORT__ = 0
 
         self.sock = None
         self._connected = False
@@ -946,7 +946,9 @@ class rcclient():
             time.sleep(interval)
         return condition(*args)
 
-    def connect(self):
+    def connect(self, host: str, port: int):
+        self.__HOST__ = host
+        self.__PORT__ = port
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         ret = conn.connect_ex((self.__HOST__, self.__PORT__))
 
