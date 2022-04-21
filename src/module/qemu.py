@@ -349,6 +349,11 @@ class qemu_instance:
             cmdret = self.pup_obj.execute('pwd')
             guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
 
+        guest_info_workdir_name = ''
+        guest_info_pushdir_name = ''
+        guest_info_pushdir_path = ''
+        guest_info_workdir_path = ''
+
         if 0 == cmdret.errcode:
             guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
             logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
