@@ -372,7 +372,6 @@ class Test_service(unittest.TestCase):
         self.assertEqual(_ARGUMENT_UTF8_, output_hdr.argument_utf8)
         self.assertEqual(_ARGUMENT_B64_, output_hdr.argument_base64)
         self.assertEqual(_WORKDIR_, output_hdr.workdir)
-        self.assertEqual(_DATA_, output_hdr.data)
 
     def test_connect(self):
         client = rcclient()
@@ -493,6 +492,9 @@ class Test_service(unittest.TestCase):
         self.assertIsNot(0, result.errcode)
 
     def test_connect_then_execute_mkdir(self):
+        if os.path.exists('mkdir'):
+            os.removedirs('mkdir')
+
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)

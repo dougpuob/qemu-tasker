@@ -563,7 +563,8 @@ class header_execute():
         hdr.workdir = str(hdr.payload[pos1:pos2], 'utf-8')
 
         pos1 = hdr.length_program + hdr.length_argument + hdr.length_workdir
-        hdr.data = hdr.payload[pos1:]
+        data = hdr.payload[pos1:]
+        hdr.data = config().toCLASS(data)
 
         return hdr
 
@@ -1233,11 +1234,10 @@ class rcclient():
                                             self.sock.chunk_list)
         if is_there_a_chunk:
             chunk: header_execute = self.sock.chunk_list.pop(0)
-            logging.info('execresult len(chunk)={}'.format(len(chunk.data)))
 
             result = rcresult()
             if chunk.data:
-                data: execresult = config().toCLASS(chunk.data)
+                data: execresult = chunk.data
 
                 result.data = data
                 result.errcode = data.errcode
