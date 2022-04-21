@@ -23,6 +23,3 @@ if __name__ == '__main__':
     governor_server_socket_info = config.socket_address(parsed_args.host, parsed_args.port)
     governor_client_obj = governor_client(governor_server_socket_info)
     main(parsed_args, governor_client_obj).main()
-
-
-

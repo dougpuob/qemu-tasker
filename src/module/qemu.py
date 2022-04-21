@@ -275,10 +275,8 @@ class qemu_instance:
 
         while True:
             try:
-                is_connected_to_puppet = self.pup_obj.is_connected()
-                logging.info("QEMU(taskid={}) is_connected_to_puppet={}".format(self.taskid, is_connected_to_puppet))
-
-                if is_connected_to_puppet:
+                if self.pup_obj.is_connected():
+                    logging.info("QEMU(taskid={}) is_connected_to_puppet={}".format(self.taskid, True))
                     self.connections_status.PUP = config.connection_kind().connected
                     self.status = config.task_status().querying
                     break
