@@ -12,6 +12,7 @@ import logging
 import threading
 import subprocess
 
+from module.pyrc.rc import execresult
 from module.pyrc.rc import rcclient
 from module.pyrc.rc import rcresult
 from module import config
@@ -71,8 +72,15 @@ class puppet_client():
 
     def execute(self, program:str, argument:str='', workdir:str='.'):
       result: rcresult = self.pyrc_client.execute(program, argument, workdir)
+      result2: execresult = result.data
+      result3 = config.command_return()
+
+      result3.errcode = result2.errcode
+      result3.error_lines = result2.stderr
+      result3.info_lines = result2.stdout
+
       #logging.info('result={}', result.toTEXT())
-      return result.data
+      return result3
 
 
     def mkdir(self, dirpath:str):
