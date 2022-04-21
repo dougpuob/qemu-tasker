@@ -71,13 +71,13 @@ class puppet_client():
 
     def execute(self, program:str, argument:str='', workdir:str='.'):
       result: rcresult = self.pyrc_client.execute(program, argument, workdir)
-      logging.info('result={}', result.toTEXT())
+      #logging.info('result={}', result.toTEXT())
       return result.data
 
 
     def mkdir(self, dirpath:str):
       result: rcresult = self.pyrc_client.execute('mkdir', dirpath)
-      logging.info('result={}', result.toTEXT())
+      #logging.info('result={}', result.toTEXT())
       return (0 == result.errcode)
 
 

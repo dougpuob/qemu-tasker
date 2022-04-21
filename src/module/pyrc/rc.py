@@ -1233,9 +1233,9 @@ class rcclient():
                                             self.sock.chunk_list)
         if is_there_a_chunk:
             chunk: header_execute = self.sock.chunk_list.pop(0)
+            data: execresult = config().toCLASS(chunk.data)
 
             result = rcresult()
-            data: execresult = config().toCLASS(chunk.data)
             result.data = data
             result.errcode = data.errcode
             result.text += '\n'.join(data.stderr)

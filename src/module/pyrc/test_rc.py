@@ -492,6 +492,20 @@ class Test_service(unittest.TestCase):
         self.assertEqual(result.data.errcode, result.errcode)
         self.assertIsNot(0, result.errcode)
 
+    def test_connect_then_execute_mkdir(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        self.assertEqual(os.path.exists('mkdir'), False)
+        result: rcresult = client.execute('mkdir', 'mkdir')
+        self.assertEqual(result.data.errcode, result.errcode)
+        self.assertEqual(0, result.errcode)
+        self.assertEqual(os.path.exists('mkdir'), True)
+
+        os.removedirs('mkdir')
+        self.assertEqual(os.path.exists('mkdir'), False)
+
 
 if __name__ == '__main__':
     unittest.main()
