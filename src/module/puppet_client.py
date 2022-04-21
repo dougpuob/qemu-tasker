@@ -77,15 +77,17 @@ class puppet_client():
         cmdret.errcode = 111
         rcrs: rcresult = self.pyrc_client.execute(program, argument, workdir)
         cmdret.errcode = 222
+
         execrs: execresult = rcrs.data
         cmdret.errcode = 333
 
-        cmdret.errcode = execrs.errcode
-        cmdret.errcode = 444
         cmdret.error_lines = execrs.stderr
-        cmdret.errcode = 555
+        cmdret.errcode = 444
+
         cmdret.info_lines = execrs.stdout
-        cmdret.errcode = 666
+        cmdret.errcode = 555
+
+        cmdret.errcode = execrs.errcode
 
       except Exception as Err:
         cmdret.errcode = 999
