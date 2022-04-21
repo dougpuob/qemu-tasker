@@ -65,6 +65,7 @@ error_file_not_found = rcresult(3, 'File not found')
 error_path_not_exist = rcresult(4, 'Path is not exist')
 error_file_not_identical = rcresult(5, 'File length is not identical')
 error_wait_streaming_timeout = rcresult(6, 'Wait streaming timeout')
+error_exception = rcresult(7, 'An exception rised')
 
 
 class action_name(Enum):
@@ -979,6 +980,8 @@ class rcserver():
     def _handle_execute_command(self,
                                 sock: rcsock,
                                 ask_chunk: header_execute):
+        data = None
+
         try:
             workdir = ask_chunk.workdir
 
@@ -1012,19 +1015,27 @@ class rcserver():
                         break
 
                 data = result.toTEXT().encode()
-                data_chunk = header_execute(action_kind.data,
-                                            ask_chunk.program,
-                                            ask_chunk.argument,
-                                            ask_chunk.workdir,
-                                            data)
-                data_chunk.chunk_count = 1
-                data_chunk.chunk_index = 0
-                data_chunk.chunk_size = len(data)
-
-                sock.send(data_chunk.pack())
 
         except Exception as err:
             logging.exception(err)
+
+            result = execresult()
+            result.errcode = error_exception.errcode
+            result.stderr.append(error_exception.text)
+            result.stderr.append(str(err))
+            data = result.toTEXT().encode()
+
+        finally:
+            data_chunk = header_execute(action_kind.data,
+                                        ask_chunk.program,
+                                        ask_chunk.argument,
+                                        ask_chunk.workdir,
+                                        data)
+            data_chunk.chunk_count = 1
+            data_chunk.chunk_index = 0
+            data_chunk.chunk_size = len(data)
+
+            sock.send(data_chunk.pack())
 
         return True
 
