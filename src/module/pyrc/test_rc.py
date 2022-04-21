@@ -462,7 +462,7 @@ class Test_service(unittest.TestCase):
         self.assertEqual(client.is_connected(), True)
 
         if platform.system() == 'Windows':
-            result: rcresult = client.execute('ifconfig', '/all')
+            result: rcresult = client.execute('ipconfig', '/all')
             self.assertEqual(0, result.errcode)
         else:
             result: rcresult = client.execute('ip', 'a')

@@ -1238,6 +1238,7 @@ class rcclient():
             data: execresult = config().toCLASS(chunk.data)
             result.data = data
             result.errcode = data.errcode
+            result.text += '\n'.join(data.stderr)
 
             return result
 
