@@ -82,7 +82,6 @@ class puppet_client():
         ret_result.info_lines = result2.stdout
 
       except Exception as Err:
-        logging.exception(Err)
         ret_result.errcode = 999
         ret_result.error_lines.append('Exception occured !!!')
         ret_result.error_lines.append(str(Err))

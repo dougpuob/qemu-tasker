@@ -1233,12 +1233,15 @@ class rcclient():
                                             self.sock.chunk_list)
         if is_there_a_chunk:
             chunk: header_execute = self.sock.chunk_list.pop(0)
-            data: execresult = config().toCLASS(chunk.data)
+            logging.info('execresult len(chunk)={}'.format(len(chunk.data)))
 
             result = rcresult()
-            result.data = data
-            result.errcode = data.errcode
-            result.text += '\n'.join(data.stderr)
+            if chunk.data:
+                data: execresult = config().toCLASS(chunk.data)
+
+                result.data = data
+                result.errcode = data.errcode
+                result.text += '\n'.join(data.stderr)
 
             return result
 

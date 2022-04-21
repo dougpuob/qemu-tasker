@@ -330,7 +330,7 @@ class qemu_instance:
                 guest_info_os_kind = config.os_kind().macos
         else:
             logging.info('trying to execute `systeminfo` command ...')
-            cmdret: config.command_return = self.pup_obj.execute('systeminfo')
+            cmdret = self.pup_obj.execute('systeminfo')
             logging.info('`systeminfo` (cmdret.errcode={})'.format(cmdret.errcode))
             if cmdret.errcode == 0:
                 guest_info_os_kind = config.os_kind().windows
