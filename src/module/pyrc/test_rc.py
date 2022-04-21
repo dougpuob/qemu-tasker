@@ -10,6 +10,7 @@ import threading
 from rc import rcresult
 from rc import rcserver
 from rc import rcclient
+from rc import header_echo
 from rc import header_upload
 from rc import header_download
 from rc import header_list
@@ -97,6 +98,22 @@ class Test_service(unittest.TestCase):
 
     def tearDown(self):
         pass
+
+    def test_header_echo_no_data(self):
+
+        hdr = header_echo(action_kind.ask)
+
+        hdr.chunk_count = 1
+        hdr.chunk_index = 0
+        hdr.chunk_size = 0
+        packed_data = hdr.pack()
+        self.assertIsNotNone(packed_data)
+
+        output_hdr = hdr.unpack(packed_data)
+        self.assertTrue(isinstance(output_hdr, header_echo))
+
+        self.assertEqual(action_kind.ask.value, output_hdr.action_kind)
+        self.assertEqual(action_name.echo.value, output_hdr.action_name)
 
     def test_header_upload_no_data(self):
         _DATA_SIZE_ = 10

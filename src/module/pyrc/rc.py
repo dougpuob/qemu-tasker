@@ -18,6 +18,7 @@ _TIMEOUT_ = 3
 _CHUNK_SIZE_ = 1024*1024
 _BUFF_SIZE_ = 1024*1024*2
 
+_SIGNATURE_ECHO___ = b'$SiGEcH$'
 _SIGNATURE_UPLOAD_ = b'$SiGUpL$'
 _SIGNATURE_DOWNLO_ = b'$SiGDoW$'
 _SIGNATURE_EXECUT_ = b'$SiGExE$'
@@ -72,6 +73,7 @@ class action_name(Enum):
     download = 2
     list = 3
     execute = 4
+    echo = 99
 
 
 class action_kind(Enum):
@@ -79,6 +81,80 @@ class action_kind(Enum):
     ask = 1
     data = 2
     done = 3
+
+
+class header_echo():
+    def __init__(self, kind: action_kind = action_kind.unknown, data: bytes = b''):
+
+        self.data = None
+
+        self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'p'
+
+        self.signature: bytes = _SIGNATURE_ECHO___
+
+        self.header_size: int = 0
+        self.payload_size: int = 0
+        self.total_size: int = 0
+        self.action_name: int = action_name.echo.value
+        self.action_kind: int = kind.value
+
+        self.chunk_size: int = len(data)
+        self.chunk_count: int = 0
+        self.chunk_index: int = 0
+
+        self.payload: bytes = data
+
+    def pack(self):
+        self.header_size = struct.calcsize(self._STRUCT_FORMAT_)
+        self.payload_size = self.chunk_size
+        self.total_size = self.header_size + self.payload_size
+
+        rawdata = struct.pack(self._STRUCT_FORMAT_,
+                              self.signature,
+
+                              self.header_size,
+                              self.payload_size,
+                              self.total_size,
+                              self.action_name,
+                              self.action_kind,
+
+                              self.chunk_size,
+                              self.chunk_count,
+                              self.chunk_index,
+
+                              self.payload)
+
+        rawdata += self.payload
+        return rawdata
+
+    def unpack(self, data: bytes):
+        if len(data) <= 12:
+            return None
+
+        hdr_size: int = int.from_bytes(data[8:12], 'little')
+        hdr_only: bytes = data[:hdr_size]
+
+        hdr = header_echo()
+
+        # Header files
+        unpack = struct.unpack(self._STRUCT_FORMAT_, hdr_only)
+        hdr.signature = unpack[0]
+        hdr.header_size = unpack[1]
+        hdr.payload_size = unpack[2]
+        hdr.total_size = unpack[3]
+        hdr.action_name = unpack[4]
+        hdr.action_kind = unpack[5]
+        hdr.chunk_size = unpack[6]
+        hdr.chunk_count = unpack[7]
+        hdr.chunk_index = unpack[8]
+
+        # Payload
+        hdr.payload = data[hdr_size:]
+
+        # Unpack data from payload
+        hdr.data = hdr.payload
+
+        return hdr
 
 
 class header_upload():
@@ -505,7 +581,8 @@ class header():
         targets = [_SIGNATURE_UPLOAD_,  # 0
                    _SIGNATURE_DOWNLO_,  # 1
                    _SIGNATURE_EXECUT_,  # 2
-                   _SIGNATURE_LIST___]  # 3
+                   _SIGNATURE_LIST___,  # 3
+                   _SIGNATURE_ECHO___]  # 4
 
         pos = -1
         for item in targets:
@@ -589,6 +666,20 @@ class header():
                 found_hdr = hdr.unpack(chunk)
 
                 logfmt = 'header_list action_kind={} chunk_index={}/{}' + \
+                         'chunk_size={}'
+                logging.info(logfmt.format(found_hdr.action_kind,
+                                           found_hdr.chunk_index + 1,
+                                           found_hdr.chunk_count,
+                                           found_hdr.chunk_size))
+
+        elif 4 == matched_index:
+            hdr: header_echo = header_echo().unpack(chunk)
+            hdr_pos2 = pos + hdr.header_size + hdr.payload_size
+            if len(data) >= hdr_pos2:
+                chunk = data[hdr_pos1:hdr_pos2]
+                found_hdr = hdr.unpack(chunk)
+
+                logfmt = 'header_echo action_kind={} chunk_index={}/{}' + \
                          'chunk_size={}'
                 logging.info(logfmt.format(found_hdr.action_kind,
                                            found_hdr.chunk_index + 1,
@@ -763,6 +854,7 @@ class rcserver():
         try:
             while self._listening:
                 conn, _ = self.sock.accept()
+                conn.sendall(header_echo().pack())
                 self.client_list.append(rcsock(conn, self.callbacks))
 
         except Exception as e:
@@ -940,7 +1032,7 @@ class rcclient():
         self.sock = None
         self._connected = False
 
-    def wait_until(self, condition, interval=0.1, timeout=1, *args):
+    def _wait_until(self, condition, interval=0.1, timeout=1, *args):
         start = time.time()
         while not condition(*args) and time.time() - start < timeout:
             time.sleep(interval)
@@ -955,9 +1047,19 @@ class rcclient():
         if ret:
             self._connected = False
         else:
-            self._connected = True
-            conn.setblocking(True)
-            self.sock = rcsock(conn)
+            chunk = conn.recv(self.BUFF_SIZE)
+            echo_chunk = header_echo().unpack(chunk)
+            if (echo_chunk.signature[0] == _SIGNATURE_ECHO___[0]) and \
+               (echo_chunk.signature[1] == _SIGNATURE_ECHO___[1]) and \
+               (echo_chunk.signature[2] == _SIGNATURE_ECHO___[2]) and \
+               (echo_chunk.signature[3] == _SIGNATURE_ECHO___[3]) and \
+               (echo_chunk.signature[4] == _SIGNATURE_ECHO___[4]) and \
+               (echo_chunk.signature[5] == _SIGNATURE_ECHO___[5]) and \
+               (echo_chunk.signature[6] == _SIGNATURE_ECHO___[6]) and \
+               (echo_chunk.signature[7] == _SIGNATURE_ECHO___[7]):
+                self._connected = True
+                conn.setblocking(True)
+                self.sock = rcsock(conn)
 
         return self._connected
 
@@ -1049,7 +1151,7 @@ class rcclient():
         file_size = 0
         file = open(tmpfileloc, "wb")
         while True:
-            is_there_a_chunk = self.wait_until(len, 0.1, _TIMEOUT_,
+            is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
                                                self.sock.chunk_list)
             if not is_there_a_chunk:
                 result = error_wait_streaming_timeout
@@ -1085,7 +1187,7 @@ class rcclient():
         ask_chunk = header_list(action_kind.ask, dstdirpath)
         self.send(ask_chunk.pack())
 
-        is_there_a_chunk = self.wait_until(len, 0.1, _TIMEOUT_,
+        is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
                                            self.sock.chunk_list)
         if is_there_a_chunk:
             chunk: header_list = self.sock.chunk_list.pop(0)
@@ -1106,7 +1208,7 @@ class rcclient():
                                    workdir)
         self.send(ask_chunk.pack())
 
-        is_there_a_chunk = self.wait_until(len, 0.1, _TIMEOUT_,
+        is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
                                            self.sock.chunk_list)
         if is_there_a_chunk:
             chunk: header_execute = self.sock.chunk_list.pop(0)
@@ -1139,13 +1241,17 @@ if __name__ == '__main__':
             rcsrv.start()
 
         elif sys.argv[1] == 'client':
-            rcclt = rcclient(_HOST_, _PORT_)
-            if rcclt.connect():
+            rcclt = rcclient()
+
+            if rcclt.connect('localhost', 10013):
                 # result = rcclt.upload('../MyApp.exe', '.')
                 # result = rcclt.upload('../calc.exe', '.')
                 # result = rcclt.download('../VirtualBox.exe', '.')
                 # result = rcclt.list('README.md')
-                result = rcclt.execute('ifconfig')
+                # result = rcclt.execute('ifconfig')
+
+                # Windows commands
+                result = rcclt.execute('ipconfig')
 
                 if 0 == result.errcode:
                     logging.info("errcode={}".format(result.errcode))
