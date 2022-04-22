@@ -164,8 +164,14 @@ class header_upload():
     def __init__(self, kind: action_kind = action_kind.unknown,
                  filename: str = '',
                  filesize: int = 0,
-                 dstdirpath: str = '',
+                 dstdirpath: str = '.',
                  data: bytes = b''):
+
+        if filename is None:
+            filename = ''
+
+        if dstdirpath is None:
+            dstdirpath = '.'
 
         self._STRUCT_FORMAT_ = '8s' + 'iiiiii' + 'iii' + 'ii' + 'p'
 
