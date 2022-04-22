@@ -72,10 +72,12 @@ class main():
             # Server socket address information
             self.setting.Governor.Address = self.input_args.host
             self.setting.Governor.Port = self.input_args.port
-            self.server_addr = config.socket_address(self.input_args.host, self.input_args.port)
+            self.server_addr = config.socket_address(self.input_args.host,
+                                                     self.input_args.port)
 
             # Puppet socket address information
-            puppet_cmd_addr_info = config.socket_address(self.setting.Puppet.Address, self.setting.Puppet.Port.Cmd)
+            puppet_cmd_addr_info = config.socket_address(self.setting.Governor.Address,
+                                                         self.setting.Puppet.Port.Cmd)
 
 
             # =========================================================================
@@ -267,7 +269,9 @@ class main():
         if 0 == status_resp_capsule.result.errcode:
             status_resp_data:config.status_command_response_data = status_resp_capsule.data
             pup_client = puppet_client(taskid, self.WORK_DIR)
-            pup_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address, status_resp_data.forward.pup)
+
+            pup_socket_info = config.socket_address(status_resp_data.server_info.socket_addr.address,
+                                                    status_resp_data.forward.pup)
             pup_client.connect(pup_socket_info)
             return pup_client
 

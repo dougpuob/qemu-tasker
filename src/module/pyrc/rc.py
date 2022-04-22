@@ -13,7 +13,7 @@ import threading
 from enum import Enum
 from types import SimpleNamespace
 
-_TIMEOUT_ = 10
+_TIMEOUT_ = 30
 
 _CHUNK_SIZE_ = 1024*1024
 _BUFF_SIZE_ = 1024*1024*2
@@ -1363,7 +1363,8 @@ if __name__ == '__main__':
         elif sys.argv[1] == 'client':
             rcclt = rcclient()
 
-            if rcclt.connect('localhost', 10013):
+            # if rcclt.connect('localhost', 10013):
+            if rcclt.connect('192.168.0.101', _PORT_):
                 # result = rcclt.upload('../MyApp.exe', '.')
                 # result = rcclt.upload('../calc.exe', '.')
                 # result = rcclt.download('../VirtualBox.exe', '.')

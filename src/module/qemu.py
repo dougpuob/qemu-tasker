@@ -72,7 +72,7 @@ class qemu_instance:
 
 
         self.socket_gov_addr = config.socket_address(self.setting.Governor.Address, self.setting.Governor.Port)
-        self.socket_pup_cmd = config.socket_address(self.setting.Puppet.Address, self.forward_port.pup)
+        self.socket_puppet = config.socket_address(self.setting.Puppet.Address, self.forward_port.pup)
 
         workdir_path = self.path_obj.realpath('.')
         pushdir_name = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(taskid)
@@ -267,7 +267,7 @@ class qemu_instance:
             logging.info("QMP is connected.")
 
 
-    def thread_pup_try_connect(self, target_addr, target_port):
+    def thread_puppet_try_connect(self, target_addr, target_port):
         logging.info("thread_pup_try_connect()")
         logging.info("thread_pup_try_connect() ({0})".format(self.is_pup_connected()))
 
@@ -282,7 +282,7 @@ class qemu_instance:
                     break
                 else:
                     logging.info("QEMU(taskid={0}) is trying to connect puppet (cmd) ...)".format(self.taskid))
-                    ret = self.pup_obj.connect(self.socket_pup_cmd)
+                    ret = self.pup_obj.connect(self.socket_puppet)
                     logging.info("ret={0}".format(ret))
                     logging.info("pup_obj.is_cmd_connected={0}".format(self.pup_obj.is_connected()))
 
@@ -401,8 +401,9 @@ class qemu_instance:
         if self.is_pup_connected():
             return
 
-        wait_puttet_thread = threading.Thread(target = self.thread_pup_try_connect, args=(self.socket_gov_addr.address,
-                                                                                          self.forward_port.pup))
+        wait_puttet_thread = threading.Thread(target = self.thread_puppet_try_connect,
+                                              args=(self.socket_gov_addr.address,
+                                                    self.forward_port.pup))
         wait_puttet_thread.setDaemon(True)
         wait_puttet_thread.start()
 
