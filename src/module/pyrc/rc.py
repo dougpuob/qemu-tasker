@@ -1041,19 +1041,24 @@ class rcserver():
 
     def _handle_list_command(self, conn: rcsock, ask_chunk: header_list):
 
-        fileloc = os.path.abspath(ask_chunk.dstdirpath)
+        filepath = os.path.abspath(ask_chunk.dstdirpath)
 
-        logfmt = 'fileloc={}'
-        logging.info(logfmt.format(fileloc))
+        logfmt = 'filepath={}'
+        logging.info(logfmt.format(filepath))
 
-        if not os.path.exists(fileloc):
+        if not os.path.exists(filepath):
             return error_file_not_found
 
         listdir = []
-        if os.path.isdir(fileloc):
-            listdir = os.listdir(fileloc)
+        if os.path.isdir(filepath):
+            listdir = os.listdir(filepath)
         else:
-            listdir.append(os.path.basename(fileloc))
+            listdir.append(os.path.basename(filepath))
+
+        index = 0
+        for file in listdir:
+            index += 1
+            logging.info('file[{}/{}]={}'.format(index, len(listdir), file))
 
         data = json.dumps(listdir).encode()
         data_chunk = header_list(action_kind.data, ask_chunk.dstdirpath,
@@ -1063,8 +1068,8 @@ class rcserver():
         data_chunk.chunk_size = len(data)
         conn._send(data_chunk.pack())
 
-        done_chunk = header_list(action_kind.done, ask_chunk.dstdirpath)
-        conn._send(done_chunk.pack())
+        # done_chunk = header_list(action_kind.done, ask_chunk.dstdirpath)
+        # conn._send(done_chunk.pack())
 
         return True
 

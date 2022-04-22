@@ -229,11 +229,11 @@ class main():
 
                 elif 'upload' == self.input_args.command:
                     pup_client = self.get_puppet_client(self.input_args.taskid)
-                    result: rcresult = pup_client.upload(self.input_args.files,
+                    result: list = pup_client.upload(self.input_args.files,
                                                          self.input_args.dstdir)
                     response_capsule = config.execute_command_response_data(config.action_kind().response,
                                                                             config.command_kind().upload,
-                                                                            data=result.data)
+                                                                            data=result)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'download' == self.input_args.command:
