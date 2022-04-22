@@ -1131,15 +1131,9 @@ class rcserver():
                         break
 
                 data = result.toTEXT().encode()
-
-                logfmt = 'program={} argument={} workdir={} ' + \
-                         'errcode={} stderr({}) stderr({})'
-                logging.info(logfmt.format(ask_chunk.program,
-                                           ask_chunk.argument,
-                                           ask_chunk.workdir,
-                                           result.errcode,
-                                           len(result.stdout),
-                                           len(result.stderr)))
+                data_len = len(data)
+                logfmt = 'data_len={} (result.toTEXT().encode())'
+                logging.info(logfmt.format(data_len))
 
                 data_chunk = header_execute(action_kind.data,
                                             ask_chunk.program,
@@ -1150,7 +1144,17 @@ class rcserver():
                 data_chunk.chunk_index = 0
                 data_chunk.chunk_size = len(data)
 
-                sock._send(data_chunk.pack())
+                packed_data = data_chunk.pack()
+                logfmt = 'program={} argument={} workdir={} ' + \
+                         'errcode={} stderr({}) stderr({}) packed_data({})'
+                logging.info(logfmt.format(ask_chunk.program,
+                                           ask_chunk.argument,
+                                           ask_chunk.workdir,
+                                           result.errcode,
+                                           len(result.stdout),
+                                           len(result.stderr),
+                                           len(packed_data)))
+                sock._send(packed_data)
 
         except Exception as err:
             logging.exception(err)
