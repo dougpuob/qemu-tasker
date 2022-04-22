@@ -711,6 +711,11 @@ class header():
                                            found_hdr.chunk_index + 1,
                                            found_hdr.chunk_count,
                                            found_hdr.chunk_size))
+
+                logging.info('filename={}'.format(found_hdr.filename))
+                logging.info('dstdirpath={}'.format(found_hdr.dstdirpath))
+                logging.info('file_size={}'.format(found_hdr.file_size))
+
             else:
                 logging.warning('buffer is insufficient for a header_upload, len(data)={}'.format(len(data)))
                 found_hdr = None
@@ -728,7 +733,7 @@ class header():
             hdr_pos2 = hdr_pos1 + hdr.total_size
             if len(data) >= hdr_pos2:
                 chunk = data[hdr_pos1:hdr_pos2]
-                found_hdr = hdr.unpack(chunk)
+                found_hdr: header_download = hdr.unpack(chunk)
                 logging.info('unpack a header_download, len(chunk)={}'.format(len(chunk)))
 
                 logfmt = 'header_download action_kind={} chunk_index={}/{}' + \
@@ -737,6 +742,10 @@ class header():
                                            found_hdr.chunk_index + 1,
                                            found_hdr.chunk_count,
                                            found_hdr.chunk_size))
+
+                logging.info('filepath={}'.format(found_hdr.filepath))
+                logging.info('file_size={}'.format(found_hdr.file_size))
+
             else:
                 logging.warning('buffer is insufficient for a header_download, len(data)={}'.format(len(data)))
                 found_hdr = None
@@ -763,6 +772,11 @@ class header():
                                            found_hdr.chunk_index + 1,
                                            found_hdr.chunk_count,
                                            found_hdr.chunk_size))
+
+                logging.info('program={}'.format(found_hdr.program))
+                logging.info('argument={}'.format(found_hdr.argument))
+                logging.info('workdir={}'.format(found_hdr.workdir))
+
             else:
                 logging.warning('buffer is insufficient for a header_execute, len(data)={}'.format(len(data)))
                 found_hdr = None
@@ -789,6 +803,9 @@ class header():
                                            found_hdr.chunk_index + 1,
                                            found_hdr.chunk_count,
                                            found_hdr.chunk_size))
+
+                logging.info('dstdirpath={}'.format(found_hdr.dstdirpath))
+
             else:
                 logging.warning('buffer is insufficient for a header_list, len(data)={}'.format(len(data)))
                 found_hdr = None
@@ -1464,8 +1481,9 @@ if __name__ == '__main__':
             if rcclt.connect('localhost', 10013):
                 # result = rcclt.upload('../MyApp.exe', '.')
                 # result = rcclt.upload('../calc.exe', '.')
-                result = rcclt.upload('../VirtualBox.exe', '.')
+                # result = rcclt.upload('../VirtualBox.exe', '.')
                 # result = rcclt.list('README.md')
+                result = rcclt.list('.')
                 # result = rcclt.execute('ifconfig')
 
                 # # # # # # # # # # #
