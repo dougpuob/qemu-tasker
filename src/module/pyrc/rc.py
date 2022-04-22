@@ -89,7 +89,7 @@ class action_kind(Enum):
 class header_echo():
     def __init__(self, kind: action_kind = action_kind.unknown, data: bytes = b''):
 
-        self.data = None
+        self.data = b''
 
         self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'p'
 
@@ -170,9 +170,9 @@ class header_upload():
         self._STRUCT_FORMAT_ = '8s' + 'iiiiii' + 'iii' + 'ii' + 'p'
 
         # Unpack payload fields
-        self.filename = None
-        self.dstdirpath = None
-        self.data = None
+        self.filename = b''
+        self.dstdirpath = b''
+        self.data = b''
 
         self.signature: bytes = _SIGNATURE_UPLOAD_
 
@@ -276,8 +276,8 @@ class header_download():
         self._STRUCT_FORMAT_ = '8s' + 'iiiiii' + 'iii' + 'i' + 'p'
 
         # Unpack payload fields
-        self.filepath = None
-        self.data = None
+        self.filepath = b''
+        self.data = b''
 
         self.signature: bytes = _SIGNATURE_DOWNLO_
 
@@ -373,8 +373,8 @@ class header_list():
         self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'i' + 'p'
 
         # Unpack payload fields
-        self.dstdirpath = None
-        self.data = None
+        self.dstdirpath = b''
+        self.data = b''
 
         self.signature: bytes = _SIGNATURE_LIST___
 
