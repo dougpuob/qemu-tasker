@@ -690,7 +690,7 @@ class header():
         logging.info('chunk_len={}'.format(chunk_len))
 
         if 0 == matched_index:
-            logging.info('unpacking header_upload ... (chunk={}).'.format(chunk))
+            logging.info('unpacking header_upload ...')
 
             hdr: header_upload = header_upload().unpack(chunk)
             logging.info('find a header_upload, chunk={}'.format(chunk))
@@ -717,7 +717,7 @@ class header():
                 hdr_pos2 = 0
 
         elif 1 == matched_index:
-            logging.info('unpacking header_download ... (chunk={}).'.format(chunk))
+            logging.info('unpacking header_download ...')
 
             hdr: header_download = header_download().unpack(chunk)
             if hdr is None:
@@ -743,7 +743,7 @@ class header():
                 hdr_pos2 = 0
 
         elif 2 == matched_index:
-            logging.info('unpacking header_execute ... (chunk={}).'.format(chunk))
+            logging.info('unpacking header_execute ...')
 
             hdr: header_execute = header_execute().unpack(chunk)
             if hdr is None:
@@ -769,7 +769,7 @@ class header():
                 hdr_pos2 = 0
 
         elif 3 == matched_index:
-            logging.info('unpacking header_list ... (chunk={}).'.format(chunk))
+            logging.info('unpacking header_list ...')
 
             hdr: header_list = header_list().unpack(chunk)
             if hdr is None:
@@ -795,7 +795,7 @@ class header():
                 hdr_pos2 = 0
 
         elif 4 == matched_index:
-            logging.info('unpacking header_echo ... (chunk={}).'.format(chunk))
+            logging.info('unpacking header_echo ...')
 
             hdr: header_echo = header_echo().unpack(chunk)
             if hdr is None:
@@ -1110,6 +1110,8 @@ class rcserver():
             if not sock.file_handle:
                 filepath = os.path.join(data_chunk.dstdirpath,
                                         data_chunk.filename)
+                fullpath = os.path.abspath(filepath)
+                logging.info('open file (fullpath={})'.format(fullpath))
                 sock.file_handle = open(filepath, "wb")
 
             sock.file_handle.write(data_chunk.data)
@@ -1459,10 +1461,10 @@ if __name__ == '__main__':
             rcclt = rcclient()
 
             # if rcclt.connect('localhost', 10013):
-            if rcclt.connect('192.168.0.101', _PORT_):
+            if rcclt.connect('localhost', 10023):
                 # result = rcclt.upload('../MyApp.exe', '.')
                 # result = rcclt.upload('../calc.exe', '.')
-                # result = rcclt.download('../VirtualBox.exe', '.')
+                result = rcclt.upload('../VirtualBox.exe', 'qemu-tasker')
                 # result = rcclt.list('README.md')
                 # result = rcclt.execute('ifconfig')
 
@@ -1470,7 +1472,7 @@ if __name__ == '__main__':
                 # Windows commands  #
                 # # # # # # # # # # #
                 # result = rcclt.execute('ipconfig')
-                result = rcclt.execute('systeminfo')
+                # result = rcclt.execute('systeminfo')
 
                 if 0 == result.errcode:
                     logging.info("errcode={}".format(result.errcode))
