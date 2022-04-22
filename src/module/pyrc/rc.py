@@ -15,6 +15,8 @@ from types import SimpleNamespace
 
 _TIMEOUT_ = 10
 
+_HEADER_SIZE_ = 16
+
 _CHUNK_SIZE_ = 1024*1024
 _BUFF_SIZE_ = 1024*1024*2
 
@@ -94,8 +96,8 @@ class header_echo():
         self.signature: bytes = _SIGNATURE_ECHO___
 
         self.header_size: int = 0
-        self.payload_size: int = 0
         self.total_size: int = 0
+        self.payload_size: int = 0
         self.action_name: int = action_name.echo.value
         self.action_kind: int = kind.value
 
@@ -114,8 +116,8 @@ class header_echo():
                               self.signature,
 
                               self.header_size,
-                              self.payload_size,
                               self.total_size,
+                              self.payload_size,
                               self.action_name,
                               self.action_kind,
 
@@ -129,10 +131,10 @@ class header_echo():
         return rawdata
 
     def unpack(self, data: bytes):
-        if len(data) <= 20:
+        if len(data) <= _HEADER_SIZE_:
             return None
 
-        hdr_size: int = int.from_bytes(data[8:12], 'little')
+        hdr_size: int = int.from_bytes(data[8:11], 'little')
         hdr_only: bytes = data[:hdr_size]
 
         hdr = header_echo()
@@ -141,8 +143,8 @@ class header_echo():
         unpack = struct.unpack(self._STRUCT_FORMAT_, hdr_only)
         hdr.signature = unpack[0]
         hdr.header_size = unpack[1]
-        hdr.payload_size = unpack[2]
-        hdr.total_size = unpack[3]
+        hdr.total_size = unpack[2]
+        hdr.payload_size = unpack[3]
         hdr.action_name = unpack[4]
         hdr.action_kind = unpack[5]
         hdr.chunk_size = unpack[6]
@@ -175,8 +177,8 @@ class header_upload():
         self.signature: bytes = _SIGNATURE_UPLOAD_
 
         self.header_size: int = 0
-        self.payload_size: int = 0
         self.total_size: int = 0
+        self.payload_size: int = 0
         self.file_size: int = filesize
         self.action_name: int = action_name.upload.value
         self.action_kind: int = kind.value
@@ -203,8 +205,8 @@ class header_upload():
                               self.signature,
 
                               self.header_size,
-                              self.payload_size,
                               self.total_size,
+                              self.payload_size,
                               self.file_size,
                               self.action_name,
                               self.action_kind,
@@ -222,10 +224,10 @@ class header_upload():
         return rawdata
 
     def unpack(self, data: bytes):
-        if len(data) <= 20:
+        if len(data) <= _HEADER_SIZE_:
             return None
 
-        hdr_size: int = int.from_bytes(data[8:12], 'little')
+        hdr_size: int = int.from_bytes(data[8:11], 'little')
         hdr_only: bytes = data[:hdr_size]
 
         hdr = header_upload()
@@ -234,8 +236,8 @@ class header_upload():
         unpack = struct.unpack(self._STRUCT_FORMAT_, hdr_only)
         hdr.signature = unpack[0]
         hdr.header_size = unpack[1]
-        hdr.payload_size = unpack[2]
-        hdr.total_size = unpack[3]
+        hdr.total_size = unpack[2]
+        hdr.payload_size = unpack[3]
         hdr.file_size = unpack[4]
         hdr.action_name = unpack[5]
         hdr.action_kind = unpack[6]
@@ -280,8 +282,8 @@ class header_download():
         self.signature: bytes = _SIGNATURE_DOWNLO_
 
         self.header_size: int = 0
-        self.payload_size: int = 0
         self.total_size: int = 0
+        self.payload_size: int = 0
         self.file_size: int = filesize
         self.action_name: int = action_name.download.value
         self.action_kind: int = kind.value
@@ -308,8 +310,8 @@ class header_download():
                               self.signature,
 
                               self.header_size,
-                              self.payload_size,
                               self.total_size,
+                              self.payload_size,
                               self.file_size,
                               self.action_name,
                               self.action_kind,
@@ -326,10 +328,10 @@ class header_download():
         return rawdata
 
     def unpack(self, data: bytes):
-        if len(data) <= 20:
+        if len(data) <= _HEADER_SIZE_:
             return None
 
-        hdr_size: int = int.from_bytes(data[8:12], 'little')
+        hdr_size: int = int.from_bytes(data[8:11], 'little')
         hdr_only: bytes = data[:hdr_size]
 
         hdr = header_download()
@@ -338,8 +340,8 @@ class header_download():
         unpack = struct.unpack(self._STRUCT_FORMAT_, hdr_only)
         hdr.signature = unpack[0]
         hdr.header_size = unpack[1]
-        hdr.payload_size = unpack[2]
-        hdr.total_size = unpack[3]
+        hdr.total_size = unpack[2]
+        hdr.payload_size = unpack[3]
         hdr.file_size = unpack[4]
         hdr.action_name = unpack[5]
         hdr.action_kind = unpack[6]
@@ -377,8 +379,8 @@ class header_list():
         self.signature: bytes = _SIGNATURE_LIST___
 
         self.header_size: int = 0
-        self.payload_size: int = 0
         self.total_size: int = 0
+        self.payload_size: int = 0
         self.action_name: int = action_name.list.value
         self.action_kind: int = kind.value
 
@@ -401,8 +403,8 @@ class header_list():
                               self.signature,
 
                               self.header_size,
-                              self.payload_size,
                               self.total_size,
+                              self.payload_size,
                               self.action_name,
                               self.action_kind,
 
@@ -418,10 +420,10 @@ class header_list():
         return rawdata
 
     def unpack(self, data: bytes):
-        if len(data) <= 20:
+        if len(data) <= _HEADER_SIZE_:
             return None
 
-        hdr_size: int = int.from_bytes(data[8:12], 'little')
+        hdr_size: int = int.from_bytes(data[8:11], 'little')
         hdr_only: bytes = data[:hdr_size]
 
         hdr = header_list()
@@ -430,8 +432,8 @@ class header_list():
         unpack = struct.unpack(self._STRUCT_FORMAT_, hdr_only)
         hdr.signature = unpack[0]
         hdr.header_size = unpack[1]
-        hdr.payload_size = unpack[2]
-        hdr.total_size = unpack[3]
+        hdr.total_size = unpack[2]
+        hdr.payload_size = unpack[3]
         hdr.action_name = unpack[4]
         hdr.action_kind = unpack[5]
         hdr.chunk_size = unpack[6]
@@ -475,8 +477,8 @@ class header_execute():
         self.signature: bytes = _SIGNATURE_EXECUT_
 
         self.header_size: int = 0
-        self.payload_size: int = 0
         self.total_size: int = 0
+        self.payload_size: int = 0
         self.action_name: int = action_name.execute.value
         self.action_kind: int = kind.value
 
@@ -523,8 +525,8 @@ class header_execute():
                               self.signature,
 
                               self.header_size,
-                              self.payload_size,
                               self.total_size,
+                              self.payload_size,
                               self.action_name,
                               self.action_kind,
 
@@ -544,13 +546,13 @@ class header_execute():
 
     def unpack(self, data: bytes):
         data_len = len(data)
-        if data_len <= 20:
+        if data_len <= _HEADER_SIZE_:
             logfmt = '[header_execute] buffer is insufficient !!! (data_len={})'
             logging.info(logfmt.format(data_len))
             return None
 
-        hdr_size: int = int.from_bytes(data[8:12], 'little')
-        total_size: int = int.from_bytes(data[16:20], 'little')
+        hdr_size: int = int.from_bytes(data[8:11], 'little')
+        total_size: int = int.from_bytes(data[12:15], 'little')
         logging.info('[header_execute] hdr_size={}'.format(hdr_size))
         logging.info('[header_execute] total_size={}'.format(total_size))
 
@@ -568,8 +570,8 @@ class header_execute():
         unpack = struct.unpack(self._STRUCT_FORMAT_, header_no_payload)
         hdr.signature = unpack[0]
         hdr.header_size = unpack[1]
-        hdr.payload_size = unpack[2]
-        hdr.total_size = unpack[3]
+        hdr.total_size = unpack[2]
+        hdr.payload_size = unpack[3]
         hdr.action_name = unpack[4]
         hdr.action_kind = unpack[5]
         hdr.chunk_size = unpack[6]
@@ -642,7 +644,7 @@ class header():
 
     def find_header(self, data: bytes):
         data_len = len(data)
-        if data_len < 20:
+        if data_len < _HEADER_SIZE_:
             logging.info('buffer is insufficient !!! (data_len={})'.format(data_len))
             return None, 0
 
@@ -664,15 +666,15 @@ class header():
             index += 1
 
         hdr_pos1 = signature_pos + 8
-        hdr_pos2 = signature_pos + 12
+        hdr_pos2 = hdr_pos1 + 4
         header_size: int = int.from_bytes(data[hdr_pos1:hdr_pos2], 'little')
         if data_len < header_size:
             logging.info('buffer is insufficient !!! (data_len is less than header_size)')
             return None, 0
 
         found_hdr = None
-        hdr_pos1 = signature_pos + 16
-        hdr_pos2 = signature_pos + 20
+        hdr_pos1 = signature_pos + 12
+        hdr_pos2 = hdr_pos1 + 4
         total_size: int = int.from_bytes(data[hdr_pos1:hdr_pos2], 'little')
         if len(data) < total_size:
             logging.info('buffer is insufficient !!! (data_len is less than total_size)')
@@ -696,9 +698,10 @@ class header():
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos2 = signature_pos + hdr.header_size + hdr.payload_size
+            hdr_pos1 = signature_pos
+            hdr_pos2 = hdr_pos1 + hdr.total_size
             if len(data) >= hdr_pos2:
-                chunk = data[:hdr_pos2]
+                chunk = data[hdr_pos1:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
                 logging.info('unpack a header_upload, len(chunk)={}'.format(len(chunk)))
 
@@ -721,9 +724,10 @@ class header():
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos2 = signature_pos + hdr.header_size + hdr.payload_size
+            hdr_pos1 = signature_pos
+            hdr_pos2 = hdr_pos1 + hdr.total_size
             if len(data) >= hdr_pos2:
-                chunk = data[:hdr_pos2]
+                chunk = data[hdr_pos1:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
                 logging.info('unpack a header_download, len(chunk)={}'.format(len(chunk)))
 
@@ -746,9 +750,10 @@ class header():
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos2 = signature_pos + hdr.total_size
+            hdr_pos1 = signature_pos
+            hdr_pos2 = hdr_pos1 + hdr.total_size
             if len(data) >= hdr_pos2:
-                chunk = data[:hdr_pos2]
+                chunk = data[signature_pos:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
                 logging.info('unpack a header_execute, len(chunk)={}'.format(len(chunk)))
 
@@ -771,9 +776,10 @@ class header():
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos2 = signature_pos + hdr.header_size + hdr.payload_size
+            hdr_pos1 = signature_pos
+            hdr_pos2 = hdr_pos1 + hdr.total_size
             if len(data) >= hdr_pos2:
-                chunk = data[:hdr_pos2]
+                chunk = data[hdr_pos1:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
                 logging.info('unpack a header_list, len(chunk)={}'.format(len(chunk)))
 
@@ -796,9 +802,10 @@ class header():
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos2 = signature_pos + hdr.header_size + hdr.payload_size
+            hdr_pos1 = signature_pos
+            hdr_pos2 = hdr_pos1 + hdr.total_size
             if len(data) >= hdr_pos2:
-                chunk = data[:hdr_pos2]
+                chunk = data[hdr_pos1:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
                 logging.info('unpack a header_echo, len(chunk)={}'.format(len(chunk)))
 
