@@ -552,7 +552,8 @@ class header_execute():
         hdr_size: int = int.from_bytes(data[8:12], 'little')
         total_size: int = int.from_bytes(data[16:20], 'little')
         if len(data) < total_size:
-            logfmt = 'buffer is insufficient !!! (data_len={}<total_size={})'
+            logfmt = 'buffer is insufficient !!! ' + \
+                     '(data_len={} less than total_size={})'
             logging.info(logfmt.format(data_len, total_size))
             return None
 
@@ -826,11 +827,17 @@ class rcsock():
         self.thread.start()
 
     def _send(self, data):
+
+        data_len = len(data)
+        logging.info('data_len={}'.format(data_len))
+
         ret = None
         try:
             ret = self.conn.sendall(data)
+
         except Exception as Err:
             logging.exception(Err)
+
         finally:
             return ret
 
@@ -1209,17 +1216,23 @@ class rcclient():
         else:
             chunk = conn.recv(self.BUFF_SIZE)
             echo_chunk = header_echo().unpack(chunk)
-            if (echo_chunk.signature[0] == _SIGNATURE_ECHO___[0]) and \
-               (echo_chunk.signature[1] == _SIGNATURE_ECHO___[1]) and \
-               (echo_chunk.signature[2] == _SIGNATURE_ECHO___[2]) and \
-               (echo_chunk.signature[3] == _SIGNATURE_ECHO___[3]) and \
-               (echo_chunk.signature[4] == _SIGNATURE_ECHO___[4]) and \
-               (echo_chunk.signature[5] == _SIGNATURE_ECHO___[5]) and \
-               (echo_chunk.signature[6] == _SIGNATURE_ECHO___[6]) and \
-               (echo_chunk.signature[7] == _SIGNATURE_ECHO___[7]):
-                self._connected = True
-                conn.setblocking(True)
-                self.sock = rcsock(conn)
+
+            try:
+                if (echo_chunk.signature[0] == _SIGNATURE_ECHO___[0]) and \
+                   (echo_chunk.signature[1] == _SIGNATURE_ECHO___[1]) and \
+                   (echo_chunk.signature[2] == _SIGNATURE_ECHO___[2]) and \
+                   (echo_chunk.signature[3] == _SIGNATURE_ECHO___[3]) and \
+                   (echo_chunk.signature[4] == _SIGNATURE_ECHO___[4]) and \
+                   (echo_chunk.signature[5] == _SIGNATURE_ECHO___[5]) and \
+                   (echo_chunk.signature[6] == _SIGNATURE_ECHO___[6]) and \
+                   (echo_chunk.signature[7] == _SIGNATURE_ECHO___[7]):
+                    self._connected = True
+                    conn.setblocking(True)
+                    self.sock = rcsock(conn)
+
+            except Exception:
+                self._connected = False
+                logging.error('Failed to receive an ECHO from server !!!')
 
         return self._connected
 
