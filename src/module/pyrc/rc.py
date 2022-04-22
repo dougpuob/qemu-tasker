@@ -467,7 +467,7 @@ class header_execute():
                  kind: action_kind = action_kind.unknown,
                  program: str = '',
                  arguments: str = '',
-                 workdir: str = '',
+                 workdir: str = '.',
                  data: bytes = b''):
 
         self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'iii' + 'p'
@@ -1494,8 +1494,10 @@ if __name__ == '__main__':
                 # result = rcclt.upload('../calc.exe', '.')
                 # result = rcclt.upload('../VirtualBox.exe', '.')
                 # result = rcclt.list('README.md')
-                result = rcclt.list('.')
+                # result = rcclt.list('.')
+
                 # result = rcclt.execute('ifconfig')
+                result = rcclt.execute('devcon64', 'rescan')
 
                 # # # # # # # # # # #
                 # Windows commands  #
