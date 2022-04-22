@@ -796,16 +796,16 @@ class rcsock():
         self.thread.daemon = True
         self.thread.start()
 
-    def send(self, data):
+    def _send(self, data):
         ret = None
         try:
-            ret = self.conn.send(data)
+            ret = self.conn.sendall(data)
         except Exception as Err:
             logging.exception(Err)
         finally:
             return ret
 
-    def wait_until(self, condition, interval=0.1, timeout=1, *args):
+    def _wait_until(self, condition, interval=0.1, timeout=1, *args):
         start = time.time()
         while not condition(*args) and time.time() - start < timeout:
             time.sleep(interval)
@@ -969,15 +969,15 @@ class rcserver():
         data_chunk.chunk_count = 1
         data_chunk.chunk_index = 0
         data_chunk.chunk_size = len(data)
-        conn.send(data_chunk.pack())
+        conn._send(data_chunk.pack())
 
         done_chunk = header_list(action_kind.done, ask_chunk.dstdirpath)
-        conn.send(done_chunk.pack())
+        conn._send(done_chunk.pack())
 
         return True
 
     def _handle_download_command(self,
-                                 conn: socket.socket,
+                                 conn: rcsock,
                                  ask_chunk: header_download):
 
         fileloc = os.path.abspath(ask_chunk.filepath)
@@ -1014,7 +1014,7 @@ class rcserver():
                                        data_chunk.chunk_count,
                                        data_chunk.chunk_size))
 
-            conn.send(data_chunk.pack())
+            conn._send(data_chunk.pack())
             index += 1
 
         file.close()
@@ -1096,7 +1096,7 @@ class rcserver():
                 data_chunk.chunk_index = 0
                 data_chunk.chunk_size = len(data)
 
-                sock.send(data_chunk.pack())
+                sock._send(data_chunk.pack())
 
         except Exception as err:
             logging.exception(err)
@@ -1115,7 +1115,7 @@ class rcserver():
             data_chunk.chunk_index = 0
             data_chunk.chunk_size = len(data)
 
-            sock.send(data_chunk.pack())
+            sock._send(data_chunk.pack())
 
         # finally:
         #     data_chunk = header_execute(action_kind.data,
@@ -1182,8 +1182,8 @@ class rcclient():
     def stop(self):
         self._connected = False
 
-    def send(self, data):
-        self.sock.send(data)
+    def _send(self, data):
+        self.sock._send(data)
 
     def upload(self, local_filepath: str, remote_dirpath: str):
 
@@ -1195,7 +1195,7 @@ class rcclient():
         filesize = os.path.getsize(filepath)
         hdr = header_upload(action_kind.ask, filename, filesize,
                             remote_dirpath)
-        self.send(hdr.pack())
+        self._send(hdr.pack())
 
         logging.info('filename={}'.format(filename))
         logging.info('filesize={}'.format(filesize))
@@ -1218,7 +1218,7 @@ class rcclient():
             hdr.chunk_index = index
             hdr.chunk_count = chunk_count
 
-            self.send(hdr.pack())
+            self._send(hdr.pack())
 
             index += 1
             sentsize += hdr.chunk_size
@@ -1250,7 +1250,7 @@ class rcclient():
             return error_file_already_exist
 
         hdr = header_download(action_kind.ask, remote_filepath)
-        self.send(hdr.pack())
+        self._send(hdr.pack())
 
         filetmp = "{0}.tmp".format(uuid.uuid4().hex)
         tmpfileloc = os.path.join(local_dirpath, filetmp)
@@ -1298,7 +1298,7 @@ class rcclient():
     def list(self, dstdirpath: str):
 
         ask_chunk = header_list(action_kind.ask, dstdirpath)
-        self.send(ask_chunk.pack())
+        self._send(ask_chunk.pack())
 
         is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
                                             self.sock.chunk_list)
@@ -1319,7 +1319,7 @@ class rcclient():
                                    program,
                                    argument,
                                    workdir)
-        self.send(ask_chunk.pack())
+        self._send(ask_chunk.pack())
 
         is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
                                             self.sock.chunk_list)
