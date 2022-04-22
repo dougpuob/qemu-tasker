@@ -129,7 +129,7 @@ class header_echo():
         return rawdata
 
     def unpack(self, data: bytes):
-        if len(data) <= 12:
+        if len(data) <= 20:
             return None
 
         hdr_size: int = int.from_bytes(data[8:12], 'little')
@@ -222,7 +222,7 @@ class header_upload():
         return rawdata
 
     def unpack(self, data: bytes):
-        if len(data) <= 12:
+        if len(data) <= 20:
             return None
 
         hdr_size: int = int.from_bytes(data[8:12], 'little')
@@ -326,7 +326,7 @@ class header_download():
         return rawdata
 
     def unpack(self, data: bytes):
-        if len(data) <= 12:
+        if len(data) <= 20:
             return None
 
         hdr_size: int = int.from_bytes(data[8:12], 'little')
@@ -418,7 +418,7 @@ class header_list():
         return rawdata
 
     def unpack(self, data: bytes):
-        if len(data) <= 12:
+        if len(data) <= 20:
             return None
 
         hdr_size: int = int.from_bytes(data[8:12], 'little')
@@ -551,7 +551,7 @@ class header_execute():
 
         hdr_size: int = int.from_bytes(data[8:12], 'little')
         total_size: int = int.from_bytes(data[16:20], 'little')
-        if len(data) < total_size:
+        if data_len < total_size:
             logfmt = 'buffer is insufficient !!! ' + \
                      '(data_len={} less than total_size={})'
             logging.info(logfmt.format(data_len, total_size))
@@ -651,40 +651,49 @@ class header():
                    _SIGNATURE_LIST___,  # 3
                    _SIGNATURE_ECHO___]  # 4
 
-        pos = -1
+        signature_pos = -1
         for item in targets:
-            pos = data.find(item)
-            if pos >= 0:
+            signature_pos = data.find(item)
+            if signature_pos >= 0:
                 matched_index = index
                 logging.info('signature matched (matched_index={}).'.format(matched_index))
                 break
             index += 1
 
-        hdr_pos1 = pos + 8
-        hdr_pos2 = pos + 12
+        hdr_pos1 = signature_pos + 8
+        hdr_pos2 = signature_pos + 12
         header_size: int = int.from_bytes(data[hdr_pos1:hdr_pos2], 'little')
         if data_len < header_size:
-            logging.info('buffer is insufficient !!!')
+            logging.info('buffer is insufficient !!! (data_len is less than header_size)')
             return None, 0
 
         found_hdr = None
-        hdr_pos1 = pos + 16
-        hdr_pos2 = pos + 20
+        hdr_pos1 = signature_pos + 16
+        hdr_pos2 = signature_pos + 20
         total_size: int = int.from_bytes(data[hdr_pos1:hdr_pos2], 'little')
         if len(data) < total_size:
-            logging.info('buffer is insufficient !!!')
+            logging.info('buffer is insufficient !!! (data_len is less than total_size)')
             return None, 0
 
-        chunk = data[pos:total_size]
+        chunk_end_pos = signature_pos + total_size
+        chunk_diff = signature_pos - chunk_end_pos
+        logging.info('total_size={}'.format(signature_pos))
+        logging.info('chunk_end_pos={}'.format(chunk_end_pos))
+        logging.info('chunk_end_pos - signature_pos={}'.format(chunk_diff))
+        chunk = data[signature_pos:chunk_end_pos]
+        chunk_len = len(chunk)
+        logging.info('chunk_len={}'.format(chunk_len))
 
         if 0 == matched_index:
+            logging.info('unpacking header_upload ... (chunk={}).'.format(chunk))
+
             hdr: header_upload = header_upload().unpack(chunk)
             logging.info('find a header_upload, chunk={}'.format(chunk))
             if hdr is None:
-                logging.info('buffer is insufficient !!! (failed to unpack)')
+                logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos2 = pos + hdr.header_size + hdr.payload_size
+            hdr_pos2 = signature_pos + hdr.header_size + hdr.payload_size
             if len(data) >= hdr_pos2:
                 chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
@@ -702,12 +711,14 @@ class header():
                 hdr_pos2 = 0
 
         elif 1 == matched_index:
+            logging.info('unpacking header_download ... (chunk={}).'.format(chunk))
+
             hdr: header_download = header_download().unpack(chunk)
             if hdr is None:
-                logging.info('buffer is insufficient !!! (failed to unpack)')
+                logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos2 = pos + hdr.header_size + hdr.payload_size
+            hdr_pos2 = signature_pos + hdr.header_size + hdr.payload_size
             if len(data) >= hdr_pos2:
                 chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
@@ -725,12 +736,14 @@ class header():
                 hdr_pos2 = 0
 
         elif 2 == matched_index:
+            logging.info('unpacking header_execute ... (chunk={}).'.format(chunk))
+
             hdr: header_execute = header_execute().unpack(chunk)
             if hdr is None:
-                logging.info('buffer is insufficient !!! (failed to unpack)')
+                logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos2 = pos + hdr.header_size + hdr.payload_size
+            hdr_pos2 = signature_pos + hdr.header_size + hdr.payload_size
             if len(data) >= hdr_pos2:
                 chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
@@ -748,12 +761,14 @@ class header():
                 hdr_pos2 = 0
 
         elif 3 == matched_index:
+            logging.info('unpacking header_list ... (chunk={}).'.format(chunk))
+
             hdr: header_list = header_list().unpack(chunk)
             if hdr is None:
-                logging.info('buffer is insufficient !!! (failed to unpack)')
+                logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos2 = pos + hdr.header_size + hdr.payload_size
+            hdr_pos2 = signature_pos + hdr.header_size + hdr.payload_size
             if len(data) >= hdr_pos2:
                 chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
@@ -771,12 +786,14 @@ class header():
                 hdr_pos2 = 0
 
         elif 4 == matched_index:
+            logging.info('unpacking header_echo ... (chunk={}).'.format(chunk))
+
             hdr: header_echo = header_echo().unpack(chunk)
             if hdr is None:
-                logging.info('buffer is insufficient !!! (failed to unpack)')
+                logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos2 = pos + hdr.header_size + hdr.payload_size
+            hdr_pos2 = signature_pos + hdr.header_size + hdr.payload_size
             if len(data) >= hdr_pos2:
                 chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
@@ -910,17 +927,21 @@ class rcsock():
 
     def _parse_complete_chunk(self):
         while True:
+
+            logging.info('b4 len(self.stream_pool)={}'.format(len(self.stream_pool)))
+            logging.info('b4 len(self.chunk_list)={}'.format(len(self.chunk_list)))
             found_header, size = self.header.find_header(self.stream_pool)
             if 0 == size:
-                logging.info('Found nothing ...')
+                logging.info('Nothing found !!!')
                 break
 
             logging.info('Found a new header, ' +
                          'will be insertted to chunk_list.')
             self.chunk_list.append(found_header)
             self.stream_pool = self.stream_pool[size:]
-            logging.info('len(self.stream_pool)={}'.format(len(self.stream_pool)))
-            logging.info('len(self.chunk_list)={}'.format(len(self.chunk_list)))
+
+            logging.info('ft len(self.stream_pool)={}'.format(len(self.stream_pool)))
+            logging.info('ft len(self.chunk_list)={}'.format(len(self.chunk_list)))
 
 
 class rcserver():
