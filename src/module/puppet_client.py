@@ -118,9 +118,9 @@ class puppet_client():
       for file in files:
         result: rcresult = self.pyrc_client.upload(file, dstdir)
         if (0 == result.errcode):
-          logging.info('Passed to upload "{}" file.', file)
+          logging.info('Passed to upload "{}" file.'.format(file))
         else:
-          logging.error('Failed to upload "{}" file.', file)
+          logging.error('Failed to upload "{}" file.'.format(file))
           ret = False
       return ret
 
@@ -130,9 +130,9 @@ class puppet_client():
       for file in files:
         result: rcresult = self.pyrc_client.download(file, dstdir)
         if (0 == result.errcode):
-          logging.info('Passed to download "{}" file.', file)
+          logging.info('Passed to download "{}" file.'.format(file))
         else:
-          logging.error('Failed to download "{}" file.', file)
+          logging.info('Passed to download "{}" file.'.format(file))
           ret = False
       return ret
 
