@@ -372,7 +372,7 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(_ARGUMENT_, output_hdr.argument)
         self.assertEqual(_ARGUMENT_UTF8_, output_hdr.argument_utf8)
         self.assertEqual(_ARGUMENT_B64_, output_hdr.argument_base64)
-        self.assertEqual(_WORKDIR_, output_hdr.workdir)
+        self.assertEqual('.', output_hdr.workdir)
 
     def test_connect(self):
         client = rcclient()
