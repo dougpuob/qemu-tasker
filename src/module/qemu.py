@@ -344,10 +344,7 @@ class qemu_instance:
         cmdret.clear()
         guest_info_homedir_path =''
         if guest_info_os_kind == config.os_kind().windows:
-            cmdret = self.pup_obj.execute('(Get-Location).Path')
-            guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
-        else:
-            cmdret = self.pup_obj.execute('pwd')
+            cmdret = self.pup_obj.execute('pwsh', '-C (Get-Location).Path')
             guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
 
         guest_info_workdir_name = ''

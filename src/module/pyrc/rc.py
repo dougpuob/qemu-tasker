@@ -1439,6 +1439,13 @@ class rcclient():
             chunk: header_list = self.sock.chunk_list.pop(0)
             result = rcresult()
             result.data = json.loads(chunk.data)
+
+            index = 0
+            for file in result.data:
+                index += 1
+                logfmt = 'file[{}/{}]={}'
+                logging.info(logfmt.format(index, len(result.data), file))
+
             return result
         else:
             return error_wait_streaming_timeout
@@ -1506,7 +1513,8 @@ if __name__ == '__main__':
 
                 # result = rcclt.execute('ifconfig')
                 # result = rcclt.execute('devcon64', 'rescan')
-                result = rcclt.upload('../UsbTreeView.exe', '.')
+                # result = rcclt.upload('../UsbTreeView.exe', '.')
+                result = rcclt.execute('pwd')
 
                 # # # # # # # # # # #
                 # Windows commands  #
