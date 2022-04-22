@@ -211,38 +211,38 @@ class main():
 
                 elif 'execute' == self.input_args.command:
                     pup_client = self.get_puppet_client(self.input_args.taskid)
-                    result: rcresult = pup_client.execute(self.input_args.program,
-                                                          self.input_args.argument,
-                                                          self.input_args.workdir)
-                    response_capsule = config.execute_command_response_data(config.action_kind().response,
-                                                                            config.command_kind().execute,
-                                                                            data=result.data)
+                    result: config.command_return = pup_client.execute(self.input_args.program,
+                                                                       self.input_args.argument,
+                                                                       self.input_args.workdir)
+                    response_capsule = config.transaction_capsule(config.action_kind().response,
+                                                                  config.command_kind().execute,
+                                                                  data=result.data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'list' == self.input_args.command:
                     pup_client = self.get_puppet_client(self.input_args.taskid)
-                    result: rcresult = pup_client.list(self.input_args.dstdir)
-                    response_capsule = config.execute_command_response_data(config.action_kind().response,
-                                                                            config.command_kind().list,
-                                                                            data=result)
+                    result: list = pup_client.list(self.input_args.dstdir)
+                    response_capsule = config.transaction_capsule(config.action_kind().response,
+                                                                  config.command_kind().list,
+                                                                  data=result)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'upload' == self.input_args.command:
                     pup_client = self.get_puppet_client(self.input_args.taskid)
                     result: list = pup_client.upload(self.input_args.files,
                                                          self.input_args.dstdir)
-                    response_capsule = config.execute_command_response_data(config.action_kind().response,
-                                                                            config.command_kind().upload,
-                                                                            data=result)
+                    response_capsule = config.transaction_capsule(config.action_kind().response,
+                                                                  config.command_kind().upload,
+                                                                  data=result)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'download' == self.input_args.command:
                     pup_client = self.get_puppet_client(self.input_args.taskid)
                     result: rcresult = pup_client.download(self.input_args.files,
                                                            self.input_args.dstdir)
-                    response_capsule = config.execute_command_response_data(config.action_kind().response,
-                                                                            config.command_kind().download,
-                                                                            data=result.data)
+                    response_capsule = config.transaction_capsule(config.action_kind().response,
+                                                                  config.command_kind().download,
+                                                                  data=result.data)
                     process_capsule(self.input_args, response_capsule)
 
                 # =========================================================================
