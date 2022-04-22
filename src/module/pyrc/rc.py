@@ -693,7 +693,7 @@ class header():
             logging.info('unpacking header_upload ...')
 
             hdr: header_upload = header_upload().unpack(chunk)
-            logging.info('find a header_upload, chunk={}'.format(chunk))
+            logging.info('find a header_upload')
             if hdr is None:
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
@@ -1461,10 +1461,10 @@ if __name__ == '__main__':
             rcclt = rcclient()
 
             # if rcclt.connect('localhost', 10013):
-            if rcclt.connect('localhost', 10023):
+            if rcclt.connect('localhost', 10013):
                 # result = rcclt.upload('../MyApp.exe', '.')
                 # result = rcclt.upload('../calc.exe', '.')
-                result = rcclt.upload('../VirtualBox.exe', 'qemu-tasker')
+                result = rcclt.upload('../VirtualBox.exe', '.')
                 # result = rcclt.list('README.md')
                 # result = rcclt.execute('ifconfig')
 
