@@ -65,9 +65,11 @@ error_unknown = rcresult(1, 'Unknown error')
 error_file_already_exist = rcresult(2, 'File already exist')
 error_file_not_found = rcresult(3, 'File not found')
 error_path_not_exist = rcresult(4, 'Path is not exist')
-error_file_not_identical = rcresult(5, 'File length is not identical')
-error_wait_streaming_timeout = rcresult(6, 'Wait streaming timeout')
-error_exception = rcresult(7, 'An exception rised')
+error_not_a_file = rcresult(5, 'The specific path is not a file')
+error_not_a_folder = rcresult(6, 'The specific path is not a folder')
+error_file_not_identical = rcresult(7, 'File length is not identical')
+error_wait_streaming_timeout = rcresult(8, 'Wait streaming timeout')
+error_exception = rcresult(9, 'An exception rised')
 
 
 class action_name(Enum):
@@ -1087,7 +1089,12 @@ class rcserver():
         logging.info("fileloc={}".format(fileloc))
 
         if not os.path.exists(fileloc):
+            logging.error("The spcific path is not found !!! (fileloc={})".format(fileloc))
             return error_file_not_found
+
+        if os.path.isdir(fileloc):
+            logging.error("The spcific path shouldn't be a foler !!! (fileloc={})".format(fileloc))
+            return error_not_a_file
 
         filesize = os.path.getsize(fileloc)
 
@@ -1150,6 +1157,7 @@ class rcserver():
                 sock.file_handle.flush()
                 sock.file_handle.close()
                 sock.file_handle = None
+                logging.info('close file (fullpath={})'.format(fullpath))
 
         except Exception as err:
             logging.exception(err)
@@ -1497,7 +1505,8 @@ if __name__ == '__main__':
                 # result = rcclt.list('.')
 
                 # result = rcclt.execute('ifconfig')
-                result = rcclt.execute('devcon64', 'rescan')
+                # result = rcclt.execute('devcon64', 'rescan')
+                result = rcclt.upload('../UsbTreeView.exe', '.')
 
                 # # # # # # # # # # #
                 # Windows commands  #
