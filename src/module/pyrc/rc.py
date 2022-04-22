@@ -13,7 +13,7 @@ import threading
 from enum import Enum
 from types import SimpleNamespace
 
-_TIMEOUT_ = 3
+_TIMEOUT_ = 3000000
 
 _CHUNK_SIZE_ = 1024*1024
 _BUFF_SIZE_ = 1024*1024*2
@@ -251,11 +251,13 @@ class header_upload():
         # Unpack data from payload
         pos1 = 0
         pos2 = hdr.length_filename
-        hdr.filename = str(hdr.payload[:pos2], 'utf-8')
+        if pos2 - pos1 > 0:
+            hdr.filename = str(hdr.payload[:pos2], 'utf-8')
 
         pos1 = hdr.length_filename
         pos2 = hdr.length_filename + hdr.length_dirpath
-        hdr.dstdirpath = str(hdr.payload[pos1:pos2], 'utf-8')
+        if pos2 - pos1 > 0:
+            hdr.dstdirpath = str(hdr.payload[pos1:pos2], 'utf-8')
 
         pos1 = hdr.length_filename + hdr.length_dirpath
         hdr.data = hdr.payload[pos1:]
@@ -290,7 +292,11 @@ class header_download():
 
         self.length_filepath: int = len(filepath)
 
-        self.payload: bytes = (filepath.encode('utf-8') + data)
+        self.payload: bytes = b''
+        if filepath:
+            self.payload += filepath.encode('utf-8')
+        if data:
+            self.payload += data
 
     def pack(self):
         self.header_size = struct.calcsize(self._STRUCT_FORMAT_)
@@ -341,13 +347,15 @@ class header_download():
         hdr.chunk_count = unpack[8]
         hdr.chunk_index = unpack[9]
         hdr.length_filepath = unpack[10]
+
         # Payload
         hdr.payload = data[hdr_size:]
 
         # Unpack data from payload
         pos1 = 0
         pos2 = hdr.length_filepath
-        hdr.filepath = str(hdr.payload[:pos2], 'utf-8')
+        if pos2 - pos1 > 0:
+            hdr.filepath = str(hdr.payload[:pos2], 'utf-8')
 
         pos1 = hdr.length_filepath
         hdr.data = hdr.payload[pos1:]
@@ -437,7 +445,8 @@ class header_list():
         # Unpack data from payload
         pos1 = 0
         pos2 = hdr.length_dirpath
-        hdr.dstdirpath = str(hdr.payload[pos1:pos2], 'utf-8')
+        if pos2 - pos1 > 0:
+            hdr.dstdirpath = str(hdr.payload[pos1:pos2], 'utf-8')
 
         pos1 = hdr.length_dirpath
         hdr.data = hdr.payload[pos1:]
@@ -456,12 +465,12 @@ class header_execute():
         self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'iii' + 'p'
 
         # Unpack payload fields
-        self.program = None
-        self.argument = None
-        self.argument_utf8 = None
-        self.argument_base64 = None
-        self.workdir = None
-        self.data = None
+        self.program = b''
+        self.argument = b''
+        self.argument_utf8 = b''
+        self.argument_base64 = b''
+        self.workdir = workdir
+        self.data = data
 
         self.signature: bytes = _SIGNATURE_EXECUT_
 
@@ -475,19 +484,32 @@ class header_execute():
         self.chunk_count: int = 0
         self.chunk_index: int = 0
 
-        program_utf8 = program.encode('utf-8')
-        argument_utf8 = arguments.encode('utf-8')
-        argument_base64 = base64.b64encode(argument_utf8)
-        workdir_utf8 = workdir.encode('utf-8')
+        program_utf8 = b''
+        argument_utf8 = b''
+        argument_base64 = b''
+        workdir_utf8 = b''
+
+        if program:
+            program_utf8 = program.encode('utf-8')
+        if arguments:
+            argument_utf8 = arguments.encode('utf-8')
+            argument_base64 = base64.b64encode(argument_utf8)
+        if workdir:
+            workdir_utf8 = workdir.encode('utf-8')
 
         self.length_program: int = len(program_utf8)
         self.length_argument: int = len(argument_base64)
         self.length_workdir: int = len(workdir_utf8)
 
-        self.payload: bytes = (program_utf8 +
-                               argument_base64 +
-                               workdir_utf8 +
-                               data)
+        self.payload: bytes = b''
+        if program_utf8:
+            self.payload += program_utf8
+        if argument_base64:
+            self.payload += argument_base64
+        if workdir_utf8:
+            self.payload += workdir_utf8
+        if data:
+            self.payload += data
 
     def pack(self):
         self.header_size = struct.calcsize(self._STRUCT_FORMAT_)
@@ -517,19 +539,24 @@ class header_execute():
                               self.payload)
 
         rawdata += self.payload
+        rawdata += self.data
         return rawdata
 
     def unpack(self, data: bytes):
-        if len(data) <= 12:
+        if len(data) <= 20:
             return None
 
         hdr_size: int = int.from_bytes(data[8:12], 'little')
-        hdr_only: bytes = data[:hdr_size]
+        total_size: int = int.from_bytes(data[16:20], 'little')
+        if len(data) < total_size:
+            return None
+
+        header_no_payload: bytes = data[:hdr_size]
 
         hdr = header_execute()
 
         # Header files
-        unpack = struct.unpack(self._STRUCT_FORMAT_, hdr_only)
+        unpack = struct.unpack(self._STRUCT_FORMAT_, header_no_payload)
         hdr.signature = unpack[0]
         hdr.header_size = unpack[1]
         hdr.payload_size = unpack[2]
@@ -544,48 +571,58 @@ class header_execute():
         hdr.length_workdir = unpack[11]
 
         # Payload
-        hdr.payload = data[hdr_size:]
+        hdr.payload = data[hdr_size:total_size]
 
-        # Unpack data from payload
-        pos1 = 0
-        pos2 = hdr.length_program
-        hdr.program = str(hdr.payload[pos1:pos2], 'utf-8')
+        # Data
+        data_pos = hdr.total_size - hdr.chunk_size
+        if len(data) > data_pos:
+            hdr.data = data[data_pos:]
 
-        pos1 = hdr.length_program
-        pos2 = hdr.length_program + hdr.length_argument
-        data = hdr.payload[pos1:pos2]
-        hdr.argument_base64 = data
-        hdr.argument_utf8 = base64.b64decode(data)
-        hdr.argument = hdr.argument_utf8.decode()
+        if len(hdr.payload) >= hdr.payload_size:
+            # Unpack data from payload
+            pos1 = 0
+            pos2 = hdr.length_program
+            hdr.program = str(hdr.payload[pos1:pos2], 'utf-8')
 
-        pos1 = pos2
-        pos2 = hdr.length_program + hdr.length_argument + hdr.length_workdir
-        hdr.workdir = str(hdr.payload[pos1:pos2], 'utf-8')
+            pos1 = hdr.length_program
+            pos2 = hdr.length_program + hdr.length_argument
+            if pos2 - pos1 > 0:
+                data = hdr.payload[pos1:pos2]
+                hdr.argument_base64 = data
+                hdr.argument_utf8 = base64.b64decode(data)
+                hdr.argument = hdr.argument_utf8.decode()
 
-        pos1 = pos2
-        data = hdr.payload[pos1:]
-        data_obj: execresult = config().toCLASS(data)
-        hdr.data = execresult()
+            pos1 = pos2
+            pos2 = hdr.length_program + hdr.length_argument + hdr.length_workdir
+            if pos2 - pos1 > 0:
+                hdr.workdir = str(hdr.payload[pos1:pos2], 'utf-8')
 
-        try:
-            hdr.data.errcode = data_obj.errcode
-        except Exception:
-            hdr.data.stdout.append('internal error when collecting errcode !!!')
+            pos1 = hdr.header_size + hdr.payload_size
+            pos2 = hdr.total_size
+            if pos2 - pos1 > 0:
+                data = hdr.payload[pos1:pos2]
+                data_obj: execresult = config().toCLASS(data)
+                hdr.data = execresult()
 
-        try:
-            hdr.data.data = data_obj.data
-        except Exception:
-            hdr.data.stdout.append('internal error when collecting data !!!')
+                try:
+                    hdr.data.errcode = data_obj.errcode
+                except Exception:
+                    hdr.data.stdout.append('internal error when collecting errcode !!!')
 
-        try:
-            hdr.data.stderr.extend(data_obj.stderr)
-        except Exception:
-            hdr.data.stdout.append('internal error when collecting stderr data !!!')
+                try:
+                    hdr.data.data = data_obj.data
+                except Exception:
+                    hdr.data.stdout.append('internal error when collecting data !!!')
 
-        try:
-            hdr.data.stdout.extend(data_obj.stdout)
-        except Exception:
-            hdr.data.stdout.append('internal error when collecting stdout data !!!')
+                try:
+                    hdr.data.stderr.extend(data_obj.stderr)
+                except Exception:
+                    hdr.data.stdout.append('internal error when collecting stderr data !!!')
+
+                try:
+                    hdr.data.stdout.extend(data_obj.stdout)
+                except Exception:
+                    hdr.data.stdout.append('internal error when collecting stdout data !!!')
 
         return hdr
 
@@ -596,7 +633,7 @@ class header():
 
     def find_header(self, data: bytes):
         data_len = len(data)
-        if data_len < 12:
+        if data_len < 20:
             return None, 0
 
         index = 0
@@ -622,19 +659,22 @@ class header():
             return None, 0
 
         found_hdr = None
-        hdr_pos1 = pos
-        hdr_pos2 = pos + header_size
-
-        if len(data) < hdr_pos2:
+        hdr_pos1 = pos + 16
+        hdr_pos2 = pos + 20
+        total_size: int = int.from_bytes(data[hdr_pos1:hdr_pos2], 'little')
+        if len(data) < total_size:
             return None, 0
 
-        chunk = data[hdr_pos1:hdr_pos2]
+        chunk = data[pos:total_size]
 
         if 0 == matched_index:
             hdr: header_upload = header_upload().unpack(chunk)
+            if hdr is None:
+                return None, 0
+
             hdr_pos2 = pos + hdr.header_size + hdr.payload_size
             if len(data) >= hdr_pos2:
-                chunk = data[hdr_pos1:hdr_pos2]
+                chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
 
                 logfmt = 'header_upload action_kind={} chunk_index={}/{}' + \
@@ -649,9 +689,12 @@ class header():
 
         elif 1 == matched_index:
             hdr: header_download = header_download().unpack(chunk)
+            if hdr is None:
+                return None, 0
+
             hdr_pos2 = pos + hdr.header_size + hdr.payload_size
             if len(data) >= hdr_pos2:
-                chunk = data[hdr_pos1:hdr_pos2]
+                chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
 
                 logfmt = 'header_download action_kind={} chunk_index={}/{}' + \
@@ -666,9 +709,12 @@ class header():
 
         elif 2 == matched_index:
             hdr: header_execute = header_execute().unpack(chunk)
+            if hdr is None:
+                return None, 0
+
             hdr_pos2 = pos + hdr.header_size + hdr.payload_size
             if len(data) >= hdr_pos2:
-                chunk = data[hdr_pos1:hdr_pos2]
+                chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
 
                 logfmt = 'header_execute action_kind={} chunk_index={}/{}' + \
@@ -683,9 +729,12 @@ class header():
 
         elif 3 == matched_index:
             hdr: header_list = header_list().unpack(chunk)
+            if hdr is None:
+                return None, 0
+
             hdr_pos2 = pos + hdr.header_size + hdr.payload_size
             if len(data) >= hdr_pos2:
-                chunk = data[hdr_pos1:hdr_pos2]
+                chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
 
                 logfmt = 'header_list action_kind={} chunk_index={}/{}' + \
@@ -697,9 +746,12 @@ class header():
 
         elif 4 == matched_index:
             hdr: header_echo = header_echo().unpack(chunk)
+            if hdr is None:
+                return None, 0
+
             hdr_pos2 = pos + hdr.header_size + hdr.payload_size
             if len(data) >= hdr_pos2:
-                chunk = data[hdr_pos1:hdr_pos2]
+                chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
 
                 logfmt = 'header_echo action_kind={} chunk_index={}/{}' + \
@@ -741,7 +793,7 @@ class rcsock():
 
         self.conn.setblocking(True)
         self.thread = threading.Thread(target=self._receive_stream)
-        self.thread.setDaemon(True)
+        self.thread.daemon = True
         self.thread.start()
 
     def send(self, data):
@@ -1006,7 +1058,7 @@ class rcserver():
             workdir = ask_chunk.workdir
 
             fullcmd = ask_chunk.program
-            if len(ask_chunk.argument) > 0:
+            if ask_chunk.argument and len(ask_chunk.argument) > 0:
                 fullcmd = fullcmd + ' ' + ask_chunk.argument
 
             logfmt = 'program={} argument={} workdir={}'
@@ -1197,7 +1249,7 @@ class rcclient():
         if (not overwrite) and os.path.exists(fileloc):
             return error_file_already_exist
 
-        hdr = header_download(action_kind.ask, remote_filepath, 0)
+        hdr = header_download(action_kind.ask, remote_filepath)
         self.send(hdr.pack())
 
         filetmp = "{0}.tmp".format(uuid.uuid4().hex)
@@ -1213,7 +1265,7 @@ class rcclient():
         file = open(tmpfileloc, "wb")
         while True:
             is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
-                                               self.sock.chunk_list)
+                                                self.sock.chunk_list)
             if not is_there_a_chunk:
                 result = error_wait_streaming_timeout
                 break
@@ -1249,7 +1301,7 @@ class rcclient():
         self.send(ask_chunk.pack())
 
         is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
-                                           self.sock.chunk_list)
+                                            self.sock.chunk_list)
         if is_there_a_chunk:
             chunk: header_list = self.sock.chunk_list.pop(0)
             result = rcresult()
@@ -1276,7 +1328,7 @@ class rcclient():
 
             result = rcresult()
             if chunk.data:
-                data: execresult = chunk.data
+                data: execresult = config().toCLASS(chunk.data)
 
                 result.data = data
                 result.errcode = data.errcode
