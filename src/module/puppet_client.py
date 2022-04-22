@@ -76,6 +76,7 @@ class puppet_client():
       try:
         cmdret.errcode = 111
         rcrs: rcresult = self.pyrc_client.execute(program, argument, workdir)
+        logging.info('rcrs={}'.format(rcrs.toTEXT()))
 
         cmdret.errcode = 222
         execrs: execresult = rcrs.data

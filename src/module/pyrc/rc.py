@@ -1325,6 +1325,7 @@ class rcclient():
                                             self.sock.chunk_list)
         if is_there_a_chunk:
             chunk: header_execute = self.sock.chunk_list.pop(0)
+            logging.info('chunk.data={}'.format(str(chunk.data)))
 
             result = rcresult()
             if chunk.data:
