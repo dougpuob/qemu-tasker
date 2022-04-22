@@ -634,6 +634,7 @@ class header():
     def find_header(self, data: bytes):
         data_len = len(data)
         if data_len < 20:
+            logging.info('buffer is insufficient !!!')
             return None, 0
 
         index = 0
@@ -649,6 +650,7 @@ class header():
             pos = data.find(item)
             if pos >= 0:
                 matched_index = index
+                logging.info('signature matched ({}).'.format(matched_index))
                 break
             index += 1
 
@@ -656,6 +658,7 @@ class header():
         hdr_pos2 = pos + 12
         header_size: int = int.from_bytes(data[hdr_pos1:hdr_pos2], 'little')
         if data_len < header_size:
+            logging.info('buffer is insufficient !!!')
             return None, 0
 
         found_hdr = None
@@ -663,6 +666,7 @@ class header():
         hdr_pos2 = pos + 20
         total_size: int = int.from_bytes(data[hdr_pos1:hdr_pos2], 'little')
         if len(data) < total_size:
+            logging.info('buffer is insufficient !!!')
             return None, 0
 
         chunk = data[pos:total_size]
@@ -671,6 +675,7 @@ class header():
             hdr: header_upload = header_upload().unpack(chunk)
             logging.info('find a header_upload, chunk={}'.format(chunk))
             if hdr is None:
+                logging.info('buffer is insufficient !!!')
                 return None, 0
 
             hdr_pos2 = pos + hdr.header_size + hdr.payload_size
@@ -715,6 +720,7 @@ class header():
         elif 2 == matched_index:
             hdr: header_execute = header_execute().unpack(chunk)
             if hdr is None:
+                logging.info('buffer is insufficient !!!')
                 return None, 0
 
             hdr_pos2 = pos + hdr.header_size + hdr.payload_size
@@ -737,6 +743,7 @@ class header():
         elif 3 == matched_index:
             hdr: header_list = header_list().unpack(chunk)
             if hdr is None:
+                logging.info('buffer is insufficient !!!')
                 return None, 0
 
             hdr_pos2 = pos + hdr.header_size + hdr.payload_size
@@ -759,6 +766,7 @@ class header():
         elif 4 == matched_index:
             hdr: header_echo = header_echo().unpack(chunk)
             if hdr is None:
+                logging.info('buffer is insufficient !!!')
                 return None, 0
 
             hdr_pos2 = pos + hdr.header_size + hdr.payload_size
