@@ -669,6 +669,7 @@ class header():
 
         if 0 == matched_index:
             hdr: header_upload = header_upload().unpack(chunk)
+            logging.info('find a header_upload, chunk={}'.format(chunk))
             if hdr is None:
                 return None, 0
 
@@ -676,6 +677,7 @@ class header():
             if len(data) >= hdr_pos2:
                 chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
+                logging.info('unpack a header_upload, len(chunk)={}'.format(len(chunk)))
 
                 logfmt = 'header_upload action_kind={} chunk_index={}/{}' + \
                          'chunk_size={}'
@@ -684,6 +686,7 @@ class header():
                                            found_hdr.chunk_count,
                                            found_hdr.chunk_size))
             else:
+                logging.warning('buffer is insufficient for a header_upload, len(data)={}'.format(len(data)))
                 found_hdr = None
                 hdr_pos2 = 0
 
@@ -696,6 +699,7 @@ class header():
             if len(data) >= hdr_pos2:
                 chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
+                logging.info('unpack a header_download, len(chunk)={}'.format(len(chunk)))
 
                 logfmt = 'header_download action_kind={} chunk_index={}/{}' + \
                          'chunk_size={}'
@@ -704,6 +708,7 @@ class header():
                                            found_hdr.chunk_count,
                                            found_hdr.chunk_size))
             else:
+                logging.warning('buffer is insufficient for a header_download, len(data)={}'.format(len(data)))
                 found_hdr = None
                 hdr_pos2 = 0
 
@@ -716,6 +721,7 @@ class header():
             if len(data) >= hdr_pos2:
                 chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
+                logging.info('unpack a header_execute, len(chunk)={}'.format(len(chunk)))
 
                 logfmt = 'header_execute action_kind={} chunk_index={}/{}' + \
                          'chunk_size={}'
@@ -724,6 +730,7 @@ class header():
                                            found_hdr.chunk_count,
                                            found_hdr.chunk_size))
             else:
+                logging.warning('buffer is insufficient for a header_execute, len(data)={}'.format(len(data)))
                 found_hdr = None
                 hdr_pos2 = 0
 
@@ -736,6 +743,7 @@ class header():
             if len(data) >= hdr_pos2:
                 chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
+                logging.info('unpack a header_list, len(chunk)={}'.format(len(chunk)))
 
                 logfmt = 'header_list action_kind={} chunk_index={}/{}' + \
                          'chunk_size={}'
@@ -743,6 +751,10 @@ class header():
                                            found_hdr.chunk_index + 1,
                                            found_hdr.chunk_count,
                                            found_hdr.chunk_size))
+            else:
+                logging.warning('buffer is insufficient for a header_list, len(data)={}'.format(len(data)))
+                found_hdr = None
+                hdr_pos2 = 0
 
         elif 4 == matched_index:
             hdr: header_echo = header_echo().unpack(chunk)
@@ -753,6 +765,7 @@ class header():
             if len(data) >= hdr_pos2:
                 chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
+                logging.info('unpack a header_echo, len(chunk)={}'.format(len(chunk)))
 
                 logfmt = 'header_echo action_kind={} chunk_index={}/{}' + \
                          'chunk_size={}'
@@ -761,10 +774,12 @@ class header():
                                            found_hdr.chunk_count,
                                            found_hdr.chunk_size))
             else:
+                logging.warning('buffer is insufficient for a header_echo, len(data)={}'.format(len(data)))
                 found_hdr = None
                 hdr_pos2 = 0
 
         else:
+            logging.warning('buffer missed matching, len(data)={}'.format(len(data)))
             found_hdr = None
             hdr_pos2 = 0
 
