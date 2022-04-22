@@ -78,22 +78,25 @@ class puppet_client():
         rcrs: rcresult = self.pyrc_client.execute(program, argument, workdir)
         logging.info('rcrs={}'.format(rcrs.toTEXT()))
 
-        cmdret.errcode = 222
-        execrs: execresult = rcrs.data
+        cmdret.errcode = rcrs.errcode
 
-        cmdret.errcode = 333
-        if execrs.stderr:
-          cmdret.errcode = 444
-          cmdret.error_lines.extend(execrs.stderr)
-          cmdret.errcode = 555
+        if rcrs.data:
+          cmdret.errcode = 222
+          execrs: execresult = rcrs.data
 
-        cmdret.errcode = 666
-        if execrs.stdout:
-          cmdret.errcode = 777
-          cmdret.info_lines.extend(execrs.stdout)
-          cmdret.errcode = 888
+          cmdret.errcode = 333
+          if execrs.stderr:
+            cmdret.errcode = 444
+            cmdret.error_lines.extend(execrs.stderr)
+            cmdret.errcode = 555
 
-        cmdret.errcode = execrs.errcode
+          cmdret.errcode = 666
+          if execrs.stdout:
+            cmdret.errcode = 777
+            cmdret.info_lines.extend(execrs.stdout)
+            cmdret.errcode = 888
+
+          cmdret.errcode = execrs.errcode
 
       except Exception as Err:
         logging.exception(Err)
