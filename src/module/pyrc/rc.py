@@ -1304,7 +1304,7 @@ class rcclient():
     def _send(self, data):
         self.sock._send(data)
 
-    def upload(self, local_filepath: str, remote_dirpath: str):
+    def upload(self, local_filepath: str, remote_dirpath: str = '.'):
 
         filepath = os.path.abspath(local_filepath)
         if not os.path.exists(filepath):

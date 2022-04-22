@@ -224,7 +224,7 @@ class main():
                     result: rcresult = pup_client.list(self.input_args.dstdir)
                     response_capsule = config.execute_command_response_data(config.action_kind().response,
                                                                             config.command_kind().list,
-                                                                            data=result.data)
+                                                                            data=result)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'upload' == self.input_args.command:
