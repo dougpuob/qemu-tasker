@@ -3,6 +3,7 @@ import json
 import base64
 import shutil
 import psutil
+import filecmp
 import logging
 import platform
 import unittest
@@ -397,6 +398,19 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(0, result.errcode)
         self.assertEqual(len(pattern_name_list), len(result.data))
 
+    def test_connect_then_download_not_existing_file(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        fileloc = os.path.abspath('aaabbbcccdddeee.bin')
+        self.assertFalse(os.path.exists(fileloc))
+
+        result: rcresult = client.download(fileloc, '.')
+        self.assertEqual(0, result.errcode)
+
+        self.assertFalse(os.path.exists(fileloc))
+
     def test_connect_then_download_all_testdata(self):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
@@ -412,7 +426,11 @@ class TestPyRc(unittest.TestCase):
             result: rcresult = client.download(file, _TEMPDIR_DLOAD_)
             self.assertEqual(0, result.errcode)
 
+            fileloc_src = os.path.join(_TESTDIR_, filename)
+            fileloc_dst = os.path.join(_TEMPDIR_DLOAD_, filename)
+            cmp_matched = filecmp.cmp(fileloc_src, fileloc_dst)
             self.assertTrue(os.path.exists(fileloc))
+            self.assertTrue(cmp_matched)
 
     def test_connect_then_upload_all_testdata(self):
         client = rcclient()
@@ -423,22 +441,22 @@ class TestPyRc(unittest.TestCase):
         index = 0
         for file in pattern_name_list:
             filename = os.path.basename(file)
-            fileloc = os.path.join(_TEMPDIR_ULOAD_, filename)
+            fileloc_dst = os.path.join(_TEMPDIR_ULOAD_, filename)
             mesg = 'index={} filename={} fileloc={}'.format(index,
                                                             filename,
-                                                            fileloc)
-            mesg = '{} NotThere={}'.format(mesg, not os.path.exists(fileloc))
-            self.assertFalse(os.path.exists(fileloc), mesg)
+                                                            fileloc_dst)
+            mesg = '{} NotThere={}'.format(mesg, not os.path.exists(fileloc_dst))
+            self.assertFalse(os.path.exists(fileloc_dst), mesg)
             index += 1
 
         # Upload files
         index = 0
         for file in pattern_name_list:
             filename = os.path.basename(file)
-            fileloc = os.path.join(_TEMPDIR_ULOAD_, filename)
+            fileloc_dst = os.path.join(_TEMPDIR_ULOAD_, filename)
             mesg = 'index={} filename={} fileloc={}'.format(index,
                                                             filename,
-                                                            fileloc)
+                                                            fileloc_dst)
             result: rcresult = client.upload(file, _TEMPDIR_ULOAD_)
             self.assertEqual(0, result.errcode, mesg)
             index += 1
@@ -447,13 +465,16 @@ class TestPyRc(unittest.TestCase):
         index = 0
         for file in pattern_name_list:
             filename = os.path.basename(file)
-            fileloc = os.path.join(_TEMPDIR_ULOAD_, filename)
+            fileloc_src = os.path.join(_TESTDIR_, filename)
+            fileloc_dst = os.path.join(_TEMPDIR_ULOAD_, filename)
+            cmp_matched = filecmp.cmp(fileloc_src, fileloc_dst)
             mesg = 'index={} filename={} fileloc={}'.format(index,
                                                             filename,
-                                                            fileloc)
-            mesg = '{} There={}'.format(mesg,
-                                        os.path.exists(fileloc))
-            self.assertTrue(os.path.exists(fileloc), mesg)
+                                                            fileloc_dst)
+            mesg = '{} where={} matched={}'.format(mesg,
+                                                   os.path.exists(fileloc_dst),
+                                                   cmp_matched)
+            self.assertTrue(os.path.exists(fileloc_dst), mesg)
             index += 1
 
     def test_connect_then_execute_ifconfig(self):
@@ -541,24 +562,6 @@ class TestPyRc(unittest.TestCase):
         result: rcresult = client.execute('(Get-Location).Path')
         self.assertEqual(result.data.errcode, result.errcode)
         self.assertIsNot(0, result.errcode)
-
-    # def test_connect_then_execute_pwd(self):
-    #     client = rcclient()
-    #     self.assertEqual(client.connect(_HOST_, _PORT_), True)
-    #     self.assertEqual(client.is_connected(), True)
-
-    #     result: rcresult = client.execute('pwd')
-    #     self.assertEqual(result.data.errcode, result.errcode)
-    #     if platform.system() == 'Windows':
-    #         ppid_name = psutil.Process(os.getppid()).name()
-    #         if ppid_name == 'cmd.exe':
-    #             self.assertEqual(1, result.errcode)  # cmd.exe
-    #         elif ppid_name == 'pwsh.exe':
-    #             self.assertEqual(0, result.errcode)  # pwsh.exe
-    #         elif ppid_name == 'powershell.exe':
-    #             self.assertEqual(0, result.errcode)  # powershell.exe
-    #     else:
-    #         self.assertEqual(0, result.errcode)
 
 
 if __name__ == '__main__':

@@ -871,6 +871,7 @@ class rcsock():
         self.stream_pool = b''
         self.chunk_list = list()
         self.callback = actors
+        self.file_path = ''
         self.file_handle = None
 
         self.conn.setblocking(True)
@@ -1088,13 +1089,27 @@ class rcserver():
         fileloc = os.path.abspath(ask_chunk.filepath)
         logging.info("fileloc={}".format(fileloc))
 
+        rcrs = rcresult()
+        if ask_chunk.action_kind == action_kind.done.value:
+            return rcrs
+
         if not os.path.exists(fileloc):
             logging.error("The spcific path is not found !!! (fileloc={})".format(fileloc))
-            return error_file_not_found
+            rcrs = error_file_not_found
 
         if os.path.isdir(fileloc):
-            logging.error("The spcific path shouldn't be a foler !!! (fileloc={})".format(fileloc))
-            return error_not_a_file
+            logging.error("The spcific path should be a file !!! (fileloc={})".format(fileloc))
+            rcrs = error_not_a_file
+
+        if 0 != rcrs.errcode:
+            done_chunk = header_download(action_kind.done,
+                                         ask_chunk.filepath,
+                                         ask_chunk.file_size)
+            done_chunk.chunk_size = 0
+            done_chunk.chunk_count = 0
+            done_chunk.chunk_index = 0
+            conn._send(done_chunk.pack())
+            return rcrs
 
         filesize = os.path.getsize(fileloc)
 
@@ -1147,6 +1162,7 @@ class rcserver():
                                         data_chunk.filename)
                 fullpath = os.path.abspath(filepath)
                 logging.info('open file (fullpath={})'.format(fullpath))
+                sock.file_path = filepath
                 sock.file_handle = open(filepath, "wb")
 
             sock.file_handle.write(data_chunk.data)
@@ -1154,10 +1170,11 @@ class rcserver():
             diff = (data_chunk.chunk_count - data_chunk.chunk_index)
             is_last_data = (1 == diff)
             if sock.file_handle and is_last_data:
+                logging.info('close file (fullpath={})'.format(sock.file_path))
                 sock.file_handle.flush()
                 sock.file_handle.close()
                 sock.file_handle = None
-                logging.info('close file (fullpath={})'.format(fullpath))
+                sock.file_path = ''
 
         except Exception as err:
             logging.exception(err)
@@ -1394,9 +1411,11 @@ class rcclient():
         recvsize = 0
         result = rcresult()
 
+        keep_going = True
+
         file_size = 0
-        file = open(tmpfileloc, "wb")
-        while True:
+        file = None
+        while keep_going:
             is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
                                                 self.sock.chunk_list)
             if not is_there_a_chunk:
@@ -1405,7 +1424,15 @@ class rcclient():
 
             while len(self.sock.chunk_list) > 0:
                 chunk: header_download = self.sock.chunk_list.pop(0)
+
+                if chunk.action_kind == action_kind.done.value:
+                    keep_going = False
+                    break
+
                 file_size = chunk.file_size
+
+                if not file:
+                    file = open(tmpfileloc, "wb")
 
                 file.write(chunk.data)
 
@@ -1422,9 +1449,10 @@ class rcclient():
             if recvsize == file_size:
                 break
 
-        file.flush()
-        file.close()
-        os.rename(tmpfileloc, fileloc)
+        if file:
+            file.flush()
+            file.close()
+            os.rename(tmpfileloc, fileloc)
 
         return result
 
