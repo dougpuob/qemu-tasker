@@ -1307,8 +1307,8 @@ class rcclient():
             result = rcresult()
             result.data = json.loads(chunk.data)
             return result
-
-        return error_unknown
+        else:
+            return error_wait_streaming_timeout
 
     def execute(self,
                 program: str,
@@ -1336,8 +1336,8 @@ class rcclient():
                 result.text += '\n'.join(data.stderr)
 
             return result
-
-        return error_unknown
+        else:
+            return error_wait_streaming_timeout
 
 
 if __name__ == '__main__':
