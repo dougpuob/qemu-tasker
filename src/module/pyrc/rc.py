@@ -13,7 +13,7 @@ import threading
 from enum import Enum
 from types import SimpleNamespace
 
-_TIMEOUT_ = 30
+_TIMEOUT_ = 30000000
 
 _CHUNK_SIZE_ = 1024*1024
 _BUFF_SIZE_ = 1024*1024*2
@@ -545,14 +545,17 @@ class header_execute():
     def unpack(self, data: bytes):
         data_len = len(data)
         if data_len <= 20:
-            logfmt = 'buffer is insufficient !!! (data_len={})'
+            logfmt = '[header_execute] buffer is insufficient !!! (data_len={})'
             logging.info(logfmt.format(data_len))
             return None
 
         hdr_size: int = int.from_bytes(data[8:12], 'little')
         total_size: int = int.from_bytes(data[16:20], 'little')
+        logging.info('[header_execute] hdr_size={}'.format(hdr_size))
+        logging.info('[header_execute] total_size={}'.format(total_size))
+
         if data_len < total_size:
-            logfmt = 'buffer is insufficient !!! ' + \
+            logfmt = '[header_execute] buffer is insufficient !!! ' + \
                      '(data_len={} less than total_size={})'
             logging.info(logfmt.format(data_len, total_size))
             return None
@@ -676,10 +679,10 @@ class header():
             return None, 0
 
         chunk_end_pos = signature_pos + total_size
-        chunk_diff = signature_pos - chunk_end_pos
+        chunk_diff = chunk_end_pos - signature_pos
         logging.info('total_size={}'.format(signature_pos))
         logging.info('chunk_end_pos={}'.format(chunk_end_pos))
-        logging.info('chunk_end_pos - signature_pos={}'.format(chunk_diff))
+        logging.info('chunk_end_pos-signature_pos={}'.format(chunk_diff))
         chunk = data[signature_pos:chunk_end_pos]
         chunk_len = len(chunk)
         logging.info('chunk_len={}'.format(chunk_len))
@@ -743,7 +746,7 @@ class header():
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos2 = signature_pos + hdr.header_size + hdr.payload_size
+            hdr_pos2 = signature_pos + hdr.total_size
             if len(data) >= hdr_pos2:
                 chunk = data[:hdr_pos2]
                 found_hdr = hdr.unpack(chunk)
