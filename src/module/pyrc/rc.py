@@ -13,7 +13,7 @@ import threading
 from enum import Enum
 from types import SimpleNamespace
 
-_TIMEOUT_ = 3000000
+_TIMEOUT_ = 3
 
 _CHUNK_SIZE_ = 1024*1024
 _BUFF_SIZE_ = 1024*1024*2
