@@ -850,6 +850,8 @@ class rcsock():
     def _consume_chunks(self):
 
         while len(self.chunk_list) > 0:
+            logging.info('There are {} chunk in the chunk_list.'.format(
+                         len(self.chunk_list)))
 
             chunk = self.chunk_list.pop(0)
             logfmt = 'action_kind={} chunk_index={}/{} chunk_size={}'
@@ -889,9 +891,15 @@ class rcsock():
         while True:
             found_header, size = self.header.find_header(self.stream_pool)
             if 0 == size:
+                logging.info('Found nothing ...')
                 break
+
+            logging.info('Found a new header, ' +
+                         'will be insertted to chunk_list.')
             self.chunk_list.append(found_header)
             self.stream_pool = self.stream_pool[size:]
+            logging.info('len(self.stream_pool)={}'.format(self.stream_pool))
+            logging.info('len(self.chunk_list)={}'.format(self.chunk_list))
 
 
 class rcserver():
@@ -1102,6 +1110,16 @@ class rcserver():
                         break
 
                 data = result.toTEXT().encode()
+
+                logfmt = 'program={} argument={} workdir={} ' + \
+                         'errcode={} stderr({}) stderr({})'
+                logging.info(logfmt.format(ask_chunk.program,
+                                           ask_chunk.argument,
+                                           ask_chunk.workdir,
+                                           result.errcode,
+                                           len(result.stdout),
+                                           len(result.stderr)))
+
                 data_chunk = header_execute(action_kind.data,
                                             ask_chunk.program,
                                             ask_chunk.argument,
