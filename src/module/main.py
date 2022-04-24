@@ -211,6 +211,10 @@ class main():
 
                 elif 'execute' == self.input_args.command:
                     pup_client = self.get_puppet_client(self.input_args.taskid)
+                    logging.info('self.input_args.program  = {} ({})'.format(self.input_args.program, type(self.input_args.program)))
+                    logging.info('self.input_args.argument = {} ({})'.format(self.input_args.argument, type(self.input_args.argument)))
+                    logging.info('self.input_args.workdir  = {} ({})'.format(self.input_args.workdir, type(self.input_args.workdir)))
+                    logging.info('self.input_args.base64   = {} ({})'.format(self.input_args.base64, type(self.input_args.base64)))
                     result: config.command_return = pup_client.execute(self.input_args.program,
                                                                        self.input_args.argument,
                                                                        self.input_args.workdir,
