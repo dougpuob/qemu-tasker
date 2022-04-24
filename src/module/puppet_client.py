@@ -70,12 +70,12 @@ class puppet_client():
       return response_capsule.result
 
 
-    def execute(self, program:str, argument:str='', workdir:str='.'):
+    def execute(self, program:str, argument:str='', workdir:str='.', isbase64: bool=False):
       cmdret = config.command_return()
 
       try:
         cmdret.errcode = 111
-        rcrs: rcresult = self.pyrc_client.execute(program, argument, workdir)
+        rcrs: rcresult = self.pyrc_client.execute(program, argument, workdir, isbase64)
         logging.info('rcrs={}'.format(rcrs.toTEXT()))
 
         cmdret.errcode = rcrs.errcode

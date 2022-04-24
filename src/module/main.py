@@ -213,7 +213,8 @@ class main():
                     pup_client = self.get_puppet_client(self.input_args.taskid)
                     result: config.command_return = pup_client.execute(self.input_args.program,
                                                                        self.input_args.argument,
-                                                                       self.input_args.workdir)
+                                                                       self.input_args.workdir,
+                                                                       self.input_args.base64)
                     response_capsule = config.transaction_capsule(config.action_kind().response,
                                                                   config.command_kind().execute,
                                                                   result=result)
