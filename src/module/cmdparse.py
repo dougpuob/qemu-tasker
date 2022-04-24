@@ -87,7 +87,6 @@ class cmdargs():
         parser_status.add_argument('-T', '--taskid', type=int, required=True)
 
 
-
     def print_help(self):
         args = self.parser.print_help()
         return args
