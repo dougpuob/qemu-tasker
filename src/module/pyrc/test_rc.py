@@ -2,7 +2,6 @@ import os
 import json
 import base64
 import shutil
-import psutil
 import filecmp
 import logging
 import platform
@@ -342,14 +341,17 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(__MYLIST__, json.loads(output_hdr.data))
 
     def test_header_execute_ask(self):
-        _PROGRAM_ = 'ipconfig'
-        _ARGUMENT_ = '/all我'
-        _ARGUMENT_UTF8_ = _ARGUMENT_.encode('utf-8')
-        _ARGUMENT_B64_ = base64.b64encode(_ARGUMENT_UTF8_)
-        _WORKDIR_ = ''
+        _PROGRAM_ = 'ipconfig我'.encode('utf-8')
+        _ARGUMENT_ = '/all我'.encode('utf-8')
+        _WORKDIR_ = ''.encode('utf-8')
+        _ISBASE64_ = False
         _DATA_ = b''
 
-        hdr = header_execute(action_kind.ask, _PROGRAM_, _ARGUMENT_, _WORKDIR_)
+        hdr = header_execute(action_kind.ask,
+                             _PROGRAM_,
+                             _ARGUMENT_,
+                             _WORKDIR_,
+                             _ISBASE64_)
 
         hdr.chunk_size = len(_DATA_)
         hdr.chunk_count = 1
@@ -371,9 +373,8 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(len(_DATA_), output_hdr.chunk_size)
         self.assertEqual(_PROGRAM_, output_hdr.program)
         self.assertEqual(_ARGUMENT_, output_hdr.argument)
-        self.assertEqual(_ARGUMENT_UTF8_, output_hdr.argument_utf8)
-        self.assertEqual(_ARGUMENT_B64_, output_hdr.argument_base64)
-        self.assertEqual('.', output_hdr.workdir)
+        self.assertEqual(_ISBASE64_, output_hdr.isbase64)
+        self.assertEqual(_WORKDIR_, output_hdr.workdir)
 
     def test_connect(self):
         client = rcclient()
@@ -490,6 +491,27 @@ class TestPyRc(unittest.TestCase):
             self.assertEqual(0, result.errcode)
         elif platform.system() == 'Linux':
             result: rcresult = client.execute('ip', 'a')
+            self.assertEqual(0, result.errcode)
+
+    def test_connect_then_execute_ifconfig_base64(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        if platform.system() == 'Windows':
+            base64_arg = base64.b64encode('/all'.encode('utf-8'))
+            result: rcresult = client.execute('ipconfig', base64_arg,
+                                              isbase64=True)
+            self.assertEqual(0, result.errcode)
+        elif platform.system() == 'Darwin':
+            base64_arg = base64.b64encode(''.encode('utf-8'))
+            result: rcresult = client.execute('ifconfig', base64_arg,
+                                              isbase64=True)
+            self.assertEqual(0, result.errcode)
+        elif platform.system() == 'Linux':
+            base64_arg = base64.b64encode('a'.encode('utf-8'))
+            result: rcresult = client.execute('ip', base64_arg,
+                                              isbase64=True)
             self.assertEqual(0, result.errcode)
 
     def test_connect_then_execute_dir(self):

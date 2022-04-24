@@ -467,21 +467,43 @@ class header_list():
 class header_execute():
     def __init__(self,
                  kind: action_kind = action_kind.unknown,
-                 program: str = '',
-                 arguments: str = '',
-                 workdir: str = '.',
-                 data: bytes = b''):
+                 program: bytes = b'',
+                 argument: bytes = b'',
+                 workdir: bytes = b'.',
+                 isbase64: bool = False,
+                 chunk_data: bytes = b''):
 
-        self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'iii' + 'p'
+        assert isinstance(program, bytes), 'data should be bytes'
+        assert isinstance(argument, bytes), 'data should be bytes'
+        assert isinstance(workdir, bytes), 'data should be bytes'
+        assert isinstance(isbase64, bool), 'data should be bytes'
+        assert isinstance(chunk_data, bytes), 'data should be bytes'
 
-        # Unpack payload fields
-        self.program = b''
-        self.argument = b''
-        self.argument_utf8 = b''
-        self.argument_base64 = b''
+        self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'Biii'
+
+        #
+        # +--------------------+---------------------------+
+        # |       Header       |           Payload         |
+        # +--------------------+---------------------------+
+        # | Signature + Fields | payload_data + chunk_data |
+        # +--------------------+---------------------------+
+
+        #
+        # payload_data
+        #
+        self.program = program
+        self.argument = argument
         self.workdir = workdir
-        self.data = data
+        self.isbase64: bool = isbase64
 
+        #
+        # chunk_data
+        #
+        self.chunk_data = chunk_data
+
+        #
+        # Header content
+        #
         self.signature: bytes = _SIGNATURE_EXECUT_
 
         self.header_size: int = 0
@@ -490,92 +512,79 @@ class header_execute():
         self.action_name: int = action_name.execute.value
         self.action_kind: int = kind.value
 
-        self.chunk_size: int = len(data)
+        self.chunk_size: int = 0
         self.chunk_count: int = 0
         self.chunk_index: int = 0
 
-        program_utf8 = b''
-        argument_utf8 = b''
-        argument_base64 = b''
-        workdir_utf8 = b''
-
-        if program:
-            program_utf8 = program.encode('utf-8')
-        if arguments:
-            argument_utf8 = arguments.encode('utf-8')
-            argument_base64 = base64.b64encode(argument_utf8)
-        if workdir:
-            workdir_utf8 = workdir.encode('utf-8')
-
-        self.length_program: int = len(program_utf8)
-        self.length_argument: int = len(argument_base64)
-        self.length_workdir: int = len(workdir_utf8)
-
-        self.payload: bytes = b''
-        if program_utf8:
-            self.payload += program_utf8
-        if argument_base64:
-            self.payload += argument_base64
-        if workdir_utf8:
-            self.payload += workdir_utf8
-        if data:
-            self.payload += data
+        self.length_isbase64: int = 1
+        self.length_program: int = len(program)
+        self.length_argument: int = len(argument)
+        self.length_workdir: int = len(workdir)
 
     def pack(self):
         self.header_size = struct.calcsize(self._STRUCT_FORMAT_)
-        self.payload_size = (self.length_program +
+        self.payload_size = (self.length_isbase64 +
+                             self.length_program +
                              self.length_argument +
                              self.length_workdir +
                              self.chunk_size)
         self.total_size = self.header_size + self.payload_size
 
-        rawdata = struct.pack(self._STRUCT_FORMAT_,
-                              self.signature,
+        packed_data = struct.pack(self._STRUCT_FORMAT_,
+                                  self.signature,
 
-                              self.header_size,
-                              self.total_size,
-                              self.payload_size,
-                              self.action_name,
-                              self.action_kind,
+                                  self.header_size,
+                                  self.total_size,
+                                  self.payload_size,
+                                  self.action_name,
+                                  self.action_kind,
 
-                              self.chunk_size,
-                              self.chunk_count,
-                              self.chunk_index,
+                                  self.chunk_size,
+                                  self.chunk_count,
+                                  self.chunk_index,
 
-                              self.length_program,
-                              self.length_argument,
-                              self.length_workdir,
+                                  self.length_isbase64,
+                                  self.length_program,
+                                  self.length_argument,
+                                  self.length_workdir)
 
-                              self.payload)
+        isbase = b''
+        if self.isbase64:
+            isbase = b'1'
+        else:
+            isbase = b'0'
+        packed_data += (isbase +
+                        self.program +
+                        self.argument +
+                        self.workdir +
+                        self.chunk_data)
 
-        rawdata += self.payload
-        rawdata += self.data
-        return rawdata
+        return packed_data
 
-    def unpack(self, data: bytes):
-        data_len = len(data)
-        if data_len <= _HEADER_SIZE_:
+    def unpack(self, chunk_data_raw: bytes):
+        packed_data_len = len(chunk_data_raw)
+        if packed_data_len <= _HEADER_SIZE_:
             logfmt = '[header_execute] buffer is insufficient !!! (data_len={})'
-            logging.info(logfmt.format(data_len))
+            logging.info(logfmt.format(packed_data_len))
             return None
 
-        hdr_size: int = int.from_bytes(data[8:11], 'little')
-        total_size: int = int.from_bytes(data[12:15], 'little')
+        hdr_size: int = int.from_bytes(chunk_data_raw[8:11], 'little')
+        total_size: int = int.from_bytes(chunk_data_raw[12:15], 'little')
         logging.info('[header_execute] hdr_size={}'.format(hdr_size))
         logging.info('[header_execute] total_size={}'.format(total_size))
 
-        if data_len < total_size:
+        if packed_data_len < total_size:
             logfmt = '[header_execute] buffer is insufficient !!! ' + \
                      '(data_len={} less than total_size={})'
-            logging.info(logfmt.format(data_len, total_size))
+            logging.info(logfmt.format(packed_data_len, total_size))
             return None
 
-        header_no_payload: bytes = data[:hdr_size]
+        header_content: bytes = chunk_data_raw[:hdr_size]
 
         hdr = header_execute()
 
         # Header files
-        unpack = struct.unpack(self._STRUCT_FORMAT_, header_no_payload)
+        unpack = struct.unpack(self._STRUCT_FORMAT_, header_content)
         hdr.signature = unpack[0]
         hdr.header_size = unpack[1]
         hdr.total_size = unpack[2]
@@ -585,63 +594,72 @@ class header_execute():
         hdr.chunk_size = unpack[6]
         hdr.chunk_count = unpack[7]
         hdr.chunk_index = unpack[8]
-        hdr.length_program = unpack[9]
-        hdr.length_argument = unpack[10]
-        hdr.length_workdir = unpack[11]
+        hdr.length_isbase64 = unpack[9]
+        hdr.length_program = unpack[10]
+        hdr.length_argument = unpack[11]
+        hdr.length_workdir = unpack[12]
 
-        # Payload
-        hdr.payload = data[hdr_size:total_size]
+        #
+        # Payload (payload_data + chunk_data)
+        #
+        payload_content = chunk_data_raw[hdr.header_size: hdr.total_size]
 
-        # Data
-        data_pos = hdr.total_size - hdr.chunk_size
-        if len(data) > data_pos:
-            hdr.data = data[data_pos:]
+        # Unpack data from payload
+        pos1 = 0
+        pos2 = (pos1 + 1)
+        isbase64 = payload_content[pos1:pos2]
+        hdr.isbase64 = bool(int(isbase64))
 
-        if len(hdr.payload) >= hdr.payload_size:
-            # Unpack data from payload
-            pos1 = 0
-            pos2 = hdr.length_program
-            hdr.program = str(hdr.payload[pos1:pos2], 'utf-8')
+        pos1 = pos2
+        pos2 = pos2 + hdr.length_program
+        program = payload_content[pos1:pos2]
+        # hdr.program = str(program, encoding='utf-8')
+        hdr.program = program
 
-            pos1 = hdr.length_program
-            pos2 = hdr.length_program + hdr.length_argument
-            if pos2 - pos1 > 0:
-                data = hdr.payload[pos1:pos2]
-                hdr.argument_base64 = data
-                hdr.argument_utf8 = base64.b64decode(data)
-                hdr.argument = hdr.argument_utf8.decode()
+        pos1 = pos2
+        pos2 = pos2 + hdr.length_argument
+        argument = payload_content[pos1:pos2]
+        # hdr.argument = str(argument, encoding='utf-8')
+        hdr.argument = argument
 
-            pos1 = pos2
-            pos2 = hdr.length_program + hdr.length_argument + hdr.length_workdir
-            if pos2 - pos1 > 0:
-                hdr.workdir = str(hdr.payload[pos1:pos2], 'utf-8')
+        pos1 = pos2
+        pos2 = pos2 + hdr.length_workdir
+        workdir = payload_content[pos1:pos2]
+        # hdr.workdir = str(workdir, 'utf-8')
+        hdr.workdir = workdir
 
-            pos1 = hdr.header_size + hdr.payload_size
-            pos2 = hdr.total_size
-            if pos2 - pos1 > 0:
-                data = hdr.payload[pos1:pos2]
-                data_obj: execresult = config().toCLASS(data)
-                hdr.data = execresult()
+        # chunk_data
+        pos1 = pos2
+        pos2 = pos2 + hdr.chunk_size
+        if pos2 - pos1 > 0:
+            chunk_data_raw = payload_content[pos1:pos2]
+            chunk_data_ori: execresult = config().toCLASS(chunk_data_raw)
 
-                try:
-                    hdr.data.errcode = data_obj.errcode
-                except Exception:
-                    hdr.data.stdout.append('internal error when collecting errcode !!!')
+            hdr.chunk_data = chunk_data_ori
 
-                try:
-                    hdr.data.data = data_obj.data
-                except Exception:
-                    hdr.data.stdout.append('internal error when collecting data !!!')
+            # try:
+            #     hdr.chunk_data.errcode = chunk_data_ori.errcode
+            # except Exception:
+            #     text = 'internal error when collecting errcode !!!'
+            #     hdr.chunk_data.stdout.append(text)
 
-                try:
-                    hdr.data.stderr.extend(data_obj.stderr)
-                except Exception:
-                    hdr.data.stdout.append('internal error when collecting stderr data !!!')
+            # try:
+            #     hdr.chunk_data.data = chunk_data_ori.data
+            # except Exception:
+            #     text = 'internal error when collecting data !!!'
+            #     hdr.chunk_data.stdout.append(text)
 
-                try:
-                    hdr.data.stdout.extend(data_obj.stdout)
-                except Exception:
-                    hdr.data.stdout.append('internal error when collecting stdout data !!!')
+            # try:
+            #     hdr.chunk_data.stderr.extend(chunk_data_ori.stderr)
+            # except Exception:
+            #     text = 'internal error when collecting stderr data !!!'
+            #     hdr.chunk_data.stdout.append(text)
+
+            # try:
+            #     hdr.chunk_data.stdout.extend(chunk_data_ori.stdout)
+            # except Exception:
+            #     text = 'internal error when collecting stdout data !!!'
+            #     hdr.chunk_data.stdout.append(text)
 
         return hdr
 
@@ -684,7 +702,7 @@ class header():
         hdr_pos1 = signature_pos + 12
         hdr_pos2 = hdr_pos1 + 4
         total_size: int = int.from_bytes(data[hdr_pos1:hdr_pos2], 'little')
-        if len(data) < total_size:
+        if data_len < total_size:
             logging.info('buffer is insufficient !!! (data_len is less than total_size)')
             return None, 0
 
@@ -693,25 +711,25 @@ class header():
         logging.info('total_size={}'.format(signature_pos))
         logging.info('chunk_end_pos={}'.format(chunk_end_pos))
         logging.info('chunk_end_pos-signature_pos={}'.format(chunk_diff))
-        chunk = data[signature_pos:chunk_end_pos]
-        chunk_len = len(chunk)
-        logging.info('chunk_len={}'.format(chunk_len))
+        full_header = data[signature_pos:chunk_end_pos]
+        full_header_size = len(full_header)
+        logging.info('full_header_size={}'.format(full_header_size))
 
         if 0 == matched_index:
             logging.info('unpacking header_upload ...')
 
-            hdr: header_upload = header_upload().unpack(chunk)
+            hdr: header_upload = header_upload().unpack(full_header)
             logging.info('find a header_upload')
             if hdr is None:
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos1 = signature_pos
+            hdr_pos1 = 0
             hdr_pos2 = hdr_pos1 + hdr.total_size
             if len(data) >= hdr_pos2:
-                chunk = data[hdr_pos1:hdr_pos2]
-                found_hdr = hdr.unpack(chunk)
-                logging.info('unpack a header_upload, len(chunk)={}'.format(len(chunk)))
+                # full_header = data[hdr_pos1:hdr_pos2]
+                found_hdr = hdr.unpack(full_header)
+                logging.info('unpack a header_upload, len(chunk)={}'.format(len(full_header)))
 
                 logfmt = 'header_upload action_kind={} chunk_index={}/{}' + \
                          'chunk_size={}'
@@ -732,17 +750,17 @@ class header():
         elif 1 == matched_index:
             logging.info('unpacking header_download ...')
 
-            hdr: header_download = header_download().unpack(chunk)
+            hdr: header_download = header_download().unpack(full_header)
             if hdr is None:
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos1 = signature_pos
+            hdr_pos1 = 0
             hdr_pos2 = hdr_pos1 + hdr.total_size
-            if len(data) >= hdr_pos2:
-                chunk = data[hdr_pos1:hdr_pos2]
-                found_hdr: header_download = hdr.unpack(chunk)
-                logging.info('unpack a header_download, len(chunk)={}'.format(len(chunk)))
+            if len(full_header) >= hdr_pos2:
+                # full_header = full_header[hdr_pos1:hdr_pos2]
+                found_hdr: header_download = hdr.unpack(full_header)
+                logging.info('unpack a header_download, len(chunk)={}'.format(len(full_header)))
 
                 logfmt = 'header_download action_kind={} chunk_index={}/{}' + \
                          'chunk_size={}'
@@ -762,17 +780,17 @@ class header():
         elif 2 == matched_index:
             logging.info('unpacking header_execute ...')
 
-            hdr: header_execute = header_execute().unpack(chunk)
+            hdr: header_execute = header_execute().unpack(full_header)
             if hdr is None:
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos1 = signature_pos
+            hdr_pos1 = 0
             hdr_pos2 = hdr_pos1 + hdr.total_size
-            if len(data) >= hdr_pos2:
-                chunk = data[signature_pos:hdr_pos2]
-                found_hdr = hdr.unpack(chunk)
-                logging.info('unpack a header_execute, len(chunk)={}'.format(len(chunk)))
+            if len(full_header) >= hdr_pos2:
+                # full_header = full_header[signature_pos:hdr_pos2]
+                found_hdr = hdr.unpack(full_header)
+                logging.info('unpack a header_execute, len(chunk)={}'.format(len(full_header)))
 
                 logfmt = 'header_execute action_kind={} chunk_index={}/{}' + \
                          'chunk_size={}'
@@ -793,17 +811,17 @@ class header():
         elif 3 == matched_index:
             logging.info('unpacking header_list ...')
 
-            hdr: header_list = header_list().unpack(chunk)
+            hdr: header_list = header_list().unpack(full_header)
             if hdr is None:
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos1 = signature_pos
+            hdr_pos1 = 0
             hdr_pos2 = hdr_pos1 + hdr.total_size
-            if len(data) >= hdr_pos2:
-                chunk = data[hdr_pos1:hdr_pos2]
-                found_hdr = hdr.unpack(chunk)
-                logging.info('unpack a header_list, len(chunk)={}'.format(len(chunk)))
+            if len(full_header) >= hdr_pos2:
+                # full_header = full_header[hdr_pos1:hdr_pos2]
+                found_hdr = hdr.unpack(full_header)
+                logging.info('unpack a header_list, len(chunk)={}'.format(len(full_header)))
 
                 logfmt = 'header_list action_kind={} chunk_index={}/{}' + \
                          'chunk_size={}'
@@ -822,17 +840,17 @@ class header():
         elif 4 == matched_index:
             logging.info('unpacking header_echo ...')
 
-            hdr: header_echo = header_echo().unpack(chunk)
+            hdr: header_echo = header_echo().unpack(full_header)
             if hdr is None:
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
 
-            hdr_pos1 = signature_pos
+            hdr_pos1 = 0
             hdr_pos2 = hdr_pos1 + hdr.total_size
-            if len(data) >= hdr_pos2:
-                chunk = data[hdr_pos1:hdr_pos2]
-                found_hdr = hdr.unpack(chunk)
-                logging.info('unpack a header_echo, len(chunk)={}'.format(len(chunk)))
+            if len(full_header) >= hdr_pos2:
+                # full_header = full_header[hdr_pos1:hdr_pos2]
+                found_hdr = hdr.unpack(full_header)
+                logging.info('unpack a header_echo, len(chunk)={}'.format(len(full_header)))
 
                 logfmt = 'header_echo action_kind={} chunk_index={}/{}' + \
                          'chunk_size={}'
@@ -1185,16 +1203,27 @@ class rcserver():
                                 sock: rcsock,
                                 ask_chunk: header_execute):
         try:
-            workdir = ask_chunk.workdir
+            logging.info('[UTF8] program={}'.format(ask_chunk.program))
+            logging.info('[UTF8] argument={}'.format(ask_chunk.argument))
+            logging.info('[UTF8] workdir={}'.format(ask_chunk.workdir))
 
-            fullcmd = ask_chunk.program
-            if ask_chunk.argument and len(ask_chunk.argument) > 0:
-                fullcmd = fullcmd + ' ' + ask_chunk.argument
+            program = str(ask_chunk.program, encoding='utf-8')
 
-            logfmt = 'program={} argument={} workdir={}'
-            logging.info(logfmt.format(ask_chunk.program,
-                                       ask_chunk.argument,
-                                       ask_chunk.workdir))
+            argument = ''
+            if ask_chunk.isbase64:
+                argument = base64.b64decode(ask_chunk.argument).decode('utf-8')
+            else:
+                argument = str(ask_chunk.argument, encoding='utf-8')
+
+            workdir = str(ask_chunk.workdir, encoding='utf-8')
+
+            logging.info('[ORIGIN] program={}'.format(program))
+            logging.info('[ORIGIN] argument={}'.format(argument))
+            logging.info('[ORIGIN] workdir={}'.format(workdir))
+
+            fullcmd = program
+            if argument and len(argument) > 0:
+                fullcmd = fullcmd + ' ' + argument
 
             proc = subprocess.Popen(fullcmd,
                                     stdout=subprocess.PIPE,
@@ -1225,17 +1254,19 @@ class rcserver():
                                             ask_chunk.program,
                                             ask_chunk.argument,
                                             ask_chunk.workdir,
+                                            ask_chunk.isbase64,
                                             data)
                 data_chunk.chunk_count = 1
                 data_chunk.chunk_index = 0
                 data_chunk.chunk_size = len(data)
 
                 packed_data = data_chunk.pack()
-                logfmt = 'program={} argument={} workdir={} ' + \
+                logfmt = 'program={} argument={} workdir={} isbase64({})' + \
                          'errcode={} stderr({}) stderr({}) packed_data({})'
-                logging.info(logfmt.format(ask_chunk.program,
-                                           ask_chunk.argument,
-                                           ask_chunk.workdir,
+                logging.info(logfmt.format(program,
+                                           argument,
+                                           workdir,
+                                           ask_chunk.isbase64,
                                            result.errcode,
                                            len(result.stdout),
                                            len(result.stderr),
@@ -1481,27 +1512,31 @@ class rcclient():
     def execute(self,
                 program: str,
                 argument: str = '',
-                workdir: str = '.'):
+                workdir: str = '.',
+                isbase64: bool = False):
+
+        encoded_args = argument
+        if not isbase64:
+            encoded_args = argument.encode('utf-8')
 
         ask_chunk = header_execute(action_kind.ask,
-                                   program,
-                                   argument,
-                                   workdir)
+                                   program.encode('utf-8'),
+                                   encoded_args,
+                                   workdir.encode('utf-8'),
+                                   isbase64)
         self._send(ask_chunk.pack())
 
         is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
                                             self.sock.chunk_list)
         if is_there_a_chunk:
             chunk: header_execute = self.sock.chunk_list.pop(0)
-            logging.info('chunk.data={}'.format(str(chunk.data)))
+            logging.info('chunk.data={}'.format(str(chunk.chunk_data)))
 
             result = rcresult()
-            if chunk.data:
-                data: execresult = config().toCLASS(chunk.data)
-
-                result.data = data
-                result.errcode = data.errcode
-                result.text += '\n'.join(data.stderr)
+            if chunk.chunk_data:
+                result.data = chunk.chunk_data
+                result.errcode = chunk.chunk_data.errcode
+                result.text += '\n'.join(chunk.chunk_data.stderr)
 
             return result
         else:
