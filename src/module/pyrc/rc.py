@@ -1226,9 +1226,12 @@ class rcserver():
             logging.info('[ORIGIN] argument={}'.format(argument))
             logging.info('[ORIGIN] workdir={}'.format(workdir))
 
+
             fullcmd = program
             if argument and len(argument) > 0:
                 fullcmd = fullcmd + ' ' + argument
+
+            logging.info('[ORIGIN] fullcmd={}'.format(fullcmd))
 
             proc = subprocess.Popen(fullcmd,
                                     stdout=subprocess.PIPE,
