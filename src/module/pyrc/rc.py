@@ -13,12 +13,17 @@ import threading
 from enum import Enum
 from types import SimpleNamespace
 
-_TIMEOUT_ = 10
+_TIMEOUT_ = 10 * 1
 
 _HEADER_SIZE_ = 16
 
-_CHUNK_SIZE_ = 1024*1024
-_BUFF_SIZE_ = 1024*1024*2
+_1KB_ = 1024
+_64KB_ = _1KB_*64
+
+_1MB_ = _1KB_*1024
+
+_CHUNK_SIZE_ = _1KB_*512
+_BUFF_SIZE_ = _1MB_*2
 
 _SIGNATURE_ECHO___ = b'$SiGEcH$'
 _SIGNATURE_UPLOAD_ = b'$SiGUpL$'
@@ -68,8 +73,10 @@ error_path_not_exist = rcresult(4, 'Path is not exist')
 error_not_a_file = rcresult(5, 'The specific path is not a file')
 error_not_a_folder = rcresult(6, 'The specific path is not a folder')
 error_file_not_identical = rcresult(7, 'File length is not identical')
-error_wait_streaming_timeout = rcresult(8, 'Wait streaming timeout')
 error_exception = rcresult(9, 'An exception rised')
+
+error_wait_timeout_streaming = rcresult(50, 'Wait streaming timeout')
+error_wait_timeout_done = rcresult(51, 'Wait done timeout')
 
 
 class action_name(Enum):
@@ -631,30 +638,6 @@ class header_execute():
 
             hdr.chunk_data = chunk_data_ori
 
-            # try:
-            #     hdr.chunk_data.errcode = chunk_data_ori.errcode
-            # except Exception:
-            #     text = 'internal error when collecting errcode !!!'
-            #     hdr.chunk_data.stdout.append(text)
-
-            # try:
-            #     hdr.chunk_data.data = chunk_data_ori.data
-            # except Exception:
-            #     text = 'internal error when collecting data !!!'
-            #     hdr.chunk_data.stdout.append(text)
-
-            # try:
-            #     hdr.chunk_data.stderr.extend(chunk_data_ori.stderr)
-            # except Exception:
-            #     text = 'internal error when collecting stderr data !!!'
-            #     hdr.chunk_data.stdout.append(text)
-
-            # try:
-            #     hdr.chunk_data.stdout.extend(chunk_data_ori.stdout)
-            # except Exception:
-            #     text = 'internal error when collecting stdout data !!!'
-            #     hdr.chunk_data.stdout.append(text)
-
         return hdr
 
 
@@ -882,11 +865,12 @@ class rcsock():
         self.conn: socket.socket = conn
         self.stream_pool = b''
         self.chunk_list = list()
-        self.callback = actors
+        self.server_callback = actors
         self.file_path = ''
         self.file_handle = None
 
         self.conn.setblocking(True)
+
         self.thread = threading.Thread(target=self._receive_stream)
         self.thread.daemon = True
         self.thread.start()
@@ -921,7 +905,8 @@ class rcsock():
 
                 self.stream_pool += chunk
                 self._parse_complete_chunk()
-                if self.callback and len(self.chunk_list) > 0:
+
+                if self.server_callback:
                     self._consume_chunks()
 
         except socket.timeout:
@@ -950,26 +935,26 @@ class rcsock():
                 # def _handle_list_command(self,
                 #                          conn: socket.socket,
                 #                          hdr: header_list):
-                self.callback.list(self, chunk)
+                self.server_callback.list(self, chunk)
 
             elif chunk.action_name == action_name.upload.value:
                 # def _handle_upload_command(self,
                 #                            sock: rcsock,
                 #                            hdr: header_upload,
                 #                            overwrite: bool = True):
-                self.callback.upload(self, chunk)
+                self.server_callback.upload(self, chunk)
 
             elif chunk.action_name == action_name.download.value:
                 # def _handle_download_command(self,
                 #                              conn: rcsock,
                 #                              data_hdr: header_download):
-                self.callback.download(self, chunk)
+                self.server_callback.download(self, chunk)
 
             elif chunk.action_name == action_name.execute.value:
                 # def _handle_execute_command(self,
                 #                             sock: rcsock,
                 #                             ask_chunk: header_execute):
-                self.callback.execute(self, chunk)
+                self.server_callback.execute(self, chunk)
 
             else:
                 pass
@@ -1002,11 +987,11 @@ class rcserver():
         self.chunk_list = list()
         self.stream_pool = b''
 
-        self.callbacks = actor_callbacks()
-        self.callbacks.download = self._handle_download_command
-        self.callbacks.list = self._handle_list_command
-        self.callbacks.upload = self._handle_upload_command
-        self.callbacks.execute = self._handle_execute_command
+        self.server_callback = actor_callbacks()
+        self.server_callback.download = self._handle_download_command
+        self.server_callback.list = self._handle_list_command
+        self.server_callback.upload = self._handle_upload_command
+        self.server_callback.execute = self._handle_execute_command
 
         self.__HOST__ = host
         self.__PORT__ = port
@@ -1044,7 +1029,7 @@ class rcserver():
             while self._listening:
                 conn, _ = self.sock.accept()
                 conn.sendall(header_echo().pack())
-                self.client_list.append(rcsock(conn, self.callbacks))
+                self.client_list.append(rcsock(conn, self.server_callback))
 
         except Exception as e:
             logging.exception(e)
@@ -1169,8 +1154,9 @@ class rcserver():
                                    data_chunk.file_size,
                                    data_chunk.chunk_size))
         try:
-
-            if not sock.file_handle:
+            # open
+            if not sock.file_handle and \
+               data_chunk.action_kind == action_kind.ask.value:
                 filepath = os.path.join(data_chunk.dstdirpath,
                                         data_chunk.filename)
                 fullpath = os.path.abspath(filepath)
@@ -1178,16 +1164,32 @@ class rcserver():
                 sock.file_path = filepath
                 sock.file_handle = open(filepath, "wb")
 
-            sock.file_handle.write(data_chunk.data)
+            # write
+            if data_chunk.action_kind == action_kind.data.value:
+                sock.file_handle.write(data_chunk.data)
 
-            diff = (data_chunk.chunk_count - data_chunk.chunk_index)
-            is_last_data = (1 == diff)
-            if sock.file_handle and is_last_data:
-                logging.info('close file (fullpath={})'.format(sock.file_path))
-                sock.file_handle.flush()
-                sock.file_handle.close()
-                sock.file_handle = None
-                sock.file_path = ''
+                diff = (data_chunk.chunk_count - data_chunk.chunk_index)
+                is_last_data = (1 == diff)
+                logging.info('last_chunk={}'.format(is_last_data))
+                logging.info('filepath={}'.format(sock.file_path))
+                logging.info(logfmt.format(sock.file_path))
+
+            # close
+            if data_chunk.action_kind == action_kind.done.value:
+                if sock.file_handle:
+                    logfmt = 'close file (fullpath={})'
+                    logging.info(logfmt.format(sock.file_path))
+                    sock.file_handle.flush()
+                    sock.file_handle.close()
+                    sock.file_handle = None
+                    sock.file_path = ''
+
+                    # done (reply)
+                    chunk_done = header_upload(action_kind.done,
+                                               data_chunk.filename,
+                                               data_chunk.file_size,
+                                               data_chunk.dstdirpath)
+                    sock._send(chunk_done.pack())
 
         except Exception as err:
             logging.exception(err)
@@ -1287,18 +1289,6 @@ class rcserver():
 
             sock._send(data_chunk.pack())
 
-        # finally:
-        #     data_chunk = header_execute(action_kind.data,
-        #                                 ask_chunk.program,
-        #                                 ask_chunk.argument,
-        #                                 ask_chunk.workdir,
-        #                                 data)
-        #     data_chunk.chunk_count = 1
-        #     data_chunk.chunk_index = 0
-        #     data_chunk.chunk_size = len(data)
-
-        #     sock.send(data_chunk.pack())
-
         return True
 
 
@@ -1369,8 +1359,13 @@ class rcclient():
 
         filename = os.path.basename(filepath)
         filesize = os.path.getsize(filepath)
-        hdr = header_upload(action_kind.ask, filename, filesize,
+
+        # ask
+        hdr = header_upload(action_kind.ask,
+                            filename,
+                            filesize,
                             remote_dirpath)
+
         self._send(hdr.pack())
 
         logging.info('filename={}'.format(filename))
@@ -1383,6 +1378,7 @@ class rcclient():
         if filesize % self.CHUNK_SIZE > 0:
             chunk_count += 1
 
+        # data
         file = open(filepath, "rb")
         while data := file.read(self.CHUNK_SIZE):
             hdr = header_upload(action_kind.data,
@@ -1390,6 +1386,7 @@ class rcclient():
                                 filesize,
                                 remote_dirpath,
                                 data)
+
             hdr.chunk_size = min(self.CHUNK_SIZE, len(data))
             hdr.chunk_index = index
             hdr.chunk_count = chunk_count
@@ -1406,6 +1403,22 @@ class rcclient():
                 hdr.filename))
 
         file.close()
+
+        # done
+        hdr = header_upload(action_kind.done,
+                            filename,
+                            filesize,
+                            remote_dirpath)
+        self._send(hdr.pack())
+
+        wait_done = self._wait_until(len,
+                                     0.1,
+                                     _TIMEOUT_,
+                                     self.sock.chunk_list)
+        if wait_done:
+            self.sock.chunk_list.pop(0)
+        else:
+            return error_wait_timeout_done
 
         return rcresult()
 
@@ -1445,7 +1458,7 @@ class rcclient():
             is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
                                                 self.sock.chunk_list)
             if not is_there_a_chunk:
-                result = error_wait_streaming_timeout
+                result = error_wait_timeout_streaming
                 break
 
             while len(self.sock.chunk_list) > 0:
@@ -1502,7 +1515,7 @@ class rcclient():
 
             return result
         else:
-            return error_wait_streaming_timeout
+            return error_wait_timeout_streaming
 
     def execute(self,
                 program: str,
@@ -1537,7 +1550,7 @@ class rcclient():
 
             return result
         else:
-            return error_wait_streaming_timeout
+            return error_wait_timeout_streaming
 
 
 if __name__ == '__main__':

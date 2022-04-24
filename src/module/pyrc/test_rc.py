@@ -54,8 +54,10 @@ def prepare_pattern_files():
         filename = 'PATTERN_{}.bin'.format(item)
         filepath = os.path.join(_TESTDIR_, filename)
         pattern_name_list.append(filepath)
-        with open(filepath, 'wb') as fout:
-            fout.write(os.urandom(item))
+        with open(filepath, 'wb') as f:
+            f.write(os.urandom(item))
+            f.flush()
+            f.close()
 
 
 def thread_routine(server: rcserver):
@@ -121,7 +123,9 @@ class TestPyRc(unittest.TestCase):
         _FILENAME_ = 'File.bin'
         _DIRPATH_ = '.'
 
-        hdr = header_upload(action_kind.ask, _FILENAME_, _DATA_SIZE_,
+        hdr = header_upload(action_kind.ask,
+                            _FILENAME_,
+                            _DATA_SIZE_,
                             _DIRPATH_)
 
         hdr.chunk_count = 1
@@ -433,6 +437,32 @@ class TestPyRc(unittest.TestCase):
             self.assertTrue(os.path.exists(fileloc))
             self.assertTrue(cmp_matched)
 
+    def test_connect_then_upload_usbtreeview(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        filepath = os.path.join(_TESTDIR_, 'PATTERN_764448_UsbTreeView.bin')
+        UsbTreeViewExe = os.urandom(764448)
+        f = open(filepath, 'wb')
+        if f:
+            f.write(UsbTreeViewExe)
+            f.flush()
+            f.close()
+
+        # Upload files
+        result: rcresult = client.upload(filepath, _TEMPDIR_ULOAD_)
+        self.assertEqual(0, result.errcode)
+
+        dstfilepath = os.path.join(_TEMPDIR_ULOAD_,
+                                   'PATTERN_764448_UsbTreeView.bin')
+        if os.path.exists(dstfilepath):
+            os.unlink(dstfilepath)
+            if os.path.exists(dstfilepath):
+                pass
+            else:
+                pass
+
     def test_connect_then_upload_all_testdata(self):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
@@ -504,12 +534,12 @@ class TestPyRc(unittest.TestCase):
                                               isbase64=True)
             self.assertEqual(0, result.errcode)
         elif platform.system() == 'Darwin':
-            base64_arg = base64.b64encode(''.encode('utf-8'))
+            base64_arg = base64.b64encode(''.encode('utf-8')).decode()
             result: rcresult = client.execute('ifconfig', base64_arg,
                                               isbase64=True)
             self.assertEqual(0, result.errcode)
         elif platform.system() == 'Linux':
-            base64_arg = base64.b64encode('a'.encode('utf-8'))
+            base64_arg = base64.b64encode('a'.encode('utf-8')).decode()
             result: rcresult = client.execute('ip', base64_arg,
                                               isbase64=True)
             self.assertEqual(0, result.errcode)
