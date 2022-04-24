@@ -13,7 +13,7 @@ import threading
 from enum import Enum
 from types import SimpleNamespace
 
-_TIMEOUT_ = 10 * 1
+_TIMEOUT_ = 10 * 3
 
 _HEADER_SIZE_ = 16
 
