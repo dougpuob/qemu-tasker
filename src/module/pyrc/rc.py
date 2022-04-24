@@ -1515,6 +1515,11 @@ class rcclient():
                 workdir: str = '.',
                 isbase64: bool = False):
 
+        logging.info('[Type] type(program)  = {}', type(program))
+        logging.info('[Type] type(argument) = {}', type(argument))
+        logging.info('[Type] type(workdir)  = {}', type(workdir))
+        logging.info('[Type] type(isbase64) = {}', type(isbase64))
+
         encoded_args = argument
         if not isbase64:
             encoded_args = argument.encode('utf-8')
