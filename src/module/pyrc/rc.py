@@ -479,6 +479,11 @@ class header_execute():
         assert isinstance(isbase64, bool), 'data should be bytes'
         assert isinstance(chunk_data, bytes), 'data should be bytes'
 
+        logging.info('program  = {}'.format(program))
+        logging.info('argument = {}'.format(argument))
+        logging.info('workdir  = {}'.format(workdir))
+        logging.info('isbase64 = {}'.format(isbase64))
+
         self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'Biii'
 
         #
