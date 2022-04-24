@@ -75,6 +75,12 @@ class puppet_client():
 
       try:
         cmdret.errcode = 111
+
+        logging.info('puclient.py program = {} ({})'.format(program, type(program)))
+        logging.info('puclient.py argument = {} ({})'.format(argument, type(argument)))
+        logging.info('puclient.py workdir = {} ({})'.format(workdir, type(workdir)))
+        logging.info('puclient.py isbase64 = {} ({})'.format(isbase64, type(isbase64)))
+
         rcrs: rcresult = self.pyrc_client.execute(program, argument, workdir, isbase64)
         logging.info('rcrs={}'.format(rcrs.toTEXT()))
 

@@ -1519,6 +1519,11 @@ class rcclient():
         if not isbase64:
             encoded_args = argument.encode('utf-8')
 
+        logging.info('rc.py program = {} ({})'.format(program, type(program)))
+        logging.info('rc.py argument = {} ({})'.format(argument, type(argument)))
+        logging.info('rc.py workdir = {} ({})'.format(workdir, type(workdir)))
+        logging.info('rc.py isbase64 = {} ({})'.format(isbase64, type(isbase64)))
+
         ask_chunk = header_execute(action_kind.ask,
                                    program.encode('utf-8'),
                                    encoded_args,
