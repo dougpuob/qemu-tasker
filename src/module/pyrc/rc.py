@@ -1516,7 +1516,10 @@ class rcclient():
                 isbase64: bool = False):
 
         encoded_args = argument
-        if not isbase64:
+        if isbase64:
+            encoded_args = argument.encode('utf-8')
+            pass
+        else:
             encoded_args = argument.encode('utf-8')
 
         logging.info('rc.py program = {} ({})'.format(program, type(program)))
