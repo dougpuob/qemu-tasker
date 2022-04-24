@@ -117,6 +117,8 @@ class puppet_client():
       else:
         cmdret.error_lines.append(result.text)
 
+      return cmdret
+
 
     def upload(self, files:list, dstdir:str):
       cmdret = config.command_return()
@@ -130,6 +132,7 @@ class puppet_client():
           text = 'Failed to upload "{}" file.'.format(file)
           cmdret.error_lines.append(text)
           logging.info(text)
+
       return cmdret
 
 
@@ -145,6 +148,7 @@ class puppet_client():
           text = 'Failed to upload "{}" file.'.format(file)
           cmdret.error_lines.append(text)
           logging.info(text)
+
       return cmdret
 
 
@@ -157,3 +161,5 @@ class puppet_client():
         cmdret.info_lines.append(result.text)
       else:
         cmdret.error_lines.append(result.text)
+
+      return cmdret
