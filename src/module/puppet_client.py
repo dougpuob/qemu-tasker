@@ -110,34 +110,50 @@ class puppet_client():
     def mkdir(self, dirpath:str):
       result: rcresult = self.pyrc_client.execute('mkdir', dirpath)
       #logging.info('result={}', result.toTEXT())
-      return (0 == result.errcode)
+      cmdret = config.command_return()
+      cmdret.errcode = result.errcode
+      if 0 == result.errcode:
+        cmdret.info_lines.append(result.text)
+      else:
+        cmdret.error_lines.append(result.text)
 
 
     def upload(self, files:list, dstdir:str):
-      ret = True
+      cmdret = config.command_return()
       for file in files:
         result: rcresult = self.pyrc_client.upload(file, dstdir)
         if (0 == result.errcode):
-          logging.info('Passed to upload "{}" file.'.format(file))
+          text = 'Passed to upload "{}" file.'.format(file)
+          cmdret.info_lines.append(text)
+          logging.info(text)
         else:
-          logging.error('Failed to upload "{}" file.'.format(file))
-          ret = False
-      return ret
+          text = 'Failed to upload "{}" file.'.format(file)
+          cmdret.error_lines.append(text)
+          logging.info(text)
+      return cmdret
 
 
     def download(self, files:list, dstdir:str):
-      ret = True
+      cmdret = config.command_return()
       for file in files:
         result: rcresult = self.pyrc_client.download(file, dstdir)
         if (0 == result.errcode):
-          logging.info('Passed to download "{}" file.'.format(file))
+          text = 'Passed to upload "{}" file.'.format(file)
+          cmdret.info_lines.append(text)
+          logging.info(text)
         else:
-          logging.info('Passed to download "{}" file.'.format(file))
-          ret = False
-      return ret
+          text = 'Failed to upload "{}" file.'.format(file)
+          cmdret.error_lines.append(text)
+          logging.info(text)
+      return cmdret
 
 
     def list(self, dstdir:str):
       result: rcresult = self.pyrc_client.list(dstdir)
-      return result.data
 
+      cmdret = config.command_return()
+      cmdret.errcode = result.errcode
+      if 0 == result.errcode:
+        cmdret.info_lines.append(result.text)
+      else:
+        cmdret.error_lines.append(result.text)

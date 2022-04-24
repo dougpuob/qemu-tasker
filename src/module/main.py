@@ -230,7 +230,7 @@ class main():
                 elif 'upload' == self.input_args.command:
                     pup_client = self.get_puppet_client(self.input_args.taskid)
                     result: list = pup_client.upload(self.input_args.files,
-                                                         self.input_args.dstdir)
+                                                     self.input_args.dstdir)
                     response_capsule = config.transaction_capsule(config.action_kind().response,
                                                                   config.command_kind().upload,
                                                                   data=result)
