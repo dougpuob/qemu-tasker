@@ -1510,9 +1510,9 @@ class rcclient():
                 workdir: str = '.',
                 isbase64: bool = False):
 
-        encoded_args = argument
+        encoded_args = b''
         if isbase64:
-            pass
+            encoded_args = argument.encode('ascii')
         else:
             encoded_args = argument.encode('utf-8')
 

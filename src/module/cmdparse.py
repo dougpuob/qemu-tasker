@@ -57,7 +57,7 @@ class cmdargs():
         parser_execute = subparsers.add_parser('execute', parents = [parent_parser], help='execute a specific command at guest operating system')
         parser_execute.add_argument('-T', '--taskid', type=int, required=True)
         parser_execute.add_argument('-P', '--program', required=True)
-        parser_execute.add_argument('-A', '--argument')
+        parser_execute.add_argument('-A', '--argument', type=str, default='')
         parser_execute.add_argument('-W', '--workdir', type=str, default=".")
         parser_execute.add_argument('-B64', '--base64', action='store_true')
 

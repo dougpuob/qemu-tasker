@@ -499,7 +499,7 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.is_connected(), True)
 
         if platform.system() == 'Windows':
-            base64_arg = base64.b64encode('/all'.encode('utf-8'))
+            base64_arg = base64.b64encode('/all'.encode('utf-8')).decode()
             result: rcresult = client.execute('ipconfig', base64_arg,
                                               isbase64=True)
             self.assertEqual(0, result.errcode)
