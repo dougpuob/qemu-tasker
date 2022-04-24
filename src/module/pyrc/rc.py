@@ -473,17 +473,6 @@ class header_execute():
                  isbase64: bool = False,
                  chunk_data: bytes = b''):
 
-        assert isinstance(program, bytes), 'data should be bytes'
-        assert isinstance(argument, bytes), 'data should be bytes'
-        assert isinstance(workdir, bytes), 'data should be bytes'
-        assert isinstance(isbase64, bool), 'data should be bytes'
-        assert isinstance(chunk_data, bytes), 'data should be bytes'
-
-        logging.info('program  = {}'.format(program))
-        logging.info('argument = {}'.format(argument))
-        logging.info('workdir  = {}'.format(workdir))
-        logging.info('isbase64 = {}'.format(isbase64))
-
         self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'Biii'
 
         #
@@ -971,7 +960,8 @@ class rcsock():
                 self.callback.upload(self, chunk)
 
             elif chunk.action_name == action_name.download.value:
-                # def _handle_download_command(self, conn: socket.socket,
+                # def _handle_download_command(self,
+                #                              conn: rcsock,
                 #                              data_hdr: header_download):
                 self.callback.download(self, chunk)
 
@@ -1226,12 +1216,9 @@ class rcserver():
             logging.info('[ORIGIN] argument={}'.format(argument))
             logging.info('[ORIGIN] workdir={}'.format(workdir))
 
-
             fullcmd = program
             if argument and len(argument) > 0:
                 fullcmd = fullcmd + ' ' + argument
-
-            logging.info('[ORIGIN] fullcmd={}'.format(fullcmd))
 
             proc = subprocess.Popen(fullcmd,
                                     stdout=subprocess.PIPE,
@@ -1525,15 +1512,9 @@ class rcclient():
 
         encoded_args = argument
         if isbase64:
-            encoded_args = argument.encode('utf-8')
             pass
         else:
             encoded_args = argument.encode('utf-8')
-
-        logging.info('rc.py program = {} ({})'.format(program, type(program)))
-        logging.info('rc.py argument = {} ({})'.format(argument, type(argument)))
-        logging.info('rc.py workdir = {} ({})'.format(workdir, type(workdir)))
-        logging.info('rc.py isbase64 = {} ({})'.format(isbase64, type(isbase64)))
 
         ask_chunk = header_execute(action_kind.ask,
                                    program.encode('utf-8'),
