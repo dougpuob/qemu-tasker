@@ -867,7 +867,7 @@ class header():
                 found_hdr = hdr.unpack(full_header)
                 logging.info('unpack a header_execute, len(chunk)={}'.format(len(full_header)))
 
-                logfmt = 'header_execute action_kind={} chunk_index={}/{}' + \
+                logfmt = 'header_execute action_kind={} chunk_index={}/{} ' + \
                          'chunk_size={}'
                 logging.info(logfmt.format(found_hdr.action_kind,
                                            found_hdr.chunk_index + 1,
@@ -1442,12 +1442,12 @@ class rcserver():
 
             sock._send(data_chunk.pack())
 
-        # # done by end
-        # data_chunk = header_execute(action_kind.done,
-        #                             ask_chunk.program,
-        #                             ask_chunk.argument,
-        #                             ask_chunk.workdir)
-        # sock._send(data_chunk.pack())
+        # done by end
+        data_chunk = header_execute(action_kind.done,
+                                    ask_chunk.program,
+                                    ask_chunk.argument,
+                                    ask_chunk.workdir)
+        sock._send(data_chunk.pack())
 
         return True
 
@@ -1723,6 +1723,7 @@ class rcclient():
         else:
             encoded_args = argument.encode('utf-8')
 
+        # ask
         ask_chunk = header_execute(action_kind.ask,
                                    program.encode('utf-8'),
                                    encoded_args,
@@ -1730,21 +1731,28 @@ class rcclient():
                                    isbase64)
         self._send(ask_chunk.pack())
 
+        # wait data
+        result = rcresult()
         is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
                                             self.sock.chunk_list)
-        if is_there_a_chunk:
-            chunk: header_execute = self.sock.chunk_list.pop(0)
-            logging.info('chunk.data={}'.format(str(chunk.chunk_data)))
-
-            result = rcresult()
-            if chunk.chunk_data:
-                result.data = chunk.chunk_data
-                result.errcode = chunk.chunk_data.errcode
-                result.text += '\n'.join(chunk.chunk_data.stderr)
-
-            return result
-        else:
+        if not is_there_a_chunk:
             return error_wait_timeout_streaming
+
+        chunk: header_execute = self.sock.chunk_list.pop(0)
+        logging.info('chunk.data={}'.format(str(chunk.chunk_data)))
+
+        if chunk.chunk_data:
+            result.data = chunk.chunk_data
+            result.errcode = chunk.chunk_data.errcode
+            result.text += '\n'.join(chunk.chunk_data.stderr)
+
+        # wait done
+        is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
+                                            self.sock.chunk_list)
+        if not is_there_a_chunk:
+            return error_wait_timeout_streaming
+
+        return result
 
     def text(self, title: str, data: bytes = b''):
 
