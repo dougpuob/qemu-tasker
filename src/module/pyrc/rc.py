@@ -1345,6 +1345,8 @@ class rcserver():
                                 ask_chunk: header_execute):
         try:
 
+            data = None
+
             logging.info('-------------------------------------------')
             logging.info('[UTF8] program={}'.format(ask_chunk.program))
             logging.info('[UTF8] argument={}'.format(ask_chunk.argument))
@@ -1399,19 +1401,6 @@ class rcserver():
 
                 data = result.toTEXT().encode()
 
-                # data by success
-                data_chunk = header_execute(action_kind.data,
-                                            ask_chunk.program,
-                                            ask_chunk.argument,
-                                            ask_chunk.workdir,
-                                            ask_chunk.isbase64,
-                                            data)
-                data_chunk.chunk_count = 1
-                data_chunk.chunk_index = 0
-                data_chunk.chunk_size = len(data)
-
-                sock._send(data_chunk.pack())
-
         except Exception as err:
             logging.exception(err)
 
@@ -1421,23 +1410,28 @@ class rcserver():
             result.stderr.append(error_exception.text)
             result.stderr.append(str(err))
             data = result.toTEXT().encode()
+
+        finally:
+            # data by success
             data_chunk = header_execute(action_kind.data,
                                         ask_chunk.program,
                                         ask_chunk.argument,
                                         ask_chunk.workdir,
+                                        ask_chunk.isbase64,
                                         data)
             data_chunk.chunk_count = 1
             data_chunk.chunk_index = 0
             data_chunk.chunk_size = len(data)
 
+            logging.info('send data ({})'.format(ask_chunk.program))
             sock._send(data_chunk.pack())
 
-        finally:
             # done by end
             done_chunk = header_execute(action_kind.done,
                                         ask_chunk.program,
                                         ask_chunk.argument,
                                         ask_chunk.workdir)
+            logging.info('send done ({})'.format(ask_chunk.program))
             sock._send(done_chunk.pack())
 
         return True
@@ -1733,9 +1727,10 @@ class rcclient():
                                             0.1,
                                             _TIMEOUT_,
                                             self.sock.chunk_list)
+        logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
         if not is_there_a_chunk:
             logging.error('wait data timeout !!! ({})'.format(program))
-            result = error_wait_timeout_streaming
+            return error_wait_timeout_streaming
         else:
             logging.info('fetch the data ({})'.format(program))
             chunk: header_execute = self.sock.chunk_list.pop(0)
@@ -1752,9 +1747,10 @@ class rcclient():
                                             0.1,
                                             _TIMEOUT_,
                                             self.sock.chunk_list)
+        logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
         if not is_there_a_chunk:
             logging.error('wait done timeout !!! ({})'.format(program))
-            result = error_wait_timeout_streaming
+            return error_wait_timeout_streaming
         else:
             logging.info('fetch the done ({})'.format(program))
             chunk: header_execute = self.sock.chunk_list.pop(0)

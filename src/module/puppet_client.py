@@ -115,7 +115,6 @@ class puppet_client():
 
     def mkdir(self, dirpath:str):
       result: rcresult = self.pyrc_client.execute('mkdir', dirpath)
-      #logging.info('result={}', result.toTEXT())
       cmdret = config.command_return()
       cmdret.errcode = result.errcode
       if 0 == result.errcode:
