@@ -13,7 +13,7 @@ import threading
 from enum import Enum
 from types import SimpleNamespace
 
-_TIMEOUT_ = 10 * 10000000
+_TIMEOUT_ = 3
 
 _HEADER_SIZE_ = 16
 
@@ -1460,10 +1460,8 @@ class rcclient():
         hdr = header_download(action_kind.ask, remote_filepath)
         self._send(hdr.pack())
 
-        filetmp = "{0}.tmp".format(uuid.uuid4().hex)
-        tmpfileloc = os.path.join(local_dirpath, filetmp)
-        logging.info('filetmp={}'.format(filetmp))
-        logging.info('tmploc={}'.format(tmpfileloc))
+        filepath_dst = os.path.join(local_dirpath, filename)
+        logging.info('filepath_dst={}'.format(filepath_dst))
 
         index = 0
         recvsize = 0
@@ -1480,7 +1478,7 @@ class rcclient():
                 result = error_wait_timeout_streaming
                 break
 
-            while True:
+            while len(self.sock.chunk_list) > 0:
                 is_data_chunk = self.sock.chunk_list[0].action_kind == action_kind.data.value
 
                 if not is_data_chunk:
@@ -1491,7 +1489,7 @@ class rcclient():
                 file_size = chunk.file_size
 
                 if not file:
-                    file = open(tmpfileloc, "wb")
+                    file = open(filepath_dst, "wb")
 
                 file.write(chunk.data)
 
@@ -1511,6 +1509,7 @@ class rcclient():
         if file:
             file.flush()
             file.close()
+            file = False
 
         # wait done
         wait_done = self._wait_until(len,
@@ -1521,8 +1520,6 @@ class rcclient():
             self.sock.chunk_list.pop(0)
         else:
             return error_wait_timeout_done
-
-        os.rename(tmpfileloc, fileloc)
 
         return result
 

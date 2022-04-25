@@ -445,20 +445,50 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.is_connected(), True)
 
         for file in pattern_name_list:
-
             filename = os.path.basename(file)
-            fileloc = os.path.join(_TEMPDIR_DLOAD_, filename)
 
-            self.assertFalse(os.path.exists(fileloc))
+            fileloc_src = os.path.abspath(os.path.join(_TESTDIR_, filename))
+            fileloc_dst = os.path.abspath(os.path.join(_TEMPDIR_DLOAD_, filename))
 
+            self.assertEqual(os.path.exists(fileloc_src), True)
+            self.assertEqual(os.path.exists(fileloc_dst), False)
             result: rcresult = client.download(file, _TEMPDIR_DLOAD_)
             self.assertEqual(0, result.errcode)
+            self.assertEqual(os.path.exists(fileloc_dst), True)
 
-            fileloc_src = os.path.join(_TESTDIR_, filename)
-            fileloc_dst = os.path.join(_TEMPDIR_DLOAD_, filename)
-            cmp_matched = filecmp.cmp(fileloc_src, fileloc_dst)
-            self.assertTrue(os.path.exists(fileloc))
-            self.assertTrue(cmp_matched)
+            filesize_src = os.path.getsize(fileloc_src)
+            filesize_dst = os.path.getsize(fileloc_dst)
+            msg = 'filesize_src={} filesize_dst={}'.format(filesize_src,
+                                                           filesize_dst)
+            self.assertEqual(filesize_src, filesize_dst, msg)
+
+            self.assertEqual(os.path.exists(fileloc_src), True)
+            self.assertEqual(os.path.exists(fileloc_dst), True)
+
+            cmp_matched = True
+            file_src = open(fileloc_src, 'rb')
+            file_dst = open(fileloc_dst, 'rb')
+            if file_src and file_dst:
+                self.assertEqual(True, filesize_src == filesize_dst)
+
+                data_src = file_src.read(filesize_src)
+                data_dst = file_dst.read(filesize_dst)
+                self.assertEqual(True, len(data_src) > 0)
+                self.assertEqual(True, len(data_dst) > 0)
+
+                index = 0
+                while index < filesize_src:
+                    if cmp_matched:
+                        cmp_matched = (data_dst[index] == data_src[index])
+                    index += 1
+
+                file_src.close()
+                file_dst.close()
+
+            msg = 'filesize_src={} filesize_dst={} cmp_matched={}'.format(filesize_src,
+                                                                          filesize_dst,
+                                                                          cmp_matched)
+            self.assertEqual(True, cmp_matched, msg)
 
     def test_connect_then_upload_usbtreeview(self):
         client = rcclient()
