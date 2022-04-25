@@ -1728,13 +1728,16 @@ class rcclient():
 
         # wait data
         result = rcresult()
+        logging.info('wait data ({})'.format(program))
         is_there_a_chunk = self._wait_until(len,
                                             0.1,
                                             _TIMEOUT_,
                                             self.sock.chunk_list)
         if not is_there_a_chunk:
+            logging.error('wait data timeout !!! ({})'.format(program))
             result = error_wait_timeout_streaming
         else:
+            logging.info('fetch the data ({})'.format(program))
             chunk: header_execute = self.sock.chunk_list.pop(0)
             logging.info('chunk.data={}'.format(str(chunk.chunk_data)))
 
@@ -1744,13 +1747,16 @@ class rcclient():
                 result.text += '\n'.join(chunk.chunk_data.stderr)
 
         # wait done
+        logging.info('wait done ({})'.format(program))
         is_there_a_chunk = self._wait_until(len,
                                             0.1,
                                             _TIMEOUT_,
                                             self.sock.chunk_list)
         if not is_there_a_chunk:
+            logging.error('wait done timeout !!! ({})'.format(program))
             result = error_wait_timeout_streaming
         else:
+            logging.info('fetch the done ({})'.format(program))
             chunk: header_execute = self.sock.chunk_list.pop(0)
 
         return result
