@@ -2,11 +2,11 @@ import os
 import sys
 import time
 import json
-import uuid
 import socket
 import base64
 import struct
 import logging
+import platform
 import subprocess
 import threading
 
@@ -30,6 +30,7 @@ _SIGNATURE_UPLOAD_ = b'$SiGUpL$'
 _SIGNATURE_DOWNLO_ = b'$SiGDoW$'
 _SIGNATURE_EXECUT_ = b'$SiGExE$'
 _SIGNATURE_LIST___ = b'$SiGLiS$'
+_SIGNATURE_TEXT___ = b'$SiGTex$'
 
 
 class config():
@@ -50,6 +51,11 @@ class config():
             text = self.toTEXT()
         return json.loads(text, object_hook=lambda d: SimpleNamespace(**d))
 
+
+class computer_info(config):
+    def __init__(self, osname: str = 'unknown', homedir: str = ''):
+        self.osname = osname
+        self.homedir =homedir
 
 class execresult(config):
     def __init__(self):
@@ -85,6 +91,7 @@ class action_name(Enum):
     download = 2
     list = 3
     execute = 4
+    text = 5
     echo = 99
 
 
@@ -483,13 +490,6 @@ class header_execute():
         self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'Biii'
 
         #
-        # +--------------------+---------------------------+
-        # |       Header       |           Payload         |
-        # +--------------------+---------------------------+
-        # | Signature + Fields | payload_data + chunk_data |
-        # +--------------------+---------------------------+
-
-        #
         # payload_data
         #
         self.program = program
@@ -641,6 +641,106 @@ class header_execute():
         return hdr
 
 
+class header_text():
+    def __init__(self, kind: action_kind = action_kind.unknown, title: str = 'default', data: bytes = b''):
+        self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'i'
+
+        #
+        # payload_data
+        #
+        self.title: str = title
+
+        #
+        # payload_chunk
+        #
+        self.payload_chunk = data
+
+        #
+        # Header content
+        #
+        self.signature: bytes = _SIGNATURE_TEXT___
+
+        self.header_size: int = 0
+        self.total_size: int = 0
+        self.payload_size: int = 0
+        self.action_name: int = action_name.text.value
+        self.action_kind: int = kind.value
+
+        self.chunk_size: int = len(data)
+        self.chunk_count: int = 0
+        self.chunk_index: int = 0
+
+        self.length_title: int = len(title)
+
+        if len(data) > 0:
+            self.chunk_count = 1
+
+    def pack(self):
+        self.header_size = struct.calcsize(self._STRUCT_FORMAT_)
+        self.payload_size = self.length_title + self.chunk_size
+        self.total_size = self.header_size + self.payload_size
+
+        rawdata = struct.pack(self._STRUCT_FORMAT_,
+                              self.signature,
+
+                              self.header_size,
+                              self.total_size,
+                              self.payload_size,
+                              self.action_name,
+                              self.action_kind,
+
+                              self.chunk_size,
+                              self.chunk_count,
+                              self.chunk_index,
+
+                              self.length_title)
+
+        payload = (self.title.encode('ascii') + self.payload_chunk)
+
+        rawdata += payload
+        return rawdata
+
+    def unpack(self, data: bytes):
+        if len(data) <= _HEADER_SIZE_:
+            return None
+
+        hdr_size: int = int.from_bytes(data[8:11], 'little')
+        hdr_only: bytes = data[:hdr_size]
+
+        hdr = header_text()
+
+        # Header files
+        unpack = struct.unpack(self._STRUCT_FORMAT_, hdr_only)
+        hdr.signature = unpack[0]
+        hdr.header_size = unpack[1]
+        hdr.total_size = unpack[2]
+        hdr.payload_size = unpack[3]
+        hdr.action_name = unpack[4]
+        hdr.action_kind = unpack[5]
+        hdr.chunk_size = unpack[6]
+        hdr.chunk_count = unpack[7]
+        hdr.chunk_index = unpack[8]
+        hdr.length_title = unpack[9]
+
+        #
+        # Payload
+        #
+        pos1 = self.header_size
+        pos2 = pos1 + self.total_size
+        payload = data[pos1:pos2]
+
+        # payload_data
+        pos1 = 0
+        pos2 = self.length_title
+        hdr.title = str(payload[pos1:pos2], encoding='ascii')
+
+        # payload_chunk
+        pos1 = pos2
+        pos2 = pos1 + self.chunk_size
+        hdr.payload_chunk = payload[pos1:pos2]
+
+        return hdr
+
 class header():
     def __init__(self):
         pass
@@ -657,7 +757,8 @@ class header():
                    _SIGNATURE_DOWNLO_,  # 1
                    _SIGNATURE_EXECUT_,  # 2
                    _SIGNATURE_LIST___,  # 3
-                   _SIGNATURE_ECHO___]  # 4
+                   _SIGNATURE_ECHO___,  # 4
+                   _SIGNATURE_TEXT___]  # 5
 
         signature_pos = -1
         for item in targets:
@@ -837,6 +938,31 @@ class header():
                 found_hdr = None
                 hdr_pos2 = 0
 
+        elif 5 == matched_index:
+            logging.info('unpacking header_text ...')
+
+            hdr: header_text = header_text().unpack(full_header)
+            if hdr is None:
+                logging.warning('buffer is insufficient !!! (failed to unpack)')
+                return None, 0
+
+            hdr_pos1 = 0
+            hdr_pos2 = hdr_pos1 + hdr.total_size
+            if len(full_header) >= hdr_pos2:
+                found_hdr = hdr.unpack(full_header)
+                logging.info('unpack a header_text, len(chunk)={}'.format(len(full_header)))
+
+                logfmt = 'header_text action_kind={} chunk_index={}/{}' + \
+                         'chunk_size={}'
+                logging.info(logfmt.format(found_hdr.action_kind,
+                                           found_hdr.chunk_index + 1,
+                                           found_hdr.chunk_count,
+                                           found_hdr.chunk_size))
+            else:
+                logging.warning('buffer is insufficient for a header_text, len(data)={}'.format(len(data)))
+                found_hdr = None
+                hdr_pos2 = 0
+
         else:
             logging.warning('buffer missed matching, len(data)={}'.format(len(data)))
             found_hdr = None
@@ -851,6 +977,7 @@ class actor_callbacks():
         self.upload = None
         self.download = None
         self.execute = None
+        self.text = None
 
 
 class rcsock():
@@ -953,6 +1080,12 @@ class rcsock():
                 #                             ask_chunk: header_execute):
                 self.server_callback.execute(self, chunk)
 
+            elif chunk.action_name == action_name.text.value:
+                # def _handle_text_command(self,
+                #                          sock: rcsock,
+                #                          ask_chunk: header_text):
+                self.server_callback.text(self, chunk)
+
             else:
                 pass
 
@@ -989,6 +1122,8 @@ class rcserver():
         self.server_callback.list = self._handle_list_command
         self.server_callback.upload = self._handle_upload_command
         self.server_callback.execute = self._handle_execute_command
+        self.server_callback.text = self._handle_text_command
+
 
         self.__HOST__ = host
         self.__PORT__ = port
@@ -1266,7 +1401,7 @@ class rcserver():
                 data_chunk.chunk_size = len(data)
 
                 packed_data = data_chunk.pack()
-                logfmt = 'program={} argument={} workdir={} isbase64({})' + \
+                logfmt = 'program={} argument={} workdir={} isbase64({}) ' + \
                          'errcode={} stderr({}) stderr({}) packed_data({})'
                 logging.info(logfmt.format(program,
                                            argument,
@@ -1276,6 +1411,11 @@ class rcserver():
                                            len(result.stdout),
                                            len(result.stderr),
                                            len(packed_data)))
+
+                if (len(result.stderr) > 0) or (0 != result.errcode):
+                    logging.error('result.errcode={}'.format(result.errcode))
+                    logging.error('result.stderr={}'.format(result.stderr))
+
                 sock._send(packed_data)
 
         except Exception as err:
@@ -1304,6 +1444,28 @@ class rcserver():
         #                             ask_chunk.argument,
         #                             ask_chunk.workdir)
         # sock._send(data_chunk.pack())
+
+        return True
+
+    def _handle_text_command(self,
+                             sock: rcsock,
+                             ask_chunk: header_text):
+
+        logging.info('title={}'.format(ask_chunk.title))
+
+        data = None
+
+        if 'default' == ask_chunk.title:
+            data = 'Hello from server with default'.encode()
+        elif 'computer_info' == ask_chunk.title:
+            osname = platform.system().lower()
+            homedir = os.path.expanduser('~')
+            data = computer_info(osname, homedir).toTEXT().encode()
+        else:
+            data = 'Hello from server with UNKNOWN'.encode()
+
+        done_chunk = header_text(action_kind.done, ask_chunk.title, data)
+        sock._send(done_chunk.pack())
 
         return True
 
@@ -1575,6 +1737,24 @@ class rcclient():
                 result.data = chunk.chunk_data
                 result.errcode = chunk.chunk_data.errcode
                 result.text += '\n'.join(chunk.chunk_data.stderr)
+
+            return result
+        else:
+            return error_wait_timeout_streaming
+
+    def text(self, title: str, data: bytes = b''):
+
+        ask_chunk = header_text(action_kind.ask, title, data)
+        self._send(ask_chunk.pack())
+
+        is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
+                                            self.sock.chunk_list)
+        if is_there_a_chunk:
+            done_chunk: header_text = self.sock.chunk_list.pop(0)
+
+            result = rcresult()
+            result.data = done_chunk.payload_chunk
+            result.text = title
 
             return result
         else:

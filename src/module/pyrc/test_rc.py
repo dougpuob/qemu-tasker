@@ -16,6 +16,9 @@ from rc import header_upload
 from rc import header_download
 from rc import header_list
 from rc import header_execute
+from rc import header_text
+from rc import config
+from rc import computer_info
 from rc import action_kind
 from rc import action_name
 
@@ -380,6 +383,35 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(_ISBASE64_, output_hdr.isbase64)
         self.assertEqual(_WORKDIR_, output_hdr.workdir)
 
+    def test_header_text_ask(self):
+        _DATA_ = computer_info().toTEXT().encode()
+
+        hdr = header_text(action_kind.ask, 'computer_info', _DATA_)
+
+        hdr.chunk_size = len(_DATA_)
+        hdr.chunk_count = 1
+        hdr.chunk_index = 0
+
+        packed_data = hdr.pack()
+        self.assertIsNotNone(packed_data)
+
+        output_hdr = hdr.unpack(packed_data)
+        self.assertTrue(isinstance(output_hdr, header_text))
+
+        self.assertEqual(action_kind.ask.value, output_hdr.action_kind)
+        self.assertEqual(action_name.text.value, output_hdr.action_name)
+
+        self.assertEqual(output_hdr.chunk_size, len(_DATA_))
+        self.assertEqual(output_hdr.chunk_count, 1)
+        self.assertEqual(output_hdr.chunk_index, 0)
+
+        self.assertEqual(_DATA_, output_hdr.payload_chunk)
+
+        text = str(output_hdr.payload_chunk, encoding='utf-8')
+        data: computer_info = config().toCLASS(text)
+        self.assertEqual(data.osname, data.osname)
+        self.assertEqual(data.homedir, data.homedir)
+
     def test_connect(self):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
@@ -667,6 +699,21 @@ class TestPyRc(unittest.TestCase):
         result: rcresult = client.execute('(Get-Location).Path')
         self.assertEqual(result.data.errcode, result.errcode)
         self.assertIsNot(0, result.errcode)
+
+    # def test_connect_then_text_computer_info(self):
+    #     client = rcclient()
+    #     self.assertEqual(client.connect(_HOST_, _PORT_), True)
+    #     self.assertEqual(client.is_connected(), True)
+
+    #     osname = platform.system().lower()
+    #     data1 = computer_info(osname, os.path.expanduser('~'))
+    #     result: rcresult = client.text('computer_info')
+    #     self.assertEqual(result.errcode, 0)
+    #     self.assertEqual(result.text, 'computer_info')
+    #     text = str(result.data, encoding='utf-8')
+    #     data2: computer_info = config().toCLASS(text)
+    #     self.assertEqual(data1.osname, data2.osname)
+    #     self.assertEqual(data1.homedir, data2.homedir)
 
 
 if __name__ == '__main__':
