@@ -15,6 +15,8 @@ import subprocess
 from module.pyrc.rc import execresult
 from module.pyrc.rc import rcclient
 from module.pyrc.rc import rcresult
+from module.pyrc.rc import command_mkdir
+from module.pyrc.rc import computer_info
 from module import config
 
 # =================================================================================================
@@ -114,7 +116,7 @@ class puppet_client():
 
 
     def mkdir(self, dirpath:str):
-      result: rcresult = self.pyrc_client.execute('mkdir', dirpath)
+      result: rcresult = self.pyrc_client.mkdir(dirpath)
       cmdret = config.command_return()
       cmdret.errcode = result.errcode
       if 0 == result.errcode:
@@ -167,4 +169,11 @@ class puppet_client():
       else:
         cmdret.error_lines.append(result.text)
 
+      return cmdret
+
+
+    def get_computer_info(self):
+      cmdret = config.command_return()
+      result: computer_info = self.get_computer_info()
+      cmdret.data = result
       return cmdret

@@ -13,7 +13,7 @@ import threading
 from enum import Enum
 from types import SimpleNamespace
 
-_TIMEOUT_ = 3
+_TIMEOUT_ = 10
 
 _HEADER_SIZE_ = 16
 
@@ -55,7 +55,14 @@ class config():
 class computer_info(config):
     def __init__(self, osname: str = 'unknown', homedir: str = ''):
         self.osname = osname
-        self.homedir =homedir
+        self.homedir = homedir
+
+
+class command_mkdir(config):
+    def __init__(self, path: str, result: bool = False):
+        self.path = path
+        self.result = result
+
 
 class execresult(config):
     def __init__(self):
@@ -1127,7 +1134,6 @@ class rcserver():
         self.server_callback.execute = self._handle_execute_command
         self.server_callback.text = self._handle_text_command
 
-
         self.__HOST__ = host
         self.__PORT__ = port
         self.__WORKDIR__ = workdir
@@ -1426,13 +1432,13 @@ class rcserver():
             logging.info('send data ({})'.format(ask_chunk.program))
             sock._send(data_chunk.pack())
 
-            # done by end
-            done_chunk = header_execute(action_kind.done,
-                                        ask_chunk.program,
-                                        ask_chunk.argument,
-                                        ask_chunk.workdir)
-            logging.info('send done ({})'.format(ask_chunk.program))
-            sock._send(done_chunk.pack())
+            # # done by end
+            # done_chunk = header_execute(action_kind.done,
+            #                             ask_chunk.program,
+            #                             ask_chunk.argument,
+            #                             ask_chunk.workdir)
+            # logging.info('send done ({})'.format(ask_chunk.program))
+            # sock._send(done_chunk.pack())
 
         return True
 
@@ -1446,15 +1452,38 @@ class rcserver():
 
         if 'default' == ask_chunk.title:
             data = 'Hello from server with default'.encode()
+
         elif 'computer_info' == ask_chunk.title:
             osname = platform.system().lower()
             homedir = os.path.expanduser('~')
             data = computer_info(osname, homedir).toTEXT().encode()
+            done_chunk = header_text(action_kind.done, ask_chunk.title, data)
+            sock._send(done_chunk.pack())
+
+        elif 'command_mkdir' == ask_chunk.title:
+            result: bool = True
+
+            path = str(ask_chunk.payload_chunk, encoding='utf-8')
+            try:
+                pos1 = path.find('/')
+                pos2 = path.find('\\')
+                if pos1 >= 0 or pos2 >= 0:
+                    os.makedirs(path)
+                else:
+                    os.mkdir(path)
+
+            except Exception as Err:
+                logging.error(Err)
+                result = False
+
+            data = command_mkdir(path, result).toTEXT().encode()
+            done_chunk = header_text(action_kind.done, ask_chunk.title, data)
+            sock._send(done_chunk.pack())
+
         else:
             data = 'Hello from server with UNKNOWN'.encode()
-
-        done_chunk = header_text(action_kind.done, ask_chunk.title, data)
-        sock._send(done_chunk.pack())
+            done_chunk = header_text(action_kind.done, ask_chunk.title, data)
+            sock._send(done_chunk.pack())
 
         return True
 
@@ -1741,19 +1770,19 @@ class rcclient():
                 result.errcode = chunk.chunk_data.errcode
                 result.text += '\n'.join(chunk.chunk_data.stderr)
 
-        # wait done
-        logging.info('wait done ({})'.format(program))
-        is_there_a_chunk = self._wait_until(len,
-                                            0.1,
-                                            _TIMEOUT_,
-                                            self.sock.chunk_list)
-        logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
-        if not is_there_a_chunk:
-            logging.error('wait done timeout !!! ({})'.format(program))
-            return error_wait_timeout_streaming
-        else:
-            logging.info('fetch the done ({})'.format(program))
-            chunk: header_execute = self.sock.chunk_list.pop(0)
+        # # wait done
+        # logging.info('wait done ({})'.format(program))
+        # is_there_a_chunk = self._wait_until(len,
+        #                                     0.1,
+        #                                     _TIMEOUT_,
+        #                                     self.sock.chunk_list)
+        # logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
+        # if not is_there_a_chunk:
+        #     logging.error('wait done timeout !!! ({})'.format(program))
+        #     return error_wait_timeout_streaming
+        # else:
+        #     logging.info('fetch the done ({})'.format(program))
+        #     chunk: header_execute = self.sock.chunk_list.pop(0)
 
         return result
 
@@ -1776,6 +1805,19 @@ class rcclient():
             return result
         else:
             return error_wait_timeout_streaming
+
+    def get_computer_info(self):
+
+        result: rcresult = self.text('computer_info')
+        text = str(result.data, encoding='utf-8')
+        data: computer_info = config().toCLASS(text)
+        return data
+
+    def mkdir(self, path: str):
+        result: rcresult = self.text('command_mkdir', path.encode())
+        text = str(result.data, encoding='utf-8')
+        data: command_mkdir = config().toCLASS(text)
+        return data
 
 
 if __name__ == '__main__':

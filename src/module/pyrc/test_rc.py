@@ -8,7 +8,7 @@ import platform
 import unittest
 import threading
 
-from rc import rcresult
+from rc import command_mkdir, rcresult
 from rc import rcserver
 from rc import rcclient
 from rc import header_echo
@@ -19,6 +19,7 @@ from rc import header_execute
 from rc import header_text
 from rc import config
 from rc import computer_info
+from rc import command_mkdir
 from rc import action_kind
 from rc import action_name
 
@@ -700,20 +701,59 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(result.data.errcode, result.errcode)
         self.assertIsNot(0, result.errcode)
 
-    # def test_connect_then_text_computer_info(self):
-    #     client = rcclient()
-    #     self.assertEqual(client.connect(_HOST_, _PORT_), True)
-    #     self.assertEqual(client.is_connected(), True)
+    def test_connect_then_text_computer_info(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
 
-    #     osname = platform.system().lower()
-    #     data1 = computer_info(osname, os.path.expanduser('~'))
-    #     result: rcresult = client.text('computer_info')
-    #     self.assertEqual(result.errcode, 0)
-    #     self.assertEqual(result.text, 'computer_info')
-    #     text = str(result.data, encoding='utf-8')
-    #     data2: computer_info = config().toCLASS(text)
-    #     self.assertEqual(data1.osname, data2.osname)
-    #     self.assertEqual(data1.homedir, data2.homedir)
+        osname = platform.system().lower()
+        data1 = computer_info(osname, os.path.expanduser('~'))
+        result: rcresult = client.text('computer_info')
+        self.assertEqual(result.errcode, 0)
+        self.assertEqual(result.text, 'computer_info')
+        text = str(result.data, encoding='utf-8')
+        data2: computer_info = config().toCLASS(text)
+        self.assertEqual(data1.osname, data2.osname)
+        self.assertEqual(data1.homedir, data2.homedir)
+
+    def test_connect_then_get_computer_info(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        result: computer_info = client.get_computer_info()
+        self.assertEqual('' != result.osname, True)
+        self.assertEqual('' != result.homedir, True)
+
+    def test_connect_then_mkdir_1(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        path = os.path.join(_TESTDIR_, 'command_mkdir_1')
+        self.assertEqual(os.path.exists(path), False)
+        result: command_mkdir = client.mkdir(path)
+        self.assertEqual(result.path, path)
+        self.assertEqual(result.result, True)
+        self.assertEqual(os.path.exists(path), True)
+
+        if os.path.exists(path):
+            os.rmdir(path)
+
+    def test_connect_then_mkdir_2(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        path = os.path.join(_TESTDIR_, 'command_mkdir_2', 'AA')
+        self.assertEqual(os.path.exists(path), False)
+        result: command_mkdir = client.mkdir(path)
+        self.assertEqual(result.path, path)
+        self.assertEqual(result.result, True)
+        self.assertEqual(os.path.exists(path), True)
+
+        if os.path.exists(path):
+            os.rmdir(path)
 
 
 if __name__ == '__main__':

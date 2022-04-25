@@ -24,6 +24,7 @@ from module import config
 from module.path import OsdpPath
 from module.qmp import QEMUMonitorProtocol
 from module.puppet_client import puppet_client
+from module.pyrc.rc import computer_info
 
 
 class qemu_instance:
@@ -303,7 +304,7 @@ class qemu_instance:
         #
         # Create filepool directory.
         #
-        self.pup_obj.mkdir('pushpool')
+        self.pup_obj.mkdir('qemu-tasker/pushpool')
 
 
         #
@@ -317,53 +318,53 @@ class qemu_instance:
         # - `uname` for Linux and macOS
         # - `systeminfo` for Windows
         #
-        logging.info('trying to execute `uname` command ...')
-        cmdret = self.pup_obj.execute('uname')
-        logging.info('`uname` (cmdret.errcode={})'.format(cmdret.errcode))
+        # logging.info('trying to execute `uname` command ...')
+        # cmdret = self.pup_obj.execute('uname')
+        # logging.info('`uname` (cmdret.errcode={})'.format(cmdret.errcode))
 
-        guest_info_os_kind = config.os_kind().unknown
-        if cmdret.errcode == 0:
-            stdout = ''.join(cmdret.info_lines).strip()
-            if stdout.find("Linux") > 0:
-                guest_info_os_kind = config.os_kind().linux
-            if stdout.find("Darwin") > 0:
-                guest_info_os_kind = config.os_kind().macos
-        else:
-            logging.info('trying to execute `systeminfo` command ...')
-            cmdret = self.pup_obj.execute('systeminfo')
-            logging.info('`systeminfo` (cmdret.errcode={})'.format(cmdret.errcode))
-            if cmdret.errcode == 0:
-                guest_info_os_kind = config.os_kind().windows
-
-        logging.info("QEMU(taskid={0}) guest_info_os_kind={1}".format(self.taskid, guest_info_os_kind))
+        # guest_info_os_kind = config.os_kind().unknown
+        # if cmdret.errcode == 0:
+        #     stdout = ''.join(cmdret.info_lines).strip()
+        #     if stdout.find("Linux") > 0:
+        #         guest_info_os_kind = config.os_kind().linux
+        #     if stdout.find("Darwin") > 0:
+        #         guest_info_os_kind = config.os_kind().macos
+        # else:
+        #     logging.info('trying to execute `systeminfo` command ...')
+        #     cmdret = self.pup_obj.execute('systeminfo')
+        #     logging.info('`systeminfo` (cmdret.errcode={})'.format(cmdret.errcode))
+        #     if cmdret.errcode == 0:
+        #         guest_info_os_kind = config.os_kind().windows
+        pc_info: computer_info = self.pup_obj.get_computer_info()
+        if pc_info.osname == 'windows':
+            guest_info_os_kind = config.os_kind().windows
+        elif pc_info.osname == 'darwin':
+            guest_info_os_kind = config.os_kind().macos
+        elif pc_info.osname == 'linux':
+            guest_info_os_kind = config.os_kind().macos
+        logging.info("QEMU(taskid={0}) guest_info_os_kind={1}".format(self.taskid, pc_info.osname))
 
 
         #
         # Get guest current working directory path
         #
-        cmdret.clear()
-        guest_info_homedir_path =''
-        if guest_info_os_kind == config.os_kind().windows:
-            cmdret = self.pup_obj.execute('pwsh', '-C (Get-Location).Path')
-            guest_info_homedir_path = ''.join(cmdret.info_lines).strip()
-
+        guest_info_homedir_path = pc_info.homedir
         guest_info_workdir_name = ''
         guest_info_pushdir_name = ''
         guest_info_pushdir_path = ''
         guest_info_workdir_path = ''
 
-        if 0 == cmdret.errcode:
-            guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
-            logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
+        guest_info_workdir_name = os.path.join(self.WORKDIR_NAME)
+        logging.info("QEMU(taskid={0}) guest_info_workdir_name ={1}".format(self.taskid, guest_info_workdir_name))
 
-            guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
-            logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
+        guest_info_pushdir_name = os.path.join(self.WORKDIR_NAME, "pushpool")
+        logging.info("QEMU(taskid={0}) guest_info_pushdir_name ={1}".format(self.taskid, guest_info_pushdir_name))
 
-            guest_info_pushdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, guest_info_pushdir_name))
-            logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_path))
+        guest_info_pushdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, guest_info_pushdir_name))
+        logging.info("QEMU(taskid={0}) guest_info_pushdir_path ={1}".format(self.taskid, guest_info_pushdir_path))
 
-            guest_info_workdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, self.WORKDIR_NAME))
-            logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
+        guest_info_workdir_path = self.path_obj.normpath(os.path.join(guest_info_homedir_path, self.WORKDIR_NAME))
+        logging.info("QEMU(taskid={0}) guest_info_workdir_path ={1}".format(self.taskid, guest_info_workdir_path))
 
 
 
