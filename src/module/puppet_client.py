@@ -116,13 +116,14 @@ class puppet_client():
 
 
     def mkdir(self, dirpath:str):
-      result: rcresult = self.pyrc_client.mkdir(dirpath)
+      cmd_mkdir: command_mkdir = self.pyrc_client.mkdir(dirpath)
+
       cmdret = config.command_return()
-      cmdret.errcode = result.errcode
-      if 0 == result.errcode:
-        cmdret.info_lines.append(result.text)
+      if cmd_mkdir.result:
+        cmdret.errcode = 0
+        cmdret.data = cmd_mkdir
       else:
-        cmdret.error_lines.append(result.text)
+        cmdret.errcode = -1
 
       return cmdret
 
