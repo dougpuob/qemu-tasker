@@ -1402,7 +1402,7 @@ class rcserver():
 
                 packed_data = data_chunk.pack()
                 logfmt = 'program={} argument={} workdir={} isbase64({}) ' + \
-                         'errcode={} stderr({}) stderr({}) packed_data({})'
+                         'errcode({}) stdout({}) stderr({}) packed_data({})'
                 logging.info(logfmt.format(program,
                                            argument,
                                            workdir,
@@ -1415,6 +1415,8 @@ class rcserver():
                 if (len(result.stderr) > 0) or (0 != result.errcode):
                     logging.error('result.errcode={}'.format(result.errcode))
                     logging.error('result.stderr={}'.format(result.stderr))
+                else:
+                    logging.info('result.stdout={}'.format(result.stdout))
 
                 sock._send(packed_data)
 
