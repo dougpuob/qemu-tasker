@@ -1344,6 +1344,8 @@ class rcserver():
                                 sock: rcsock,
                                 ask_chunk: header_execute):
         try:
+
+            logging.info('-------------------------------------------')
             logging.info('[UTF8] program={}'.format(ask_chunk.program))
             logging.info('[UTF8] argument={}'.format(ask_chunk.argument))
             logging.info('[UTF8] workdir={}'.format(ask_chunk.workdir))
@@ -1386,12 +1388,18 @@ class rcserver():
                        (len(stdout_lines) == 0):
                         break
 
-                # data by success
-                data = result.toTEXT().encode()
-                data_len = len(data)
-                logfmt = 'data_len={} (result.toTEXT().encode())'
-                logging.info(logfmt.format(data_len))
+                if (len(result.stderr) > 0) or (0 != result.errcode):
+                    logging.error('result.errcode = {}'.format(result.errcode))
+                    logging.error('result.stdout  = {}'.format(result.stdout))
+                    logging.error('result.stderr  = {}'.format(result.stderr))
+                else:
+                    logging.info('result.errcode = {}'.format(result.errcode))
+                    logging.info('result.stdout  = {}'.format(result.stdout))
+                    logging.info('result.stderr  = {}'.format(result.stderr))
 
+                data = result.toTEXT().encode()
+
+                # data by success
                 data_chunk = header_execute(action_kind.data,
                                             ask_chunk.program,
                                             ask_chunk.argument,
@@ -1402,25 +1410,7 @@ class rcserver():
                 data_chunk.chunk_index = 0
                 data_chunk.chunk_size = len(data)
 
-                packed_data = data_chunk.pack()
-                logfmt = 'program={} argument={} workdir={} isbase64({}) ' + \
-                         'errcode({}) stdout({}) stderr({}) packed_data({})'
-                logging.info(logfmt.format(program,
-                                           argument,
-                                           workdir,
-                                           ask_chunk.isbase64,
-                                           result.errcode,
-                                           len(result.stdout),
-                                           len(result.stderr),
-                                           len(packed_data)))
-
-                if (len(result.stderr) > 0) or (0 != result.errcode):
-                    logging.error('result.errcode={}'.format(result.errcode))
-                    logging.error('result.stderr={}'.format(result.stderr))
-                else:
-                    logging.info('result.stdout={}'.format(result.stdout))
-
-                sock._send(packed_data)
+                sock._send(data_chunk.pack())
 
         except Exception as err:
             logging.exception(err)
@@ -1442,12 +1432,13 @@ class rcserver():
 
             sock._send(data_chunk.pack())
 
-        # done by end
-        data_chunk = header_execute(action_kind.done,
-                                    ask_chunk.program,
-                                    ask_chunk.argument,
-                                    ask_chunk.workdir)
-        sock._send(data_chunk.pack())
+        finally:
+            # done by end
+            done_chunk = header_execute(action_kind.done,
+                                        ask_chunk.program,
+                                        ask_chunk.argument,
+                                        ask_chunk.workdir)
+            sock._send(done_chunk.pack())
 
         return True
 
@@ -1638,7 +1629,9 @@ class rcclient():
         file_size = 0
         file = None
         while keep_going:
-            is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
+            is_there_a_chunk = self._wait_until(len,
+                                                0.1,
+                                                _TIMEOUT_,
                                                 self.sock.chunk_list)
             if not is_there_a_chunk:
                 result = error_wait_timeout_streaming
@@ -1694,7 +1687,9 @@ class rcclient():
         ask_chunk = header_list(action_kind.ask, dstdirpath)
         self._send(ask_chunk.pack())
 
-        is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
+        is_there_a_chunk = self._wait_until(len,
+                                            0.1,
+                                            _TIMEOUT_,
                                             self.sock.chunk_list)
         if is_there_a_chunk:
             chunk: header_list = self.sock.chunk_list.pop(0)
@@ -1733,24 +1728,30 @@ class rcclient():
 
         # wait data
         result = rcresult()
-        is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
+        is_there_a_chunk = self._wait_until(len,
+                                            0.1,
+                                            _TIMEOUT_,
                                             self.sock.chunk_list)
         if not is_there_a_chunk:
-            return error_wait_timeout_streaming
+            result = error_wait_timeout_streaming
+        else:
+            chunk: header_execute = self.sock.chunk_list.pop(0)
+            logging.info('chunk.data={}'.format(str(chunk.chunk_data)))
 
-        chunk: header_execute = self.sock.chunk_list.pop(0)
-        logging.info('chunk.data={}'.format(str(chunk.chunk_data)))
-
-        if chunk.chunk_data:
-            result.data = chunk.chunk_data
-            result.errcode = chunk.chunk_data.errcode
-            result.text += '\n'.join(chunk.chunk_data.stderr)
+            if chunk.chunk_data:
+                result.data = chunk.chunk_data
+                result.errcode = chunk.chunk_data.errcode
+                result.text += '\n'.join(chunk.chunk_data.stderr)
 
         # wait done
-        is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
+        is_there_a_chunk = self._wait_until(len,
+                                            0.1,
+                                            _TIMEOUT_,
                                             self.sock.chunk_list)
         if not is_there_a_chunk:
-            return error_wait_timeout_streaming
+            result = error_wait_timeout_streaming
+        else:
+            chunk: header_execute = self.sock.chunk_list.pop(0)
 
         return result
 
@@ -1759,7 +1760,9 @@ class rcclient():
         ask_chunk = header_text(action_kind.ask, title, data)
         self._send(ask_chunk.pack())
 
-        is_there_a_chunk = self._wait_until(len, 0.1, _TIMEOUT_,
+        is_there_a_chunk = self._wait_until(len,
+                                            0.1,
+                                            _TIMEOUT_,
                                             self.sock.chunk_list)
         if is_there_a_chunk:
             done_chunk: header_text = self.sock.chunk_list.pop(0)
