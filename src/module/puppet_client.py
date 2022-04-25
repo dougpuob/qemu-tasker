@@ -174,5 +174,5 @@ class puppet_client():
 
 
     def get_computer_info(self):
-      result: computer_info = self.get_computer_info()
+      result: computer_info = self.pyrc_client.get_computer_info()
       return result
