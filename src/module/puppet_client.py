@@ -173,7 +173,5 @@ class puppet_client():
 
 
     def get_computer_info(self):
-      cmdret = config.command_return()
       result: computer_info = self.get_computer_info()
-      cmdret.data = result
-      return cmdret
+      return result
