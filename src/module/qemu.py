@@ -304,7 +304,7 @@ class qemu_instance:
         #
         # Create filepool directory.
         #
-        self.pup_obj.mkdir('qemu-tasker/pushpool')
+        self.pup_obj.mkdir('pushpool')
 
 
         #
@@ -336,6 +336,8 @@ class qemu_instance:
         #     if cmdret.errcode == 0:
         #         guest_info_os_kind = config.os_kind().windows
         pc_info: computer_info = self.pup_obj.get_computer_info()
+
+        guest_info_os_kind = config.os_kind().unknown
         if pc_info.osname == 'windows':
             guest_info_os_kind = config.os_kind().windows
         elif pc_info.osname == 'darwin':
