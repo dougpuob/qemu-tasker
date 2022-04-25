@@ -13,7 +13,7 @@ import threading
 from enum import Enum
 from types import SimpleNamespace
 
-_TIMEOUT_ = 10 * 3
+_TIMEOUT_ = 10 * 10000000
 
 _HEADER_SIZE_ = 16
 
@@ -735,7 +735,6 @@ class header():
             hdr_pos1 = 0
             hdr_pos2 = hdr_pos1 + hdr.total_size
             if len(full_header) >= hdr_pos2:
-                # full_header = full_header[hdr_pos1:hdr_pos2]
                 found_hdr: header_download = hdr.unpack(full_header)
                 logging.info('unpack a header_download, len(chunk)={}'.format(len(full_header)))
 
@@ -745,7 +744,6 @@ class header():
                                            found_hdr.chunk_index + 1,
                                            found_hdr.chunk_count,
                                            found_hdr.chunk_size))
-
                 logging.info('filepath={}'.format(found_hdr.filepath))
                 logging.info('file_size={}'.format(found_hdr.file_size))
 
@@ -765,7 +763,6 @@ class header():
             hdr_pos1 = 0
             hdr_pos2 = hdr_pos1 + hdr.total_size
             if len(full_header) >= hdr_pos2:
-                # full_header = full_header[signature_pos:hdr_pos2]
                 found_hdr = hdr.unpack(full_header)
                 logging.info('unpack a header_execute, len(chunk)={}'.format(len(full_header)))
 
@@ -1099,6 +1096,7 @@ class rcserver():
             logging.error("The spcific path should be a file !!! (fileloc={})".format(fileloc))
             rcrs = error_not_a_file
 
+        # done by error
         if 0 != rcrs.errcode:
             done_chunk = header_download(action_kind.done,
                                          ask_chunk.filepath,
@@ -1116,6 +1114,7 @@ class rcserver():
         if (filesize % self.CHUNK_SIZE) > 0:
             chunk_count += 1
 
+        # data
         file = open(fileloc, "rb")
         while data := file.read(self.CHUNK_SIZE):
 
@@ -1141,6 +1140,14 @@ class rcserver():
             index += 1
 
         file.close()
+
+
+        # done by complete
+        done_chunk = header_download(action_kind.done,
+                                     ask_chunk.filepath,
+                                     filesize)
+        conn._send(done_chunk.pack())
+
         return True
 
     def _handle_upload_command(self,
@@ -1242,6 +1249,7 @@ class rcserver():
                        (len(stdout_lines) == 0):
                         break
 
+                # data by success
                 data = result.toTEXT().encode()
                 data_len = len(data)
                 logfmt = 'data_len={} (result.toTEXT().encode())'
@@ -1273,6 +1281,7 @@ class rcserver():
         except Exception as err:
             logging.exception(err)
 
+            # data by error
             result = execresult()
             result.errcode = error_exception.errcode
             result.stderr.append(error_exception.text)
@@ -1288,6 +1297,13 @@ class rcserver():
             data_chunk.chunk_size = len(data)
 
             sock._send(data_chunk.pack())
+
+        # # done by end
+        # data_chunk = header_execute(action_kind.done,
+        #                             ask_chunk.program,
+        #                             ask_chunk.argument,
+        #                             ask_chunk.workdir)
+        # sock._send(data_chunk.pack())
 
         return True
 
@@ -1425,6 +1441,9 @@ class rcclient():
     def download(self, remote_filepath: str, local_dirpath: str,
                  overwrite: bool = True):
 
+        if not os.path.exists(remote_filepath):
+            return error_file_not_found
+
         if not os.path.exists(local_dirpath):
             return error_path_not_exist
 
@@ -1461,13 +1480,14 @@ class rcclient():
                 result = error_wait_timeout_streaming
                 break
 
-            while len(self.sock.chunk_list) > 0:
-                chunk: header_download = self.sock.chunk_list.pop(0)
+            while True:
+                is_data_chunk = self.sock.chunk_list[0].action_kind == action_kind.data.value
 
-                if chunk.action_kind == action_kind.done.value:
+                if not is_data_chunk:
                     keep_going = False
                     break
 
+                chunk: header_download = self.sock.chunk_list.pop(0)
                 file_size = chunk.file_size
 
                 if not file:
@@ -1491,7 +1511,18 @@ class rcclient():
         if file:
             file.flush()
             file.close()
-            os.rename(tmpfileloc, fileloc)
+
+        # wait done
+        wait_done = self._wait_until(len,
+                                     0.1,
+                                     _TIMEOUT_,
+                                     self.sock.chunk_list)
+        if wait_done:
+            self.sock.chunk_list.pop(0)
+        else:
+            return error_wait_timeout_done
+
+        os.rename(tmpfileloc, fileloc)
 
         return result
 

@@ -401,7 +401,30 @@ class TestPyRc(unittest.TestCase):
 
         result: rcresult = client.list(_TESTDIR_)
         self.assertEqual(0, result.errcode)
-        self.assertEqual(len(pattern_name_list), len(result.data))
+
+    def test_connect_then_download_usbtreeview_bin(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        filename = 'PATTERN_764444_UsbTreeView.bin'
+        srcfilepath = os.path.join(_TESTDIR_, filename)
+        UsbTreeViewExe = os.urandom(764444)
+        f = open(srcfilepath, 'wb')
+        if f:
+            f.write(UsbTreeViewExe)
+            f.flush()
+            f.close()
+
+        result: rcresult = client.download(srcfilepath, _TEMPDIR_DLOAD_)
+        self.assertEqual(0, result.errcode)
+
+        dstfilepath = os.path.join(_TEMPDIR_DLOAD_, filename)
+        is_there = os.path.exists(dstfilepath)
+        self.assertEqual(True, is_there)
+
+        cmp_matched = filecmp.cmp(srcfilepath, dstfilepath)
+        self.assertEqual(True, cmp_matched)
 
     def test_connect_then_download_not_existing_file(self):
         client = rcclient()
@@ -409,12 +432,12 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.is_connected(), True)
 
         fileloc = os.path.abspath('aaabbbcccdddeee.bin')
-        self.assertFalse(os.path.exists(fileloc))
+        self.assertEqual(False, os.path.exists(fileloc))
 
         result: rcresult = client.download(fileloc, '.')
-        self.assertEqual(0, result.errcode)
+        self.assertEqual(3, result.errcode)
 
-        self.assertFalse(os.path.exists(fileloc))
+        self.assertEqual(False, os.path.exists(fileloc))
 
     def test_connect_then_download_all_testdata(self):
         client = rcclient()
