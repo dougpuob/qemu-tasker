@@ -1036,6 +1036,9 @@ class rcsock():
         except socket.timeout:
             pass
 
+        except ConnectionResetError:
+            logging.warning('ConnectionResetError')
+
         except Exception as err:
             logging.exception(err)
 
@@ -1314,7 +1317,6 @@ class rcserver():
                 is_last_data = (1 == diff)
                 logging.info('last_chunk={}'.format(is_last_data))
                 logging.info('filepath={}'.format(sock.file_path))
-                logging.info(logfmt.format(sock.file_path))
 
             # close
             if data_chunk.action_kind == action_kind.done.value:
