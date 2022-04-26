@@ -395,7 +395,8 @@ class header_download():
 
 
 class header_list():
-    def __init__(self, kind: action_kind = action_kind.unknown,
+    def __init__(self,
+                 kind: action_kind = action_kind.unknown,
                  dstdirpath: str = '',
                  data: bytes = b''):
 
@@ -1209,7 +1210,8 @@ class rcserver():
             logging.info('file[{}/{}]={}'.format(index, len(listdir), file))
 
         data = json.dumps(listdir).encode()
-        data_chunk = header_list(action_kind.data, ask_chunk.dstdirpath,
+        data_chunk = header_list(action_kind.data,
+                                 filepath,
                                  data)
         data_chunk.chunk_count = 1
         data_chunk.chunk_index = 0
