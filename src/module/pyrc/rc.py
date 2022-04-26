@@ -1393,7 +1393,7 @@ class rcserver():
                     stderr_lines = [line.decode('utf-8', errors="ignore").rstrip() for line in proc.stderr.readlines()]
                     result.stderr.extend(stderr_lines)
 
-                    result.errcode = proc.wait(1)
+                    result.errcode = proc.wait()
                     if (len(stderr_lines) == 0) and \
                        (len(stdout_lines) == 0):
                         break
