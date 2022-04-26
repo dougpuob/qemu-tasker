@@ -162,6 +162,7 @@ class puppet_client():
 
     def list(self, dstdir:str):
       result: rcresult = self.pyrc_client.list(dstdir)
+      logging.info('result={}'.format(result))
 
       cmdret = config.command_return()
       cmdret.errcode = result.errcode

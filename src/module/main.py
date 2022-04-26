@@ -133,13 +133,12 @@ class main():
                 # =========================================================================
 
                 # Log to file
-                fmt = ''
+                fmt = "qemu-tasker-client--%Y%m%d_%H%M%S--{}".format(self.input_args.command)
                 if self.input_args.command == 'execute':
                     cmd_prog_name = self.input_args.program
-                    fmt = "qemu-tasker-client--%Y%m%d_%H%M%S--{}-{}.log".format(self.input_args.command,
-                                                                                self.input_args.program)
-                else:
-                    fmt = "qemu-tasker-client--%Y%m%d_%H%M%S--{}.log".format(self.input_args.command)
+                    fmt += "-{}".format(self.input_args.program)
+                fmt += ".log"
+
                 filename = datetime.datetime.now().strftime(fmt)
                 logfile = logging.FileHandler(os.path.join(logdir, filename))
                 logfile.setLevel(logging.INFO)
