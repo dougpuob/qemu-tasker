@@ -1717,9 +1717,10 @@ class rcclient():
                                             _TIMEOUT_,
                                             self.sock.chunk_list)
         if is_there_a_chunk:
-            chunk: header_list = self.sock.chunk_list.pop(0)
             result = rcresult()
-            result.data = json.loads(chunk.data)
+
+            data_chunk: header_list = self.sock.chunk_list.pop(0)
+            result.data = data_chunk.data
 
             index = 0
             for file in result.data:
