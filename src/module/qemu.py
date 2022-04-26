@@ -25,6 +25,7 @@ from module.path import OsdpPath
 from module.qmp import QEMUMonitorProtocol
 from module.puppet_client import puppet_client
 from module.pyrc.rc import computer_info
+from module.pyrc.rc import rcresult
 
 
 class qemu_instance:
@@ -204,7 +205,10 @@ class qemu_instance:
             else:
                 logging.error("Path not found ({}) !!!".format(fullpath))
 
+        result: rcresult = self.pup_obj.upload(selected_files, 'pushpool')
         self.status = config.task_status().ready
+
+        final_cmdret.errcode = result.errcode
         return (final_cmdret.errcode == 0)
 
 
