@@ -137,8 +137,9 @@ class puppet_client():
           cmdret.info_lines.append(text)
           logging.info(text)
         else:
-          text = 'Failed to upload "{}" file.'.format(file)
+          text = 'Failed to upload "{}" file. (errcode={})'.format(file, result.errcode)
           cmdret.error_lines.append(text)
+          cmdret.errcode = result.errcode
           logging.info(text)
 
       return cmdret
@@ -149,13 +150,14 @@ class puppet_client():
       for file in files:
         result: rcresult = self.pyrc_client.download(file, dstdir)
         if (0 == result.errcode):
-          text = 'Passed to upload "{}" file.'.format(file)
+          text = 'Passed to download "{}" file.'.format(file)
           cmdret.info_lines.append(text)
           logging.info(text)
         else:
-          text = 'Failed to upload "{}" file.'.format(file)
+          text = 'Failed to download "{}" file. (errcode={})'.format(file, result.errcode)
           cmdret.error_lines.append(text)
-          logging.info(text)
+          cmdret.errcode = result.errcode
+          logging.error()(text)
 
       return cmdret
 
@@ -171,6 +173,7 @@ class puppet_client():
         cmdret.data = result.data
       else:
         cmdret.error_lines.append(result.text)
+        cmdret.errcode = result.errcode
 
       return cmdret
 

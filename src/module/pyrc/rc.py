@@ -1190,6 +1190,7 @@ class rcserver():
 
     def _handle_list_command(self, conn: rcsock, ask_chunk: header_list):
 
+        logging.info('-------------------------------------------')
         filepath = os.path.abspath(ask_chunk.dstdirpath)
 
         logfmt = 'filepath={}'
@@ -1227,29 +1228,34 @@ class rcserver():
                                  conn: rcsock,
                                  ask_chunk: header_download):
 
+        logging.info('-------------------------------------------')
         fileloc = os.path.abspath(ask_chunk.filepath)
         logging.info("fileloc={}".format(fileloc))
 
         rcrs = rcresult()
-        if ask_chunk.action_kind == action_kind.done.value:
-            return rcrs
+        # if ask_chunk.action_kind == action_kind.done.value:
+        #     return rcrs
 
         if not os.path.exists(fileloc):
-            logging.error("The spcific path is not found !!! (fileloc={})".format(fileloc))
+            logging.error("The spcific path is not found !!!")
+            logging.error("fileloc={}".format(fileloc))
             rcrs = error_file_not_found
 
         if os.path.isdir(fileloc):
-            logging.error("The spcific path should be a file !!! (fileloc={})".format(fileloc))
+            logging.error("The spcific path should be a file !!!")
+            logging.error("fileloc={}".format(fileloc))
             rcrs = error_not_a_file
 
-        # done by error
+        # data + done for error
         if 0 != rcrs.errcode:
+            data_chunk = header_download(action_kind.data,
+                                         ask_chunk.filepath,
+                                         ask_chunk.file_size)
+            conn._send(data_chunk.pack())
+
             done_chunk = header_download(action_kind.done,
                                          ask_chunk.filepath,
                                          ask_chunk.file_size)
-            done_chunk.chunk_size = 0
-            done_chunk.chunk_count = 0
-            done_chunk.chunk_index = 0
             conn._send(done_chunk.pack())
             return rcrs
 
@@ -1301,6 +1307,7 @@ class rcserver():
                                data_chunk: header_upload,
                                overwrite: bool = True):
 
+        logging.info('-------------------------------------------')
         logfmt = 'chunk_index={}/{} file_size={} chunk_size={}'
         logging.info(logfmt.format(data_chunk.chunk_index + 1,
                                    data_chunk.chunk_count,
@@ -1448,6 +1455,7 @@ class rcserver():
                              sock: rcsock,
                              ask_chunk: header_text):
 
+        logging.info('-------------------------------------------')
         logging.info('title={}'.format(ask_chunk.title))
 
         data = None
@@ -1623,8 +1631,8 @@ class rcclient():
     def download(self, remote_filepath: str, local_dirpath: str,
                  overwrite: bool = True):
 
-        if not os.path.exists(remote_filepath):
-            return error_file_not_found
+        # if not os.path.exists(remote_filepath):
+        #     return error_file_not_found
 
         if not os.path.exists(local_dirpath):
             return error_path_not_exist
@@ -1665,20 +1673,27 @@ class rcclient():
             while len(self.sock.chunk_list) > 0:
                 is_data_chunk = self.sock.chunk_list[0].action_kind == action_kind.data.value
 
+                # unexpected case because no chunk in the list
                 if not is_data_chunk:
                     keep_going = False
                     break
 
-                chunk: header_download = self.sock.chunk_list.pop(0)
-                file_size = chunk.file_size
+                data_chunk: header_download = self.sock.chunk_list.pop(0)
+                file_size = data_chunk.file_size
+
+                # unexpected data_chunk with zero-size chunk
+                if 0 == data_chunk.chunk_size:
+                    result = error_file_not_found
+                    keep_going = False
+                    break
 
                 if not file:
                     file = open(filepath_dst, "wb")
 
-                file.write(chunk.data)
+                file.write(data_chunk.data)
 
                 index += 1
-                recvsize += chunk.chunk_size
+                recvsize += data_chunk.chunk_size
 
                 logging.info('index={}/{} size={} recvsize={} name={}'.format(
                     hdr.chunk_index + 1,
