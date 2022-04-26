@@ -1720,7 +1720,7 @@ class rcclient():
             result = rcresult()
 
             data_chunk: header_list = self.sock.chunk_list.pop(0)
-            result.data = data_chunk.data
+            result.data = json.loads(data_chunk.data)
 
             logging.info('type(result.data) = {}'.format(type(result.data)))
             logging.info('result.data = {}'.format(result.data))
