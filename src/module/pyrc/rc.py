@@ -1722,11 +1722,15 @@ class rcclient():
             data_chunk: header_list = self.sock.chunk_list.pop(0)
             result.data = data_chunk.data
 
-            index = 0
-            for file in result.data:
-                index += 1
-                logfmt = 'file[{}/{}]={}'
-                logging.info(logfmt.format(index, len(result.data), file))
+            logging.info('type(result.data) = {}'.format(type(result.data)))
+            logging.info('result.data = {}'.format(result.data))
+
+            # index = 0
+            # total = len(result.data)
+            # for file in result.data:
+            #     index += 1
+            #     logfmt = 'file[{}/{}]={}'
+            #     logging.info(logfmt.format(index, , file))
 
             return result
         else:
