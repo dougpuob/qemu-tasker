@@ -169,6 +169,7 @@ class puppet_client():
         cmdret.info_lines.append(result.text)
       else:
         cmdret.error_lines.append(result.text)
+        cmdret.data = result.data
 
       return cmdret
 
