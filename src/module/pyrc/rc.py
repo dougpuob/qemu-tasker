@@ -1725,12 +1725,12 @@ class rcclient():
             logging.info('type(result.data) = {}'.format(type(result.data)))
             logging.info('result.data = {}'.format(result.data))
 
-            # index = 0
-            # total = len(result.data)
-            # for file in result.data:
-            #     index += 1
-            #     logfmt = 'file[{}/{}]={}'
-            #     logging.info(logfmt.format(index, , file))
+            index = 0
+            total = len(result.data)
+            for file in result.data:
+                index += 1
+                logfmt = 'file[{}/{}]={}'
+                logging.info(logfmt.format(index, total, file))
 
             return result
         else:

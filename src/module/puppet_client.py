@@ -168,9 +168,9 @@ class puppet_client():
       cmdret.errcode = result.errcode
       if 0 == result.errcode:
         cmdret.info_lines.append(result.text)
+        cmdret.data = result.data
       else:
         cmdret.error_lines.append(result.text)
-        cmdret.data = result.data
 
       return cmdret
 
