@@ -8,7 +8,7 @@ import platform
 import unittest
 import threading
 
-from rc import command_mkdir, rcresult
+from rc import rcresult
 from rc import rcserver
 from rc import rcclient
 from rc import header_echo
@@ -19,9 +19,10 @@ from rc import header_execute
 from rc import header_text
 from rc import config
 from rc import computer_info
-from rc import command_mkdir
+from rc import inncmd_mkdir
 from rc import action_kind
 from rc import action_name
+
 
 _HOST_ = 'localhost'
 _PORT_ = 12345
@@ -70,13 +71,13 @@ def thread_routine(server: rcserver):
 
 
 def setup_module(module):
-    prepare_pattern_files()
-
     server = rcserver(_HOST_, _PORT_, debug_enabled=True)
     new_thread = threading.Thread(target=thread_routine,
                                   args=(server,))
     new_thread.daemon = True
     new_thread.start()
+
+    prepare_pattern_files()
 
 
 def teardown_module(module):
@@ -481,7 +482,8 @@ class TestPyRc(unittest.TestCase):
             filename = os.path.basename(file)
 
             fileloc_src = os.path.abspath(os.path.join(_TESTDIR_, filename))
-            fileloc_dst = os.path.abspath(os.path.join(_TEMPDIR_DLOAD_, filename))
+            fileloc_dst = os.path.abspath(os.path.join(_TEMPDIR_DLOAD_,
+                                                       filename))
 
             self.assertEqual(os.path.exists(fileloc_src), True)
             self.assertEqual(os.path.exists(fileloc_dst), False)
@@ -518,9 +520,10 @@ class TestPyRc(unittest.TestCase):
                 file_src.close()
                 file_dst.close()
 
-            msg = 'filesize_src={} filesize_dst={} cmp_matched={}'.format(filesize_src,
-                                                                          filesize_dst,
-                                                                          cmp_matched)
+            logfmt = 'filesize_src={} filesize_dst={} cmp_matched={}'
+            msg = logfmt.format(filesize_src,
+                                filesize_dst,
+                                cmp_matched)
             self.assertEqual(True, cmp_matched, msg)
 
     def test_connect_then_upload_usbtreeview(self):
@@ -562,7 +565,8 @@ class TestPyRc(unittest.TestCase):
             mesg = 'index={} filename={} fileloc={}'.format(index,
                                                             filename,
                                                             fileloc_dst)
-            mesg = '{} NotThere={}'.format(mesg, not os.path.exists(fileloc_dst))
+            existing = os.path.exists(fileloc_dst)
+            mesg = '{} NotThere={}'.format(mesg, not existing)
             self.assertFalse(os.path.exists(fileloc_dst), mesg)
             index += 1
 
@@ -730,9 +734,9 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
-        path = os.path.join(_TESTDIR_, 'command_mkdir_1')
+        path = os.path.join(_TESTDIR_, 'inncmd_mkdir_1')
         self.assertEqual(os.path.exists(path), False)
-        result: command_mkdir = client.mkdir(path)
+        result: inncmd_mkdir = client.mkdir(path)
         self.assertEqual(result.path, path)
         self.assertEqual(result.result, True)
         self.assertEqual(os.path.exists(path), True)
@@ -745,9 +749,9 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
-        path = os.path.join(_TESTDIR_, 'command_mkdir_2', 'AA')
+        path = os.path.join(_TESTDIR_, 'inncmd_mkdir_2', 'AA')
         self.assertEqual(os.path.exists(path), False)
-        result: command_mkdir = client.mkdir(path)
+        result: inncmd_mkdir = client.mkdir(path)
         self.assertEqual(result.path, path)
         self.assertEqual(result.result, True)
         self.assertEqual(os.path.exists(path), True)

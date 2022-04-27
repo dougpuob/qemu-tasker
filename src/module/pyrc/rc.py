@@ -14,14 +14,10 @@ from enum import Enum
 from types import SimpleNamespace
 
 _TIMEOUT_ = 10
-
 _HEADER_SIZE_ = 16
 
 _1KB_ = 1024
-_64KB_ = _1KB_*64
-
 _1MB_ = _1KB_*1024
-
 _CHUNK_SIZE_ = _1KB_*512
 _BUFF_SIZE_ = _1MB_*2
 
@@ -58,7 +54,7 @@ class computer_info(config):
         self.homedir = homedir
 
 
-class command_mkdir(config):
+class inncmd_mkdir(config):
     def __init__(self, path: str, result: bool = False):
         self.path = path
         self.result = result
@@ -91,6 +87,8 @@ error_exception = rcresult(9, 'An exception rised')
 error_wait_timeout_streaming = rcresult(50, 'Wait streaming timeout')
 error_wait_timeout_done = rcresult(51, 'Wait done timeout')
 
+error_exception_process_wait_timeout = rcresult(60, 'An exception occured when wait a process')
+
 
 class action_name(Enum):
     unknown = 0
@@ -107,6 +105,54 @@ class action_kind(Enum):
     ask = 1
     data = 2
     done = 3
+
+
+class execute_subcmd(Enum):
+    unknown = 0
+    start = 1
+    query = 2
+    kill = 3
+
+
+class async_process():
+
+    def __init__(self):
+        self.program = ''
+        self.argument = ''
+        self.workdir = '.'
+        self.proc = None
+
+        self.thread = threading.Thread(target=self._thread_start)
+        self.thread.daemon = True
+
+    def _thread_start(self):
+
+        try:
+            pass
+
+        except ConnectionResetError:
+            logging.warning('ConnectionResetError')
+
+        except Exception as err:
+            logging.exception(err)
+
+        finally:
+            pass
+
+    def start(self):
+        if not self.proc:
+            fullcmd = self.program + ' ' + self.argument
+            self.proc = subprocess.Popen(fullcmd,
+                                         stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE,
+                                         shell=True,
+                                         cwd=self.workdir)
+
+    def kill(self):
+        pass
+
+    def query(self):
+        pass
 
 
 class header_echo():
@@ -1128,6 +1174,8 @@ class rcserver():
         self.chunk_list = list()
         self.stream_pool = b''
 
+        self.proc_list = list()
+
         self.server_callback = actor_callbacks()
         self.server_callback.download = self._handle_download_command
         self.server_callback.list = self._handle_list_command
@@ -1385,25 +1433,34 @@ class rcserver():
             if argument and len(argument) > 0:
                 fullcmd = fullcmd + ' ' + argument
 
+            logging.info('Before opening a process')
             proc = subprocess.Popen(fullcmd,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE,
                                     shell=True,
                                     cwd=workdir)
+            logging.info('After opening a process')
+
             if proc:
                 result = execresult()
 
                 while True:
+                    logging.info('Collecting stdout  ....')
                     stdout_lines = [line.decode('utf-8', errors="ignore").rstrip() for line in proc.stdout.readlines()]
                     result.stdout.extend(stdout_lines)
 
+                    logging.info('Collecting stderr ....')
                     stderr_lines = [line.decode('utf-8', errors="ignore").rstrip() for line in proc.stderr.readlines()]
                     result.stderr.extend(stderr_lines)
 
-                    result.errcode = proc.wait()
+                    logging.info('waiting the process .... 1')
+                    result.errcode = proc.wait(3)
+                    logging.info('waiting the process .... 2')
                     if (len(stderr_lines) == 0) and \
                        (len(stdout_lines) == 0):
+                        logging.info('waiting the process .... break')
                         break
+                logging.info('waiting the process .... end')
 
                 if (len(result.stderr) > 0) or (0 != result.errcode):
                     logging.error('result.errcode = {}'.format(result.errcode))
@@ -1416,14 +1473,21 @@ class rcserver():
 
                 data = result.toTEXT().encode()
 
-        except Exception as err:
-            logging.exception(err)
+        except subprocess.TimeoutExpired as Err:
+            result = execresult()
+            result.errcode = error_exception_process_wait_timeout.errcode
+            result.stderr.append(error_exception_process_wait_timeout.text)
+            result.stderr.append(str(Err))
+            data = result.toTEXT().encode()
+
+        except Exception as Err:
+            logging.exception(Err)
 
             # data by error
             result = execresult()
             result.errcode = error_exception.errcode
             result.stderr.append(error_exception.text)
-            result.stderr.append(str(err))
+            result.stderr.append(str(Err))
             data = result.toTEXT().encode()
 
         finally:
@@ -1470,7 +1534,7 @@ class rcserver():
             done_chunk = header_text(action_kind.done, ask_chunk.title, data)
             sock._send(done_chunk.pack())
 
-        elif 'command_mkdir' == ask_chunk.title:
+        elif 'inncmd_mkdir' == ask_chunk.title:
             result: bool = True
 
             path = str(ask_chunk.payload_chunk, encoding='utf-8')
@@ -1486,7 +1550,7 @@ class rcserver():
                 logging.error(Err)
                 result = False
 
-            data = command_mkdir(path, result).toTEXT().encode()
+            data = inncmd_mkdir(path, result).toTEXT().encode()
             done_chunk = header_text(action_kind.done, ask_chunk.title, data)
             sock._send(done_chunk.pack())
 
@@ -1836,9 +1900,9 @@ class rcclient():
         return data
 
     def mkdir(self, path: str):
-        result: rcresult = self.text('command_mkdir', path.encode())
+        result: rcresult = self.text('inncmd_mkdir', path.encode())
         text = str(result.data, encoding='utf-8')
-        data: command_mkdir = config().toCLASS(text)
+        data: inncmd_mkdir = config().toCLASS(text)
         return data
 
 
