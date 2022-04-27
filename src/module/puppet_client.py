@@ -1,16 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # -*- coding: utf-8 -*-
-from collections import UserList
-from enum import Flag
-import os
-import json
 from pickle import NONE
-import time
-import socket
 import logging
-import threading
-import subprocess
 
 from module.pyrc.rc import execresult, inncmd_mkdir
 from module.pyrc.rc import rcclient

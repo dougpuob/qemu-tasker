@@ -13,14 +13,25 @@ import threading
 from enum import Enum
 from types import SimpleNamespace
 
-_TIMEOUT_ = 10
-_HEADER_SIZE_ = 16
-
+#
+# definition of unit
+#
 _1KB_ = 1024
 _1MB_ = _1KB_*1024
-_CHUNK_SIZE_ = _1KB_*512
-_BUFF_SIZE_ = _1MB_*2
 
+
+#
+# definition for pyrc
+#
+_WAIT_TIMEOUT_ = 10
+_HEADER_SIZE_ = 16
+_CHUNK_SIZE_ = _1KB_*512
+_BUFFER_SIZE_ = _1MB_*2
+
+
+#
+# Signature of headers
+#
 _SIGNATURE_ECHO___ = b'$SiGEcH$'
 _SIGNATURE_UPLOAD_ = b'$SiGUpL$'
 _SIGNATURE_DOWNLO_ = b'$SiGDoW$'
@@ -1037,7 +1048,7 @@ class actor_callbacks():
 class rcsock():
 
     def __init__(self, conn, actors: actor_callbacks = None):
-        self.BUFF_SIZE = _BUFF_SIZE_
+        self.BUFF_SIZE = _BUFFER_SIZE_
 
         self.header = header()
         self.conn: socket.socket = conn
@@ -1566,7 +1577,7 @@ class rcclient():
 
     def __init__(self):
         self.CHUNK_SIZE = _CHUNK_SIZE_
-        self.BUFF_SIZE = _BUFF_SIZE_
+        self.BUFF_SIZE = _BUFFER_SIZE_
         self.TIMEOUT_TIMES = 10
 
         self.__HOST__ = None
@@ -1683,7 +1694,7 @@ class rcclient():
 
         wait_done = self._wait_until(len,
                                      0.1,
-                                     _TIMEOUT_,
+                                     _WAIT_TIMEOUT_,
                                      self.sock.chunk_list)
         if wait_done:
             self.sock.chunk_list.pop(0)
@@ -1728,7 +1739,7 @@ class rcclient():
         while keep_going:
             is_there_a_chunk = self._wait_until(len,
                                                 0.1,
-                                                _TIMEOUT_,
+                                                _WAIT_TIMEOUT_,
                                                 self.sock.chunk_list)
             if not is_there_a_chunk:
                 result = error_wait_timeout_streaming
@@ -1777,7 +1788,7 @@ class rcclient():
         # wait done
         wait_done = self._wait_until(len,
                                      0.1,
-                                     _TIMEOUT_,
+                                     _WAIT_TIMEOUT_,
                                      self.sock.chunk_list)
         if wait_done:
             self.sock.chunk_list.pop(0)
@@ -1793,7 +1804,7 @@ class rcclient():
 
         is_there_a_chunk = self._wait_until(len,
                                             0.1,
-                                            _TIMEOUT_,
+                                            _WAIT_TIMEOUT_,
                                             self.sock.chunk_list)
         if is_there_a_chunk:
             result = rcresult()
@@ -1840,7 +1851,7 @@ class rcclient():
         logging.info('wait data ({})'.format(program))
         is_there_a_chunk = self._wait_until(len,
                                             0.1,
-                                            _TIMEOUT_,
+                                            _WAIT_TIMEOUT_,
                                             self.sock.chunk_list)
         logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
         if not is_there_a_chunk:
@@ -1879,7 +1890,7 @@ class rcclient():
 
         is_there_a_chunk = self._wait_until(len,
                                             0.1,
-                                            _TIMEOUT_,
+                                            _WAIT_TIMEOUT_,
                                             self.sock.chunk_list)
         if is_there_a_chunk:
             done_chunk: header_text = self.sock.chunk_list.pop(0)
