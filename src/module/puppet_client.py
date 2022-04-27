@@ -12,10 +12,10 @@ import logging
 import threading
 import subprocess
 
-from module.pyrc.rc import execresult
+from module.pyrc.rc import execresult, inncmd_mkdir
 from module.pyrc.rc import rcclient
 from module.pyrc.rc import rcresult
-from module.pyrc.rc import command_mkdir
+from module.pyrc.rc import inncmd_mkdir
 from module.pyrc.rc import computer_info
 from module import config
 
@@ -116,7 +116,7 @@ class puppet_client():
 
 
     def mkdir(self, dirpath:str):
-      cmd_mkdir: command_mkdir = self.pyrc_client.mkdir(dirpath)
+      cmd_mkdir: inncmd_mkdir = self.pyrc_client.mkdir(dirpath)
 
       cmdret = config.command_return()
       if cmd_mkdir.result:
