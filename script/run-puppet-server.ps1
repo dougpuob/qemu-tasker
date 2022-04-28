@@ -4,7 +4,7 @@
 
 $SCRIPT_PATH=$MyInvocation.MyCommand.Definition
 $TASK_NAME="launch-qemu-tasker"
-$QEMU_TASKER_DIR=(Join-Path $ENV:HOMEDRIVE $ENV:HOMEPATH qemu-takser.git)
+$QEMU_TASKER_DIR=(Join-Path $ENV:HOMEDRIVE $ENV:HOMEPATH qemu-tasker.git)
 $RUN_START_BAT=(Join-Path $ENV:HOMEDRIVE $ENV:HOMEPATH 'run-puppet-server.bat')
 $RUN_START_PS1=(Join-Path $ENV:HOMEDRIVE $ENV:HOMEPATH 'run-puppet-server.ps1')
 
