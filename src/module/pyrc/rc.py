@@ -23,7 +23,7 @@ _1MB_ = _1KB_*1024
 #
 # definition for pyrc
 #
-_WAIT_TIMEOUT_ = 10
+_WAIT_TIMEOUT_ = 30
 _HEADER_SIZE_ = 16
 _CHUNK_SIZE_ = _1KB_*512
 _BUFFER_SIZE_ = _1MB_*2
@@ -59,26 +59,9 @@ class config():
         return json.loads(text, object_hook=lambda d: SimpleNamespace(**d))
 
 
-class computer_info(config):
-    def __init__(self, osname: str = 'unknown', homedir: str = ''):
-        self.osname = osname
-        self.homedir = homedir
-
-
-class inncmd_mkdir(config):
-    def __init__(self, path: str, result: bool = False):
-        self.path = path
-        self.result = result
-
-
-class execresult(config):
-    def __init__(self):
-        self.errcode = 0
-        self.stdout = []
-        self.stderr = []
-        self.data = None
-
-
+#
+# Exception definitions
+#
 class rcresult(config):
     def __init__(self, errcode: int = 0, errmsg: str = ''):
         self.errcode = errcode
@@ -86,6 +69,7 @@ class rcresult(config):
         self.data = None
 
 
+# General error
 error_unknown = rcresult(1, 'Unknown error')
 error_file_already_exist = rcresult(2, 'File already exist')
 error_file_not_found = rcresult(3, 'File not found')
@@ -95,12 +79,17 @@ error_not_a_folder = rcresult(6, 'The specific path is not a folder')
 error_file_not_identical = rcresult(7, 'File length is not identical')
 error_exception = rcresult(9, 'An exception rised')
 
+# Streaming
 error_wait_timeout_streaming = rcresult(50, 'Wait streaming timeout')
 error_wait_timeout_done = rcresult(51, 'Wait done timeout')
 
-error_exception_process_wait_timeout = rcresult(60, 'An exception occured when wait a process')
+# Process
+error_exception_proc_wait_timeout = rcresult(60, 'Wait timeout a process')
 
 
+#
+# Enumeration definitions
+#
 class action_name(Enum):
     unknown = 0
     upload = 1
@@ -125,45 +114,136 @@ class execute_subcmd(Enum):
     kill = 3
 
 
+class proc_status(Enum):
+    unknown = 0
+    unstart = 1
+    running = 2
+    killing = 3
+    killed = 4
+    terminated = 5
+    exception = 6
+
+
+#
+# Class definitions
+#
+class computer_info(config):
+    def __init__(self, osname: str = 'unknown', homedir: str = ''):
+        self.osname = osname
+        self.homedir = homedir
+
+
+class inncmd_mkdir(config):
+    def __init__(self, path: str, result: bool = False):
+        self.path = path
+        self.result = result
+
+
+class execmdarg(config):
+    def __init__(self,
+                 program: bytes,
+                 argument: bytes = '',
+                 workdir: bytes = '.',
+                 isbase64: bool = False):
+        self.program = program
+        self.argument = argument
+        self.workdir = workdir
+        self.isbase64 = isbase64
+
+
+class execresult(config):
+    def __init__(self):
+        self.errcode = 0
+        self.stdout = []
+        self.stderr = []
+        self.data = None
+
+
 class async_process():
 
-    def __init__(self):
+    def __init__(self, tag):
         self.program = ''
         self.argument = ''
         self.workdir = '.'
-        self.proc = None
+        self.status = proc_status.unknown
+        self.execrs = execresult()
+        self.tag: int = tag
 
         self.thread = threading.Thread(target=self._thread_start)
         self.thread.daemon = True
 
     def _thread_start(self):
+        self.status = proc_status.running
 
         try:
-            pass
-
-        except ConnectionResetError:
-            logging.warning('ConnectionResetError')
-
-        except Exception as err:
-            logging.exception(err)
-
-        finally:
-            pass
-
-    def start(self):
-        if not self.proc:
-            fullcmd = self.program + ' ' + self.argument
+            fullcmd = self.program
+            if '' != self.argument:
+                fullcmd += ' ' + self.argument
             self.proc = subprocess.Popen(fullcmd,
                                          stdout=subprocess.PIPE,
                                          stderr=subprocess.PIPE,
                                          shell=True,
                                          cwd=self.workdir)
+            try:
+                self.execrs.errcode = self.proc.wait(_WAIT_TIMEOUT_)
+                logging.error('fullcmd={} errcode={}'.format(fullcmd, self.execrs.errcode))
+
+                stdout_lines = [line.decode('utf-8', errors="ignore").rstrip() for line in self.proc.stdout.readlines()]
+                self.execrs.stdout.extend(stdout_lines)
+
+                stderr_lines = [line.decode('utf-8', errors="ignore").rstrip() for line in self.proc.stderr.readlines()]
+                self.execrs.stderr.extend(stderr_lines)
+
+                self.status = proc_status.terminated
+
+            except Exception as Err:
+                self.execrs.errcode = 100000
+                self.status = proc_status.exception
+                self.execrs.stderr.append(Err)
+
+        except subprocess.TimeoutExpired as Err:
+            logging.exception(Err)
+            self.status = proc_status.exception
+            self.execrs.errcode = error_exception_proc_wait_timeout.errcode
+            self.execrs.stderr.append(error_exception_proc_wait_timeout.text)
+            self.execrs.stderr.append(str(Err))
+
+        except Exception as Err:
+            logging.exception(Err)
+            self.status = proc_status.exception
+            self.execrs.errcode = error_exception.errcode
+            self.execrs.stderr.append(error_exception.text)
+            self.execrs.stderr.append(str(Err))
+
+        finally:
+            pass
+
+    def run(self, program: str,
+            argument: str = '',
+            workdir: str = '.'):
+        self.program = program
+        self.argument = argument
+        self.workdir = workdir
+
+        if self.status != proc_status.unknown:
+            return
+
+        if self.thread:
+            self.thread.start()
+            self.status = proc_status.running
 
     def kill(self):
-        pass
+        if self.proc:
+            self.proc.terminate()
+            self.status = proc_status.killed
 
-    def query(self):
-        pass
+        self.thread = None
+
+    def get_status(self):
+        return self.status
+
+    def get_tag(self):
+        return self.tag
 
 
 class header_echo():
@@ -546,26 +626,25 @@ class header_list():
 class header_execute():
     def __init__(self,
                  kind: action_kind = action_kind.unknown,
+                 subcmd: execute_subcmd = execute_subcmd.unknown,
                  program: bytes = b'',
                  argument: bytes = b'',
                  workdir: bytes = b'.',
                  isbase64: bool = False,
                  chunk_data: bytes = b''):
 
-        self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'Biii'
+        self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'iii' + 'Biii'
 
         #
         # payload_data
         #
-        self.program = program
-        self.argument = argument
-        self.workdir = workdir
-        self.isbase64: bool = isbase64
+        self.cmdresult = execresult()
+        self.exec = execmdarg(program, argument, workdir, isbase64)
 
         #
         # chunk_data
         #
-        self.chunk_data = chunk_data
+        self.chunk_data = chunk_data  # execresult
 
         #
         # Header content
@@ -578,9 +657,19 @@ class header_execute():
         self.action_name: int = action_name.execute.value
         self.action_kind: int = kind.value
 
-        self.chunk_size: int = 0
+        self.subcmd_value: int = 0
+        self.status_value: int = proc_status.unknown.value
+        self.tag_value = 0
+
+        if subcmd:
+            self.subcmd_value = subcmd.value
+
+        self.chunk_size: int = len(chunk_data)
         self.chunk_count: int = 0
         self.chunk_index: int = 0
+
+        if self.chunk_size > 0:
+            self.chunk_count = 1
 
         self.length_isbase64: int = 1
         self.length_program: int = len(program)
@@ -604,6 +693,9 @@ class header_execute():
                                   self.payload_size,
                                   self.action_name,
                                   self.action_kind,
+                                  self.subcmd_value,
+                                  self.status_value,
+                                  self.tag_value,
 
                                   self.chunk_size,
                                   self.chunk_count,
@@ -615,15 +707,20 @@ class header_execute():
                                   self.length_workdir)
 
         isbase = b''
-        if self.isbase64:
+        if self.exec.isbase64:
             isbase = b'1'
         else:
             isbase = b'0'
-        packed_data += (isbase +
-                        self.program +
-                        self.argument +
-                        self.workdir +
-                        self.chunk_data)
+
+        data = (isbase +
+                self.exec.program +
+                self.exec.argument +
+                self.exec.workdir +
+                self.chunk_data)
+
+        packed_data = packed_data + data
+
+        assert len(packed_data) == self.total_size, 'data lengths are not identical !!!'
 
         return packed_data
 
@@ -657,13 +754,18 @@ class header_execute():
         hdr.payload_size = unpack[3]
         hdr.action_name = unpack[4]
         hdr.action_kind = unpack[5]
-        hdr.chunk_size = unpack[6]
-        hdr.chunk_count = unpack[7]
-        hdr.chunk_index = unpack[8]
-        hdr.length_isbase64 = unpack[9]
-        hdr.length_program = unpack[10]
-        hdr.length_argument = unpack[11]
-        hdr.length_workdir = unpack[12]
+        hdr.subcmd_value = unpack[6]
+        hdr.status_value = unpack[7]
+        hdr.tag_value = unpack[8]
+
+        hdr.chunk_size = unpack[9]
+        hdr.chunk_count = unpack[10]
+        hdr.chunk_index = unpack[11]
+
+        hdr.length_isbase64 = unpack[12]
+        hdr.length_program = unpack[13]
+        hdr.length_argument = unpack[14]
+        hdr.length_workdir = unpack[15]
 
         #
         # Payload (payload_data + chunk_data)
@@ -674,25 +776,25 @@ class header_execute():
         pos1 = 0
         pos2 = (pos1 + 1)
         isbase64 = payload_content[pos1:pos2]
-        hdr.isbase64 = bool(int(isbase64))
+        hdr.exec.isbase64 = bool(int(isbase64))
 
         pos1 = pos2
         pos2 = pos2 + hdr.length_program
         program = payload_content[pos1:pos2]
         # hdr.program = str(program, encoding='utf-8')
-        hdr.program = program
+        hdr.exec.program = program
 
         pos1 = pos2
         pos2 = pos2 + hdr.length_argument
         argument = payload_content[pos1:pos2]
         # hdr.argument = str(argument, encoding='utf-8')
-        hdr.argument = argument
+        hdr.exec.argument = argument
 
         pos1 = pos2
         pos2 = pos2 + hdr.length_workdir
         workdir = payload_content[pos1:pos2]
         # hdr.workdir = str(workdir, 'utf-8')
-        hdr.workdir = workdir
+        hdr.exec.workdir = workdir
 
         # chunk_data
         pos1 = pos2
@@ -806,6 +908,7 @@ class header_text():
 
         return hdr
 
+
 class header():
     def __init__(self):
         pass
@@ -874,7 +977,7 @@ class header():
                 found_hdr = hdr.unpack(full_header)
                 logging.info('unpack a header_upload, len(chunk)={}'.format(len(full_header)))
 
-                logfmt = 'header_upload action_kind={} chunk_index={}/{}' + \
+                logfmt = 'header_upload action_kind={} chunk_index={}/{} ' + \
                          'chunk_size={}'
                 logging.info(logfmt.format(found_hdr.action_kind,
                                            found_hdr.chunk_index + 1,
@@ -904,7 +1007,7 @@ class header():
                 found_hdr: header_download = hdr.unpack(full_header)
                 logging.info('unpack a header_download, len(chunk)={}'.format(len(full_header)))
 
-                logfmt = 'header_download action_kind={} chunk_index={}/{}' + \
+                logfmt = 'header_download action_kind={} chunk_index={}/{} ' + \
                          'chunk_size={}'
                 logging.info(logfmt.format(found_hdr.action_kind,
                                            found_hdr.chunk_index + 1,
@@ -929,7 +1032,7 @@ class header():
             hdr_pos1 = 0
             hdr_pos2 = hdr_pos1 + hdr.total_size
             if len(full_header) >= hdr_pos2:
-                found_hdr = hdr.unpack(full_header)
+                found_hdr: header_execute = hdr.unpack(full_header)
                 logging.info('unpack a header_execute, len(chunk)={}'.format(len(full_header)))
 
                 logfmt = 'header_execute action_kind={} chunk_index={}/{} ' + \
@@ -939,9 +1042,9 @@ class header():
                                            found_hdr.chunk_count,
                                            found_hdr.chunk_size))
 
-                logging.info('program={}'.format(found_hdr.program))
-                logging.info('argument={}'.format(found_hdr.argument))
-                logging.info('workdir={}'.format(found_hdr.workdir))
+                logging.info('program={}'.format(found_hdr.exec.program))
+                logging.info('argument={}'.format(found_hdr.exec.argument))
+                logging.info('workdir={}'.format(found_hdr.exec.workdir))
 
             else:
                 logging.warning('buffer is insufficient for a header_execute, len(data)={}'.format(len(data)))
@@ -963,7 +1066,7 @@ class header():
                 found_hdr = hdr.unpack(full_header)
                 logging.info('unpack a header_list, len(chunk)={}'.format(len(full_header)))
 
-                logfmt = 'header_list action_kind={} chunk_index={}/{}' + \
+                logfmt = 'header_list action_kind={} chunk_index={}/{} ' + \
                          'chunk_size={}'
                 logging.info(logfmt.format(found_hdr.action_kind,
                                            found_hdr.chunk_index + 1,
@@ -992,7 +1095,7 @@ class header():
                 found_hdr = hdr.unpack(full_header)
                 logging.info('unpack a header_echo, len(chunk)={}'.format(len(full_header)))
 
-                logfmt = 'header_echo action_kind={} chunk_index={}/{}' + \
+                logfmt = 'header_echo action_kind={} chunk_index={}/{} ' + \
                          'chunk_size={}'
                 logging.info(logfmt.format(found_hdr.action_kind,
                                            found_hdr.chunk_index + 1,
@@ -1017,7 +1120,7 @@ class header():
                 found_hdr = hdr.unpack(full_header)
                 logging.info('unpack a header_text, len(chunk)={}'.format(len(full_header)))
 
-                logfmt = 'header_text action_kind={} chunk_index={}/{}' + \
+                logfmt = 'header_text action_kind={} chunk_index={}/{} ' + \
                          'chunk_size={}'
                 logging.info(logfmt.format(found_hdr.action_kind,
                                            found_hdr.chunk_index + 1,
@@ -1099,13 +1202,14 @@ class rcsock():
                     self._consume_chunks()
 
         except socket.timeout:
-            pass
+            logging.exception('socket.timeout')
 
         except ConnectionResetError:
             logging.warning('ConnectionResetError')
 
-        except Exception as err:
-            logging.exception(err)
+        except Exception as Err:
+            print(Err)
+            logging.exception(Err)
 
         finally:
             pass
@@ -1160,8 +1264,12 @@ class rcsock():
     def _parse_complete_chunk(self):
         while True:
 
-            logging.info('b4 len(self.stream_pool)={}'.format(len(self.stream_pool)))
-            logging.info('b4 len(self.chunk_list)={}'.format(len(self.chunk_list)))
+            logfmt = 'b4 len(self.stream_pool)={}'
+            logging.info(logfmt.format(len(self.stream_pool)))
+
+            logfmt = 'b4 len(self.chunk_list)={}'
+            logging.info(logfmt.format(len(self.chunk_list)))
+
             found_header, size = self.header.find_header(self.stream_pool)
             if 0 == size:
                 logging.info('Nothing found !!!')
@@ -1172,8 +1280,11 @@ class rcsock():
             self.chunk_list.append(found_header)
             self.stream_pool = self.stream_pool[size:]
 
-            logging.info('ft len(self.stream_pool)={}'.format(len(self.stream_pool)))
-            logging.info('ft len(self.chunk_list)={}'.format(len(self.chunk_list)))
+            logfmt = 'ft len(self.stream_pool)={}'
+            logging.info(logfmt.format(len(self.stream_pool)))
+
+            logfmt = 'ft len(self.chunk_list)={}'
+            logging.info(logfmt.format(len(self.chunk_list)))
 
 
 class rcserver():
@@ -1340,7 +1451,7 @@ class rcserver():
             data_chunk.chunk_count = chunk_count
             data_chunk.chunk_index = index
 
-            logfmt = 'header_download action_kind={} chunk_index={}/{}' + \
+            logfmt = 'header_download action_kind={} chunk_index={}/{} ' + \
                      'chunk_size={}'
             logging.info(logfmt.format(data_chunk.action_kind,
                                        data_chunk.chunk_index + 1,
@@ -1351,7 +1462,6 @@ class rcserver():
             index += 1
 
         file.close()
-
 
         # done by complete
         done_chunk = header_download(action_kind.done,
@@ -1418,113 +1528,124 @@ class rcserver():
                                 sock: rcsock,
                                 ask_chunk: header_execute):
         try:
-
-            data = None
+            data_chunk = None
 
             logging.info('-------------------------------------------')
-            logging.info('[UTF8] program={}'.format(ask_chunk.program))
-            logging.info('[UTF8] argument={}'.format(ask_chunk.argument))
-            logging.info('[UTF8] workdir={}'.format(ask_chunk.workdir))
+            logging.info('[UTF8] program={}'.format(ask_chunk.exec.program))
+            logging.info('[UTF8] argument={}'.format(ask_chunk.exec.argument))
+            logging.info('[UTF8] workdir={}'.format(ask_chunk.exec.workdir))
 
-            program = str(ask_chunk.program, encoding='utf-8')
+            program = str(ask_chunk.exec.program, encoding='utf-8')
 
             argument = ''
-            if ask_chunk.isbase64:
-                argument = base64.b64decode(ask_chunk.argument).decode('utf-8')
+            if ask_chunk.exec.isbase64:
+                argument = base64.b64decode(ask_chunk.exec.argument).decode('utf-8')
             else:
-                argument = str(ask_chunk.argument, encoding='utf-8')
+                argument = str(ask_chunk.exec.argument, encoding='utf-8')
 
-            workdir = str(ask_chunk.workdir, encoding='utf-8')
+            workdir = str(ask_chunk.exec.workdir, encoding='utf-8')
 
             logging.info('[ORIGIN] program={}'.format(program))
             logging.info('[ORIGIN] argument={}'.format(argument))
             logging.info('[ORIGIN] workdir={}'.format(workdir))
 
-            fullcmd = program
-            if argument and len(argument) > 0:
-                fullcmd = fullcmd + ' ' + argument
+            # subcmd: start
+            if ask_chunk.subcmd_value == execute_subcmd.start.value:
+                logging.info('Before opening a process')
+                async_proc = async_process(len(self.proc_list) + 100)
+                self.proc_list.append(async_proc)
 
-            logging.info('Before opening a process')
-            proc = subprocess.Popen(fullcmd,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    shell=True,
-                                    cwd=workdir)
-            logging.info('After opening a process')
+                async_proc.run(program, argument, workdir)
+                logging.info('After opening a process')
 
-            if proc:
-                result = execresult()
+                subcmd = execute_subcmd(ask_chunk.subcmd_value)
+                data_chunk = header_execute(action_kind.data,
+                                            subcmd,
+                                            ask_chunk.exec.program,
+                                            ask_chunk.exec.argument,
+                                            ask_chunk.exec.workdir,
+                                            ask_chunk.exec.isbase64)
+                data_chunk.status_value = async_proc.get_status().value
+                data_chunk.tag_value = async_proc.get_tag()
 
-                while True:
-                    logging.info('Collecting stdout  ....')
-                    stdout_lines = [line.decode('utf-8', errors="ignore").rstrip() for line in proc.stdout.readlines()]
-                    result.stdout.extend(stdout_lines)
+            # subcmd: kill
+            elif ask_chunk.subcmd_value == execute_subcmd.kill.value:
+                subcmd = execute_subcmd(ask_chunk.subcmd_value)
+                data_chunk = header_execute(action_kind.data,
+                                            subcmd,
+                                            ask_chunk.exec.program,
+                                            ask_chunk.exec.argument,
+                                            ask_chunk.exec.workdir,
+                                            ask_chunk.exec.isbase64)
+                data_chunk.status_value = proc_status.killing
+                for item in self.proc_list:
+                    item: async_process = item
+                    if item.get_tag() == ask_chunk.tag_value:
+                        item.kill()
+                        data_chunk.status_value = item.get_status()
+                        data_chunk.tag_value = ask_chunk.tag_value
 
-                    logging.info('Collecting stderr ....')
-                    stderr_lines = [line.decode('utf-8', errors="ignore").rstrip() for line in proc.stderr.readlines()]
-                    result.stderr.extend(stderr_lines)
+            # subcmd: query
+            elif ask_chunk.subcmd_value == execute_subcmd.query.value:
+                data = b''
+                status = proc_status.unknown
 
-                    logging.info('waiting the process .... 1')
-                    result.errcode = proc.wait(3)
-                    logging.info('waiting the process .... 2')
-                    if (len(stderr_lines) == 0) and \
-                       (len(stdout_lines) == 0):
-                        logging.info('waiting the process .... break')
+                for item in self.proc_list:
+                    item: async_process = item
+                    if item.get_tag() == ask_chunk.tag_value:
+                        status = item.get_status()
+                        data = item.execrs.toTEXT().encode()
                         break
-                logging.info('waiting the process .... end')
 
-                if (len(result.stderr) > 0) or (0 != result.errcode):
-                    logging.error('result.errcode = {}'.format(result.errcode))
-                    logging.error('result.stdout  = {}'.format(result.stdout))
-                    logging.error('result.stderr  = {}'.format(result.stderr))
-                else:
-                    logging.info('result.errcode = {}'.format(result.errcode))
-                    logging.info('result.stdout  = {}'.format(result.stdout))
-                    logging.info('result.stderr  = {}'.format(result.stderr))
+                subcmd = execute_subcmd(ask_chunk.subcmd_value)
+                data_chunk = header_execute(action_kind.data,
+                                            subcmd,
+                                            ask_chunk.exec.program,
+                                            ask_chunk.exec.argument,
+                                            ask_chunk.exec.workdir,
+                                            ask_chunk.exec.isbase64,
+                                            data)
+                data_chunk.tag_value = ask_chunk.tag_value
+                data_chunk.status_value = status.value
 
-                data = result.toTEXT().encode()
-
-        except subprocess.TimeoutExpired as Err:
-            result = execresult()
-            result.errcode = error_exception_process_wait_timeout.errcode
-            result.stderr.append(error_exception_process_wait_timeout.text)
-            result.stderr.append(str(Err))
-            data = result.toTEXT().encode()
+            else:
+                subcmd = execute_subcmd(ask_chunk.subcmd_value)
+                data_chunk = header_execute(action_kind.data,
+                                            subcmd,
+                                            ask_chunk.exec.program,
+                                            ask_chunk.exec.argument,
+                                            ask_chunk.exec.workdir,
+                                            ask_chunk.exec.isbase64)
+                data_chunk.tag_value = ask_chunk.tag_value
+                data_chunk.status_value = proc_status.exception
 
         except Exception as Err:
             logging.exception(Err)
-
-            # data by error
-            result = execresult()
-            result.errcode = error_exception.errcode
-            result.stderr.append(error_exception.text)
-            result.stderr.append(str(Err))
-            data = result.toTEXT().encode()
+            subcmd = execute_subcmd(ask_chunk.subcmd_value)
+            data_chunk = header_execute(action_kind.data,
+                                        subcmd,
+                                        ask_chunk.exec.program,
+                                        ask_chunk.exec.argument,
+                                        ask_chunk.exec.workdir)
+            data_chunk.tag_value = ask_chunk.tag_value
+            data_chunk.status_value = proc_status.exception
 
         finally:
-            # data by success
-            data_chunk = header_execute(action_kind.data,
-                                        ask_chunk.program,
-                                        ask_chunk.argument,
-                                        ask_chunk.workdir,
-                                        ask_chunk.isbase64,
-                                        data)
-            data_chunk.chunk_count = 1
-            data_chunk.chunk_index = 0
-            data_chunk.chunk_size = len(data)
+            # send data
+            packed_data_chunk = data_chunk.pack()
+            sock._send(packed_data_chunk)
+            logging.info('send data ({})'.format(ask_chunk.exec.program))
 
-            logging.info('send data ({})'.format(ask_chunk.program))
-            sock._send(data_chunk.pack())
-
-            # # done by end
-            # done_chunk = header_execute(action_kind.done,
-            #                             ask_chunk.program,
-            #                             ask_chunk.argument,
-            #                             ask_chunk.workdir)
-            # logging.info('send done ({})'.format(ask_chunk.program))
-            # sock._send(done_chunk.pack())
-
-        return True
+            # send done
+            subcmd = execute_subcmd(ask_chunk.subcmd_value)
+            done_chunk = header_execute(action_kind.done,
+                                        subcmd,
+                                        ask_chunk.exec.program,
+                                        ask_chunk.exec.argument,
+                                        ask_chunk.exec.workdir)
+            done_chunk.tag_value = data_chunk.tag_value
+            logging.info('send done ({})'.format(ask_chunk.exec.program))
+            sock._send(done_chunk.pack())
 
     def _handle_text_command(self,
                              sock: rcsock,
@@ -1631,6 +1752,178 @@ class rcclient():
 
     def _send(self, data):
         self.sock._send(data)
+
+    def _execute_start(self, cmdarg: execmdarg):
+        execrs = execresult()
+
+        ask_chunk = header_execute(action_kind.ask,
+                                   execute_subcmd.start,
+                                   cmdarg.program,
+                                   cmdarg.argument,
+                                   cmdarg.workdir,
+                                   cmdarg.isbase64)
+        self._send(ask_chunk.pack())
+
+        # wait data
+        logging.info('wait data ({})'.format(ask_chunk.exec.program))
+        is_there_a_chunk = self._wait_until(len,
+                                            0.1,
+                                            _WAIT_TIMEOUT_,
+                                            self.sock.chunk_list)
+        logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
+        if not is_there_a_chunk:
+            program = ask_chunk.exec.program
+            logging.error('wait data timeout !!! ({})'.format(program))
+            execrs.errcode = error_wait_timeout_streaming.errcode
+            execrs.stderr.append(error_wait_timeout_streaming.text)
+
+        else:
+            program = ask_chunk.exec.program
+            logging.info('fetch the data ({})'.format(program))
+            chunk: header_execute = self.sock.chunk_list.pop(0)
+            logging.info('chunk.data={}'.format(str(chunk.chunk_data)))
+
+        # wait done
+        logging.info('wait done ({})'.format(ask_chunk.exec.program))
+        is_there_a_chunk = self._wait_until(len,
+                                            0.1,
+                                            _WAIT_TIMEOUT_,
+                                            self.sock.chunk_list)
+        logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
+        if not is_there_a_chunk:
+            program = ask_chunk.exec.program
+            logging.error('wait done timeout !!! ({})'.format(program))
+            execrs.errcode = error_wait_timeout_streaming.errcode
+            execrs.stderr.append(error_wait_timeout_streaming.text)
+
+        else:
+            program = ask_chunk.exec.program
+            logging.info('fetch the done ({})'.format(program))
+            chunk: header_execute = self.sock.chunk_list.pop(0)
+            execrs.data = chunk.tag_value
+
+        return execrs
+
+    def _execute_query(self, cmdarg: execmdarg, proc_tag: int):
+
+        retry_times = 3
+        while retry_times > 0:
+            execrs, status = self._execute_query_and_wait(cmdarg, proc_tag)
+            if status != proc_status.running:
+                break
+            time.sleep(2)
+
+        return execrs
+
+    def _execute_query_and_wait(self, cmdarg: execmdarg, proc_tag: int):
+        ask_chunk = header_execute(action_kind.ask,
+                                   execute_subcmd.query,
+                                   cmdarg.program,
+                                   cmdarg.argument,
+                                   cmdarg.workdir,
+                                   cmdarg.isbase64)
+        execrs = execresult()
+        status = proc_status.unknown
+
+        ask_chunk.tag_value = proc_tag
+        self._send(ask_chunk.pack())
+
+        # wait data
+        logging.info('wait data ({})'.format(ask_chunk.exec.program))
+        is_there_a_chunk = self._wait_until(len,
+                                            0.1,
+                                            _WAIT_TIMEOUT_,
+                                            self.sock.chunk_list)
+        logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
+        if not is_there_a_chunk:
+            program = ask_chunk.exec.program
+            logging.error('wait data timeout !!! ({})'.format(program))
+            execrs.errcode = error_wait_timeout_streaming.errcode
+            execrs.stderr.append(error_wait_timeout_streaming.text)
+
+        else:
+            program = ask_chunk.exec.program
+            logging.info('fetch the data ({})'.format(program))
+            chunk: header_execute = self.sock.chunk_list.pop(0)
+            logging.info('chunk.data={}'.format(str(chunk.chunk_data)))
+
+            if chunk.chunk_data:
+                execrs = chunk.chunk_data
+                status = proc_status(chunk.status_value)
+
+        # wait done
+        logging.info('wait done ({})'.format(ask_chunk.exec.program))
+        is_there_a_chunk = self._wait_until(len,
+                                            0.1,
+                                            _WAIT_TIMEOUT_,
+                                            self.sock.chunk_list)
+        logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
+        if not is_there_a_chunk:
+            program = ask_chunk.exec.program
+            logging.error('wait done timeout !!! ({})'.format(program))
+            execrs.errcode = error_wait_timeout_streaming.errcode
+            execrs.stderr.append(error_wait_timeout_streaming.text)
+
+        else:
+            program = ask_chunk.exec.program
+            logging.info('fetch the done ({})'.format(program))
+            chunk: header_execute = self.sock.chunk_list.pop(0)
+
+        return execrs, status
+
+    def _execute_kill(self, cmdarg: execmdarg, proc_tag: int):
+        ask_chunk = header_execute(action_kind.ask,
+                                   execute_subcmd.kill,
+                                   cmdarg.program,
+                                   cmdarg.argument,
+                                   cmdarg.workdir,
+                                   cmdarg.isbase64)
+        execrs = execresult()
+
+        ask_chunk.tag_value = proc_tag
+        self._send(ask_chunk.pack())
+
+        # wait data
+        logging.info('wait data ({})'.format(ask_chunk.exec.program))
+        is_there_a_chunk = self._wait_until(len,
+                                            0.1,
+                                            _WAIT_TIMEOUT_,
+                                            self.sock.chunk_list)
+        logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
+        if not is_there_a_chunk:
+            program = ask_chunk.exec.program
+            logging.error('wait data timeout !!! ({})'.format(program))
+            execrs.errcode = error_wait_timeout_streaming.errcode
+            execrs.stderr.append(error_wait_timeout_streaming.text)
+
+        else:
+            program = ask_chunk.exec.program
+            logging.info('fetch the data ({})'.format(program))
+            chunk: header_execute = self.sock.chunk_list.pop(0)
+            logging.info('chunk.data={}'.format(str(chunk.chunk_data)))
+
+            if chunk.chunk_data:
+                execrs = chunk.chunk_data
+
+        # wait done
+        logging.info('wait done ({})'.format(ask_chunk.exec.program))
+        is_there_a_chunk = self._wait_until(len,
+                                            0.1,
+                                            _WAIT_TIMEOUT_,
+                                            self.sock.chunk_list)
+        logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
+        if not is_there_a_chunk:
+            program = ask_chunk.exec.program
+            logging.error('wait done timeout !!! ({})'.format(program))
+            execrs.errcode = error_wait_timeout_streaming.errcode
+            execrs.stderr.append(error_wait_timeout_streaming.text)
+
+        else:
+            program = ask_chunk.exec.program
+            logging.info('fetch the done ({})'.format(program))
+            chunk: header_execute = self.sock.chunk_list.pop(0)
+
+        return result
 
     def upload(self, local_filepath: str, remote_dirpath: str = '.'):
 
@@ -1832,54 +2125,41 @@ class rcclient():
                 workdir: str = '.',
                 isbase64: bool = False):
 
-        encoded_args = b''
+        argument_encoded = b''
         if isbase64:
-            encoded_args = argument.encode('ascii')
+            argument_encoded = argument.encode('ascii')
         else:
-            encoded_args = argument.encode('utf-8')
+            argument_encoded = argument.encode('utf-8')
 
-        # ask
-        ask_chunk = header_execute(action_kind.ask,
-                                   program.encode('utf-8'),
-                                   encoded_args,
-                                   workdir.encode('utf-8'),
-                                   isbase64)
-        self._send(ask_chunk.pack())
-
-        # wait data
         result = rcresult()
-        logging.info('wait data ({})'.format(program))
-        is_there_a_chunk = self._wait_until(len,
-                                            0.1,
-                                            _WAIT_TIMEOUT_,
-                                            self.sock.chunk_list)
-        logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
-        if not is_there_a_chunk:
-            logging.error('wait data timeout !!! ({})'.format(program))
-            return error_wait_timeout_streaming
+        proc_tag = 0
+
+        cmdarg = execmdarg(program.encode('utf-8'),
+                           argument_encoded,
+                           workdir.encode('utf-8'),
+                           isbase64)
+        cmdrs = self._execute_start(cmdarg)
+
+        result.data = cmdrs
+        if 0 != cmdrs.errcode:
+            result.errcode = cmdrs.errcode
+            result.text = '\n'.join(cmdrs.stderr)
+
         else:
-            logging.info('fetch the data ({})'.format(program))
-            chunk: header_execute = self.sock.chunk_list.pop(0)
-            logging.info('chunk.data={}'.format(str(chunk.chunk_data)))
+            proc_tag = cmdrs.data
 
-            if chunk.chunk_data:
-                result.data = chunk.chunk_data
-                result.errcode = chunk.chunk_data.errcode
-                result.text += '\n'.join(chunk.chunk_data.stderr)
+        if 0 == proc_tag:
+            result.errcode = -1
+            result.text = 'failed to run the process !!!'
 
-        # # wait done
-        # logging.info('wait done ({})'.format(program))
-        # is_there_a_chunk = self._wait_until(len,
-        #                                     0.1,
-        #                                     _TIMEOUT_,
-        #                                     self.sock.chunk_list)
-        # logging.info('is_there_a_chunk={}'.format(is_there_a_chunk))
-        # if not is_there_a_chunk:
-        #     logging.error('wait done timeout !!! ({})'.format(program))
-        #     return error_wait_timeout_streaming
-        # else:
-        #     logging.info('fetch the done ({})'.format(program))
-        #     chunk: header_execute = self.sock.chunk_list.pop(0)
+        elif proc_tag > 0:
+            cmdrs = self._execute_query(cmdarg, proc_tag)
+            result.data = cmdrs
+            if 0 != cmdrs.errcode:
+                result.errcode = cmdrs.errcode
+                result.text = '\n'.join(cmdrs.stderr)
+        else:
+            pass
 
         return result
 
@@ -1967,3 +2247,4 @@ if __name__ == '__main__':
                     logging.error("text={}".format(result.text))
             else:
                 logging.error("Failed to connect to server !!!")
+

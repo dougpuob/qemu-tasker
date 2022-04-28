@@ -22,6 +22,7 @@ from rc import computer_info
 from rc import inncmd_mkdir
 from rc import action_kind
 from rc import action_name
+from rc import execute_subcmd
 
 
 _HOST_ = 'localhost'
@@ -357,6 +358,7 @@ class TestPyRc(unittest.TestCase):
         _DATA_ = b''
 
         hdr = header_execute(action_kind.ask,
+                             execute_subcmd.start,
                              _PROGRAM_,
                              _ARGUMENT_,
                              _WORKDIR_,
@@ -380,10 +382,10 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(0, output_hdr.chunk_index)
 
         self.assertEqual(len(_DATA_), output_hdr.chunk_size)
-        self.assertEqual(_PROGRAM_, output_hdr.program)
-        self.assertEqual(_ARGUMENT_, output_hdr.argument)
-        self.assertEqual(_ISBASE64_, output_hdr.isbase64)
-        self.assertEqual(_WORKDIR_, output_hdr.workdir)
+        self.assertEqual(_PROGRAM_, output_hdr.exec.program)
+        self.assertEqual(_ARGUMENT_, output_hdr.exec.argument)
+        self.assertEqual(_ISBASE64_, output_hdr.exec.isbase64)
+        self.assertEqual(_WORKDIR_, output_hdr.exec.workdir)
 
     def test_header_text_ask(self):
         _DATA_ = computer_info().toTEXT().encode()
@@ -654,11 +656,13 @@ class TestPyRc(unittest.TestCase):
         if platform.system() == 'Windows':
             result: rcresult = client.execute('systeminfo')
             self.assertEqual(0, result.errcode)
+            self.assertEqual('', result.text)
+            self.assertEqual(result.errcode, result.data.errcode)
         else:
             result: rcresult = client.execute('uname')
             self.assertEqual(0, result.errcode)
 
-    def test_connect_then_execute_systeminfo_(self):
+    def test_connect_then_execute_systeminfo_with_workdir(self):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
@@ -677,7 +681,7 @@ class TestPyRc(unittest.TestCase):
 
         result: rcresult = client.execute('unknown')
         self.assertEqual(result.data.errcode, result.errcode)
-        self.assertIsNot(0, result.errcode)
+        self.assertNotEqual(0, result.errcode)
 
     def test_connect_then_execute_mkdir(self):
         if os.path.exists('mkdir'):
@@ -700,10 +704,9 @@ class TestPyRc(unittest.TestCase):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
-
         result: rcresult = client.execute('(Get-Location).Path')
         self.assertEqual(result.data.errcode, result.errcode)
-        self.assertIsNot(0, result.errcode)
+        self.assertNotEqual(0, result.errcode)
 
     def test_connect_then_text_computer_info(self):
         client = rcclient()
