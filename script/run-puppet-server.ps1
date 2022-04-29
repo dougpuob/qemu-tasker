@@ -33,7 +33,7 @@ else
 
   # Clone the qemu-tasker project
   git clone https://github.com/dougpuob/qemu-tasker.git .
-  git checkout feature-add-puppet-command
+  git checkout main
 
   # Become a puppet server
   $QEMU_TASKER_PY = (Join-Path $QEMU_TASKER_DIR src qemu-tasker.py)
