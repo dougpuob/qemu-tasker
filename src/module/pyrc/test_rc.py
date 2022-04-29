@@ -436,7 +436,7 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.is_connected(), True)
 
         result: rcresult = client.list('noexistingfolder')
-        self.assertEqual(0, result.errcode)
+        self.assertNotEqual(0, result.errcode)
 
     def test_connect_then_list_cwd(self):
         client = rcclient()

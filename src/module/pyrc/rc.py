@@ -156,7 +156,7 @@ class execresult(config):
         self.errcode = 0
         self.stdout = []
         self.stderr = []
-        self.data = None
+        self.data = b''
 
 
 class async_process():
@@ -537,10 +537,10 @@ class header_list():
                  dstdirpath: str = '',
                  data: bytes = b''):
 
-        if None == data:
+        if data is None:
             data = b''
 
-        self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'i' + 'p'
+        self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'i' + 'i'
 
         # Unpack payload fields
         self.dstdirpath = b''
@@ -554,12 +554,11 @@ class header_list():
         self.action_name: int = action_name.list.value
         self.action_kind: int = kind.value
 
-        self.chunk_size: int = 0
+        self.chunk_size: int = len(data)
         self.chunk_count: int = 0
         self.chunk_index: int = 0
 
-        if data:
-            self.chunk_size = len(data)
+        self.errcode: int = 0
 
         self.length_dirpath: int = len(dstdirpath)
 
@@ -585,9 +584,9 @@ class header_list():
                               self.chunk_count,
                               self.chunk_index,
 
-                              self.length_dirpath,
+                              self.errcode,
 
-                              self.payload)
+                              self.length_dirpath)
 
         rawdata += self.payload
         return rawdata
@@ -609,10 +608,14 @@ class header_list():
         hdr.payload_size = unpack[3]
         hdr.action_name = unpack[4]
         hdr.action_kind = unpack[5]
+
         hdr.chunk_size = unpack[6]
         hdr.chunk_count = unpack[7]
         hdr.chunk_index = unpack[8]
-        hdr.length_dirpath = unpack[9]
+
+        hdr.errcode = unpack[9]
+
+        hdr.length_dirpath = unpack[10]
 
         # Payload
         hdr.payload = data[hdr_size:]
@@ -1376,6 +1379,7 @@ class rcserver():
             data_chunk = header_list(action_kind.data,
                                      filepath,
                                      None)
+            data_chunk.errcode = error_path_not_exist.errcode
             conn._send(data_chunk.pack())
             return error_file_not_found
 
@@ -2113,18 +2117,24 @@ class rcclient():
             result = rcresult()
 
             data_chunk: header_list = self.sock.chunk_list.pop(0)
-            if data_chunk.data:
+            if 0 != data_chunk.errcode:
+                result.errcode = data_chunk.errcode
+                logfmt = 'the specifc path is not there (dstdirpath={})'
+                result.text = logfmt.format(dstdirpath)
+                logging.error(result.text)
+
+            elif data_chunk.data:
                 result.data = json.loads(data_chunk.data)
 
-            logging.info('type(result.data) = {}'.format(type(result.data)))
-            logging.info('result.data = {}'.format(result.data))
+                logging.info('type(result.data) = {}'.format(type(result.data)))
+                logging.info('result.data = {}'.format(result.data))
 
-            index = 0
-            total = len(result.data)
-            for file in result.data:
-                index += 1
-                logfmt = 'file[{}/{}]={}'
-                logging.info(logfmt.format(index, total, file))
+                index = 0
+                total = len(result.data)
+                for file in result.data:
+                    index += 1
+                    logfmt = 'file[{}/{}]={}'
+                    logging.info(logfmt.format(index, total, file))
 
             return result
         else:
