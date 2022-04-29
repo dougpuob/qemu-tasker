@@ -18,19 +18,21 @@ class action_kind:
 class command_kind:
     def __init__(self):
         self.unknown  = "unknown"
+        self.breakup  = "breakup"
 
         # Control commands
         self.server   = "server"
         self.start    = "start"
         self.kill     = "kill"
-        self.exec     = "exec"
         self.qmp      = "qmp"
         self.status   = "status"
         self.info     = "info"
 
-        # File transfer commands
-        self.list     = "list"
+        # Puppet commands
+        self.puppet   = "puppet"
+        self.execute  = "execute"
         self.upload   = "upload"
+        self.list     = "list"
         self.download = "download"
 
         # Synchronization command
@@ -56,6 +58,15 @@ class task_status:
         self.ready      = "ready"
         self.processing = "processing"
         self.killing    = "killing"
+
+
+class connection_kind:
+    def __init__(self):
+        self.unknown      = "unknown"
+        self.disabled     = "disabled"
+        self.connecting   = "creating"
+        self.connected    = "connected"
+        self.disconnected = "disconnected"
 
 
 # =============================================================================
@@ -88,9 +99,10 @@ class server_name(config):
 
 
 class forward_port(config):
-    def __init__(self, qmp_port:int, ssh_port:int):
+    def __init__(self, qmp_port:int, ssh_port:int, puppet_port:int):
         self.qmp = qmp_port
         self.ssh = ssh_port
+        self.pup = puppet_port
 
 
 class socket_address(config):
@@ -137,6 +149,28 @@ class command_return:
         self.info_lines.clear()
 
 
+class connections_status:
+    def __init__(self):
+        self.QMP:connection_kind = connection_kind().unknown
+        self.PUP:connection_kind = connection_kind().unknown
+        self.FTP:connection_kind = connection_kind().unknown
+
+class customized_return_command(command_return):
+    def __init__(self, customized_error_message):
+        self.error_lines = [customized_error_message]
+        self.info_lines = []
+        self.errcode = -99999
+        self.data = None
+
+
+return_command_unsupported  = customized_return_command('unsupported command')
+return_command_unknown      = customized_return_command('unknown command')
+return_command_wrong_taskid = customized_return_command('wrong taskid')
+return_command_no_qemu_inst = customized_return_command('Failed to find the specific QEMU instance')
+return_command_no_resp_data = customized_return_command('No response data')
+return_command_socket_not_ready = customized_return_command('Socket is not ready')
+
+
 class transaction_capsule(config):
     def __init__(self, act_kind:action_kind,
                        cmd_kind:command_kind,
@@ -167,7 +201,8 @@ class guest_environment_information(config):
 
 
 class server_environment_information(config):
-    def __init__(self, workdir_path:str, pushpool_path:str):
+    def __init__(self, socket_addr:socket_address, workdir_path:str, pushpool_path:str):
+        self.socket_addr = socket_addr
         self.workdir_path = workdir_path
         self.pushpool_path = pushpool_path
 
@@ -193,14 +228,12 @@ class start_command_request_data(config):
     def __init__(self,
                  longlife:int,
                  qcow2filename:str,
-                 ssh_info:ssh_information,
                  cmd_info:command_arguments):
         self.name = self.__class__.__name__
 
         self.longlife = longlife
         self.qcow2filename = qcow2filename
         self.cmd = cmd_info
-        self.ssh = ssh_info
 
 
 class start_command_response_data(config):
@@ -208,11 +241,10 @@ class start_command_response_data(config):
                  taskid:int,
                  pid:int,
                  port_fwd:forward_port,
-                 ssh_conn_info:ssh_information,
                  server_info:server_environment_information,
                  guest_info:guest_environment_information,
-                 is_connected_qmp:bool,
-                 is_connected_ssh:bool,
+                 conns_status:connections_status,
+                 qemu_full_cmdargs:list,
                  status:task_status):
         self.name = self.__class__.__name__
 
@@ -223,13 +255,14 @@ class start_command_response_data(config):
 
         # Resource
         self.forward     = port_fwd
-        self.ssh         = ssh_conn_info
         self.server_info = server_info
         self.guest_info  = guest_info
+        self.qemu_full_cmdargs = qemu_full_cmdargs
 
         # Connections
-        self.is_connected_qmp = is_connected_qmp
-        self.is_connected_ssh = is_connected_ssh
+        self.conns_status = conns_status
+        self.is_connected_qmp = conns_status.QMP
+        self.is_connected_pup = conns_status.PUP
 
 
 # Kill command
@@ -243,7 +276,7 @@ class info_command_request_data(config):
         self.name = self.__class__.__name__
 
 class info_command_response_data(config):
-    def __init__(self, variables:map, image_files:list):
+    def __init__(self, variables:json, image_files:list):
         self.name = self.__class__.__name__
 
         self.variables = variables
@@ -276,12 +309,14 @@ class exec_command_request_data(config):
     def __init__(self, taskid:int,
                        program:str,
                        argument:str,
+                       workdir:str=None,
                        is_base64:bool=False):
         self.name = self.__class__.__name__
 
         self.taskid    = taskid
         self.program   = program
         self.argument  = argument
+        self.workdir   = workdir
         self.is_base64 = is_base64
 
 exec_command_response_data = generic_command_response_data
@@ -290,6 +325,21 @@ exec_command_response_data = generic_command_response_data
 # =============================================================================
 # File transfer commands
 # =============================================================================
+# Puppet command
+class puppet_command_request_data(config):
+    def __init__(self):
+        self.name    = self.__class__.__name__
+
+
+class puppet_command_response_data(config):
+    def __init__(self):
+        self.name    = self.__class__.__name__
+
+
+# Execute command
+execute_command_request_data  = exec_command_request_data
+execute_command_response_data = exec_command_response_data
+
 
 # List command
 class list_command_request_data(config):

@@ -20,6 +20,7 @@ The `qemu-tasker` is a server-client Python program. One server manages multiple
 ``` bash
 pip3 install psutil
 pip3 install ssh2-python
+pip3 install pyftpdlib
 ```
 
 ----------
@@ -27,9 +28,12 @@ pip3 install ssh2-python
 ### Quick Start
 The server IP is `172.17.100.17`.
 
-#### Server side:
+#### Server side (Governor):
 1. Start the server.
-   - `python3 qemu-tasker.py --host 172.17.100.17 server --config config.json`
+   - `python3 qemu-tasker.py --host 172.17.100.17 server --config setting.json`
+
+#### Server side (Puppet):
+[!run-puppet-server.ps1](script/run-puppet-server.ps1)
 
 #### Local side:
 1. Query server information.
@@ -98,7 +102,7 @@ optional arguments:
 ### Server
 ``` bash
 ❯ python3 qemu-tasker.py --host 192.168.0.201 server \
-                         --config src/config.json
+                         --config src/setting.json
 ```
 
 ### Info

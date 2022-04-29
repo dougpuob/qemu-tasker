@@ -1,0 +1,21 @@
+{
+    "Governor" : {
+        "Address" : "localhost",
+        "Port": 12801,
+        "MaximumInstanceNumber"  : 3,
+        "Variables" : [
+            { "Name"  : "SERVER_PUSHPOOL_DIR",
+              "Value" : "./data/pushpool"},
+            { "Name"  : "SERVER_QCOW2_IMAGE_DIR",
+              "Value" : "/home/dougpuob/workspace/qemu-runner"}
+        ]
+    },
+    "Puppet" : {
+        "Address" : "localhost",
+        "Port" :
+        {
+            "Cmd" : 12802,
+            "Ftp" : 12803
+        }
+    }
+}
