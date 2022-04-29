@@ -23,7 +23,7 @@ _1MB_ = _1KB_*1024
 #
 # definition for pyrc
 #
-_WAIT_TIMEOUT_ = 30
+_WAIT_TIMEOUT_ = 60
 _HEADER_SIZE_ = 16
 _CHUNK_SIZE_ = _1KB_*512
 _BUFFER_SIZE_ = _1MB_*2
