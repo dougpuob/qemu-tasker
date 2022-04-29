@@ -201,7 +201,7 @@ optional arguments:
 # Responsed JSON data
 {
   "act_kind": "response",
-  "cmd_kind": "exec",
+  "cmd_kind": "execute",
   "data": {
     "name": "generic_command_response_data",
     "taskid": 10010

@@ -37,7 +37,7 @@ class cmdargs():
         parser_kill.add_argument('-A', '--killall', action='store_true')
 
         # # subcommand exec
-        # parser_exec = subparsers.add_parser('exec', parents = [parent_parser], help='execute a specific command at guest operating system')
+        # parser_exec = subparsers.add_parser('execute', parents = [parent_parser], help='execute a specific command at guest operating system')
         # parser_exec.add_argument('-T', '--taskid', type=int, required=True)
         # parser_exec.add_argument('-P', '--program', required=True)
         # parser_exec.add_argument('-A', '--argument')
