@@ -430,6 +430,14 @@ class TestPyRc(unittest.TestCase):
         logging.info("result.data={}".format(result.data))
         self.assertEqual(0, result.errcode)
 
+    def test_connect_then_list_not_existing(self):
+        client = rcclient()
+        self.assertEqual(client.connect(_HOST_, _PORT_), True)
+        self.assertEqual(client.is_connected(), True)
+
+        result: rcresult = client.list('noexistingfolder')
+        self.assertEqual(0, result.errcode)
+
     def test_connect_then_list_cwd(self):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)

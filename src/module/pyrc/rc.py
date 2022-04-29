@@ -23,7 +23,7 @@ _1MB_ = _1KB_*1024
 #
 # definition for pyrc
 #
-_WAIT_TIMEOUT_ = 60
+_WAIT_TIMEOUT_ = 30
 _HEADER_SIZE_ = 16
 _CHUNK_SIZE_ = _1KB_*512
 _BUFFER_SIZE_ = _1MB_*2
@@ -66,7 +66,7 @@ class rcresult(config):
     def __init__(self, errcode: int = 0, errmsg: str = ''):
         self.errcode = errcode
         self.text = errmsg
-        self.data = None
+        self.data = b''
 
 
 # General error
@@ -537,6 +537,9 @@ class header_list():
                  dstdirpath: str = '',
                  data: bytes = b''):
 
+        if None == data:
+            data = b''
+
         self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'i' + 'p'
 
         # Unpack payload fields
@@ -551,9 +554,12 @@ class header_list():
         self.action_name: int = action_name.list.value
         self.action_kind: int = kind.value
 
-        self.chunk_size: int = len(data)
+        self.chunk_size: int = 0
         self.chunk_count: int = 0
         self.chunk_index: int = 0
+
+        if data:
+            self.chunk_size = len(data)
 
         self.length_dirpath: int = len(dstdirpath)
 
@@ -1367,6 +1373,10 @@ class rcserver():
         logging.info(logfmt.format(filepath))
 
         if not os.path.exists(filepath):
+            data_chunk = header_list(action_kind.data,
+                                     filepath,
+                                     None)
+            conn._send(data_chunk.pack())
             return error_file_not_found
 
         listdir = []
@@ -2103,7 +2113,8 @@ class rcclient():
             result = rcresult()
 
             data_chunk: header_list = self.sock.chunk_list.pop(0)
-            result.data = json.loads(data_chunk.data)
+            if data_chunk.data:
+                result.data = json.loads(data_chunk.data)
 
             logging.info('type(result.data) = {}'.format(type(result.data)))
             logging.info('result.data = {}'.format(result.data))
