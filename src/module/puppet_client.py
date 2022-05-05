@@ -149,7 +149,7 @@ class puppet_client():
           text = 'Failed to download "{}" file. (errcode={})'.format(file, result.errcode)
           cmdret.error_lines.append(text)
           cmdret.errcode = result.errcode
-          logging.error()(text)
+          logging.error(text)
 
       return cmdret
 
