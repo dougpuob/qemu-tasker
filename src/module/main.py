@@ -227,7 +227,8 @@ class main():
                                                                        self.input_args.base64)
                     response_capsule = config.transaction_capsule(config.action_kind().response,
                                                                   config.command_kind().execute,
-                                                                  result=result)
+                                                                  result,
+                                                                  result.data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'list' == self.input_args.command:
@@ -235,7 +236,8 @@ class main():
                     result = pup_client.list(self.input_args.dstdir)
                     response_capsule = config.transaction_capsule(config.action_kind().response,
                                                                   config.command_kind().list,
-                                                                  result=result)
+                                                                  result,
+                                                                  result.data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'upload' == self.input_args.command:
@@ -244,7 +246,8 @@ class main():
                                                      self.input_args.dstdir)
                     response_capsule = config.transaction_capsule(config.action_kind().response,
                                                                   config.command_kind().upload,
-                                                                  result=result)
+                                                                  result,
+                                                                  result.data)
                     process_capsule(self.input_args, response_capsule)
 
                 elif 'download' == self.input_args.command:
@@ -253,7 +256,8 @@ class main():
                                                            self.input_args.dstdir)
                     response_capsule = config.transaction_capsule(config.action_kind().response,
                                                                   config.command_kind().download,
-                                                                  result=result)
+                                                                  result,
+                                                                  result.data)
                     process_capsule(self.input_args, response_capsule)
 
                 # =========================================================================
