@@ -251,9 +251,11 @@ class qemu_instance:
                     self.result.errcode = self.qemu_proc.returncode
 
                     if stdout:
+                        logging.info(stdout)
                         self.result.info_lines.extend(stdout)
 
                     if stderr:
+                        logging.info(stderr)
                         self.result.error_lines.extend(stderr)
 
                 except Exception as e:
