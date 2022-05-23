@@ -1371,9 +1371,11 @@ class rcserver():
         self.sock.listen(10)
 
         try:
+            pack_data = header_echo().pack()
             while self._listening:
                 conn, _ = self.sock.accept()
-                conn.sendall(header_echo().pack())
+                logging.info('accepted!!! len(pack_data)={}'.format(len(pack_data)))
+                conn.send(pack_data)
                 self.client_list.append(rcsock(conn, self.server_callback))
 
         except Exception as e:
@@ -1760,25 +1762,46 @@ class rcclient():
         if ret:
             self._connected = False
         else:
-            chunk = conn.recv(self.BUFF_SIZE)
-            echo_chunk = header_echo().unpack(chunk)
+            chunk: list = []
+            hdr_echo = header_echo()
 
-            try:
-                if (echo_chunk.signature[0] == _SIGNATURE_ECHO___[0]) and \
-                   (echo_chunk.signature[1] == _SIGNATURE_ECHO___[1]) and \
-                   (echo_chunk.signature[2] == _SIGNATURE_ECHO___[2]) and \
-                   (echo_chunk.signature[3] == _SIGNATURE_ECHO___[3]) and \
-                   (echo_chunk.signature[4] == _SIGNATURE_ECHO___[4]) and \
-                   (echo_chunk.signature[5] == _SIGNATURE_ECHO___[5]) and \
-                   (echo_chunk.signature[6] == _SIGNATURE_ECHO___[6]) and \
-                   (echo_chunk.signature[7] == _SIGNATURE_ECHO___[7]):
-                    self._connected = True
-                    conn.setblocking(True)
-                    self.sock = rcsock(conn)
+            retry_times = 0
+            while True:
+                try:
+                    logging.info('conn={}'.format(conn))
 
-            except Exception:
-                self._connected = False
-                logging.error('Failed to receive an ECHO from server !!!')
+                    chunk_part = conn.recv(self.BUFF_SIZE)
+                    if len(chunk_part) > 0:
+                        chunk += chunk_part
+
+                    echo_chunk = hdr_echo.unpack(chunk_part)
+
+                    if (echo_chunk.signature[0] == _SIGNATURE_ECHO___[0]) and \
+                       (echo_chunk.signature[1] == _SIGNATURE_ECHO___[1]) and \
+                       (echo_chunk.signature[2] == _SIGNATURE_ECHO___[2]) and \
+                       (echo_chunk.signature[3] == _SIGNATURE_ECHO___[3]) and \
+                       (echo_chunk.signature[4] == _SIGNATURE_ECHO___[4]) and \
+                       (echo_chunk.signature[5] == _SIGNATURE_ECHO___[5]) and \
+                       (echo_chunk.signature[6] == _SIGNATURE_ECHO___[6]) and \
+                       (echo_chunk.signature[7] == _SIGNATURE_ECHO___[7]):
+                        self._connected = True
+                        conn.setblocking(True)
+                        self.sock = rcsock(conn)
+                        logging.info('rcsock is READY.')
+
+                except Exception as Err:
+                    self._connected = False
+                    logging.error('len(chunk)={}'.format(len(chunk)))
+                    logging.error(str(Err))
+                    logging.error('Failed to receive an ECHO from server !!!')
+                    continue
+
+                finally:
+                    logging.info('retry_times={}'.format(retry_times))
+                    time.sleep(1)
+                    retry_times += 1
+                    if retry_times >= 10:
+                        break
 
         return self._connected
 
