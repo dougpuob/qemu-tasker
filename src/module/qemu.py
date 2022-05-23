@@ -226,8 +226,10 @@ class qemu_instance:
         pup_listen_port = self.setting.Puppet.Port.Cmd
         hostfwd_ssh    = "hostfwd=tcp::{}-:{}".format(self.forward_port.ssh, ssh_listen_port)
         hostfwd_pupcmd = "hostfwd=tcp::{}-:{}".format(self.forward_port.pup, pup_listen_port)
-        arg1 = ["-net", "nic,model=e1000"]
-        arg2 = ["-net", "user,{},{}".format(hostfwd_ssh, hostfwd_pupcmd)]
+        # arg1 = ["-net", "nic,model=e1000"]
+        # arg2 = ["-net", "user,{},{}".format(hostfwd_ssh, hostfwd_pupcmd)]
+        arg1 = ["-netdev", "user,id=net0,{},{}".format(hostfwd_ssh, hostfwd_pupcmd)]
+        arg2 = ["-device", "e1000-82545em,netdev=net0,id=net0"]
         self.qemu_base_args.extend(arg1)
         self.qemu_base_args.extend(arg2)
 

@@ -1375,7 +1375,7 @@ class rcserver():
             while self._listening:
                 conn, _ = self.sock.accept()
                 logging.info('accepted!!! len(pack_data)={}'.format(len(pack_data)))
-                conn.send(pack_data)
+                conn.sendall(pack_data)
                 self.client_list.append(rcsock(conn, self.server_callback))
 
         except Exception as e:
@@ -1766,7 +1766,7 @@ class rcclient():
             hdr_echo = header_echo()
 
             retry_times = 0
-            while True:
+            while not self._connected:
                 try:
                     logging.info('conn={}'.format(conn))
 
@@ -1791,14 +1791,12 @@ class rcclient():
 
                 except Exception as Err:
                     self._connected = False
-                    logging.error('len(chunk)={}'.format(len(chunk)))
                     logging.error(str(Err))
                     logging.error('Failed to receive an ECHO from server !!!')
+                    time.sleep(1)
                     continue
 
                 finally:
-                    logging.info('retry_times={}'.format(retry_times))
-                    time.sleep(1)
                     retry_times += 1
                     if retry_times >= 10:
                         break
