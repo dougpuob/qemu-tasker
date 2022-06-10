@@ -24,7 +24,7 @@ from module import config
 from module.path import OsdpPath
 from module.qmp import QEMUMonitorProtocol
 from module.puppet_client import puppet_client
-from module.pyrc.rc import computer_info
+from module.pyrc.rc import inncmd_sysinfo
 from module.pyrc.rc import rcresult
 
 
@@ -343,7 +343,7 @@ class qemu_instance:
         #     logging.info('`systeminfo` (cmdret.errcode={})'.format(cmdret.errcode))
         #     if cmdret.errcode == 0:
         #         guest_info_os_kind = config.os_kind().windows
-        pc_info: computer_info = self.pup_obj.get_computer_info()
+        pc_info: inncmd_sysinfo = self.pup_obj.get_computer_info()
 
         guest_info_os_kind = config.os_kind().unknown
         if pc_info.osname == 'windows':

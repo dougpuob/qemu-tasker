@@ -8,7 +8,7 @@ from module.pyrc.rc import execresult, inncmd_mkdir
 from module.pyrc.rc import rcclient
 from module.pyrc.rc import rcresult
 from module.pyrc.rc import inncmd_mkdir
-from module.pyrc.rc import computer_info
+from module.pyrc.rc import inncmd_sysinfo
 from module import config
 
 # =================================================================================================
@@ -171,5 +171,5 @@ class puppet_client():
 
 
     def get_computer_info(self):
-      result: computer_info = self.pyrc_client.get_computer_info()
+      result: inncmd_sysinfo = self.pyrc_client.inncmd_get_sysinfo()()
       return result
