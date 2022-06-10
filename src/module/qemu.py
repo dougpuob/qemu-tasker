@@ -290,10 +290,11 @@ class qemu_instance:
                     self.status = config.task_status().querying
                     break
                 else:
-                    logging.info("QEMU(taskid={0}) is trying to connect puppet (cmd) ...)".format(self.taskid))
-                    ret = self.pup_obj.connect(self.socket_puppet)
-                    logging.info("ret={0}".format(ret))
-                    logging.info("pup_obj.is_cmd_connected={0}".format(self.pup_obj.is_connected()))
+                    # logging.info("QEMU(taskid={0}) is trying to connect puppet (cmd) ...)".format(self.taskid))
+                    # ret = self.pup_obj.connect(self.socket_puppet)
+                    # logging.info("ret={0}".format(ret))
+                    # logging.info("pup_obj.is_cmd_connected={0}".format(self.pup_obj.is_connected()))
+                    pass
 
             except ConnectionRefusedError as e:
                 logging.warning("Failed to establish puppet connection, is going to retry again !!!")
