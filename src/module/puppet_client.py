@@ -75,7 +75,7 @@ class puppet_client():
         logging.info('puclient.py workdir = {} ({})'.format(workdir, type(workdir)))
         logging.info('puclient.py isbase64 = {} ({})'.format(isbase64, type(isbase64)))
 
-        rcrs: rcresult = self.pyrc_client.execute(program, argument, workdir, isbase64)
+        rcrs: rcresult = self.pyrc_client.cmd_execute(program, argument, workdir, isbase64)
         logging.info('rcrs={}'.format(rcrs.toTEXT()))
 
         cmdret.errcode = rcrs.errcode
@@ -123,7 +123,7 @@ class puppet_client():
     def upload(self, files:list, dstdir:str):
       cmdret = config.command_return()
       for file in files:
-        result: rcresult = self.pyrc_client.upload(file, dstdir)
+        result: rcresult = self.pyrc_client.cmd_upload(file, dstdir)
         if (0 == result.errcode):
           text = 'Passed to upload "{}" file.'.format(file)
           cmdret.info_lines.append(text)
@@ -140,7 +140,7 @@ class puppet_client():
     def download(self, files:list, dstdir:str):
       cmdret = config.command_return()
       for file in files:
-        result: rcresult = self.pyrc_client.download(file, dstdir)
+        result: rcresult = self.pyrc_client.cmd_download(file, dstdir)
         if (0 == result.errcode):
           text = 'Passed to download "{}" file.'.format(file)
           cmdret.info_lines.append(text)
@@ -155,7 +155,7 @@ class puppet_client():
 
 
     def list(self, dstdir:str):
-      result: rcresult = self.pyrc_client.list(dstdir)
+      result: rcresult = self.pyrc_client.cmd_list(dstdir)
       logging.info('result={}'.format(result))
 
       cmdret = config.command_return()
