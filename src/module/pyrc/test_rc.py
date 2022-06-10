@@ -8,6 +8,7 @@ import platform
 import unittest
 import threading
 
+from rc import CONFIG
 from rc import rcresult
 from rc import rcserver
 from rc import rcclient
@@ -16,13 +17,13 @@ from rc import header_upload
 from rc import header_download
 from rc import header_list
 from rc import header_execute
-from rc import header_text
-from rc import config
-from rc import computer_info
+from rc import header_message
+from rc import inncmd_sysinfo
 from rc import inncmd_mkdir
 from rc import action_kind
 from rc import action_name
 from rc import execute_subcmd
+from rc import execresult
 
 
 _HOST_ = 'localhost'
@@ -388,9 +389,9 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(_WORKDIR_, output_hdr.exec.workdir)
 
     def test_header_text_ask(self):
-        _DATA_ = computer_info().toTEXT().encode()
+        _DATA_ = inncmd_sysinfo().toTEXT().encode()
 
-        hdr = header_text(action_kind.ask, 'computer_info', _DATA_)
+        hdr = header_message(action_kind.ask, 'inncmd_sysinfo', _DATA_)
 
         hdr.chunk_size = len(_DATA_)
         hdr.chunk_count = 1
@@ -400,10 +401,10 @@ class TestPyRc(unittest.TestCase):
         self.assertIsNotNone(packed_data)
 
         output_hdr = hdr.unpack(packed_data)
-        self.assertTrue(isinstance(output_hdr, header_text))
+        self.assertTrue(isinstance(output_hdr, header_message))
 
         self.assertEqual(action_kind.ask.value, output_hdr.action_kind)
-        self.assertEqual(action_name.text.value, output_hdr.action_name)
+        self.assertEqual(action_name.message.value, output_hdr.action_name)
 
         self.assertEqual(output_hdr.chunk_size, len(_DATA_))
         self.assertEqual(output_hdr.chunk_count, 1)
@@ -412,7 +413,7 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(_DATA_, output_hdr.payload_chunk)
 
         text = str(output_hdr.payload_chunk, encoding='utf-8')
-        data: computer_info = config().toCLASS(text)
+        data: inncmd_sysinfo = CONFIG().toCLASS(text)
         self.assertEqual(data.osname, data.osname)
         self.assertEqual(data.homedir, data.homedir)
 
@@ -426,7 +427,7 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
-        result: rcresult = client.list(_TESTDIR_)
+        result: rcresult = client.cmd_list(_TESTDIR_)
         logging.info("result.data={}".format(result.data))
         self.assertEqual(0, result.errcode)
 
@@ -435,7 +436,7 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
-        result: rcresult = client.list('noexistingfolder')
+        result: rcresult = client.cmd_list('noexistingfolder')
         self.assertNotEqual(0, result.errcode)
 
     def test_connect_then_list_cwd(self):
@@ -443,7 +444,7 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
-        result: rcresult = client.list(_TESTDIR_)
+        result: rcresult = client.cmd_list(_TESTDIR_)
         self.assertEqual(0, result.errcode)
 
     def test_connect_then_download_usbtreeview_bin(self):
@@ -460,7 +461,7 @@ class TestPyRc(unittest.TestCase):
             f.flush()
             f.close()
 
-        result: rcresult = client.download(srcfilepath, _TEMPDIR_DLOAD_)
+        result: rcresult = client.cmd_download(srcfilepath, _TEMPDIR_DLOAD_)
         self.assertEqual(0, result.errcode)
 
         dstfilepath = os.path.join(_TEMPDIR_DLOAD_, filename)
@@ -478,7 +479,7 @@ class TestPyRc(unittest.TestCase):
         fileloc = os.path.abspath('aaabbbcccdddeee.bin')
         self.assertEqual(False, os.path.exists(fileloc))
 
-        result: rcresult = client.download(fileloc, '.')
+        result: rcresult = client.cmd_download(fileloc, '.')
         self.assertEqual(3, result.errcode)
 
         self.assertEqual(False, os.path.exists(fileloc))
@@ -497,7 +498,7 @@ class TestPyRc(unittest.TestCase):
 
             self.assertEqual(os.path.exists(fileloc_src), True)
             self.assertEqual(os.path.exists(fileloc_dst), False)
-            result: rcresult = client.download(file, _TEMPDIR_DLOAD_)
+            result: rcresult = client.cmd_download(file, _TEMPDIR_DLOAD_)
             self.assertEqual(0, result.errcode)
             self.assertEqual(os.path.exists(fileloc_dst), True)
 
@@ -550,7 +551,7 @@ class TestPyRc(unittest.TestCase):
             f.close()
 
         # Upload files
-        result: rcresult = client.upload(filepath, _TEMPDIR_ULOAD_)
+        result: rcresult = client.cmd_upload(filepath, _TEMPDIR_ULOAD_)
         self.assertEqual(0, result.errcode)
 
         dstfilepath = os.path.join(_TEMPDIR_ULOAD_,
@@ -588,7 +589,7 @@ class TestPyRc(unittest.TestCase):
             mesg = 'index={} filename={} fileloc={}'.format(index,
                                                             filename,
                                                             fileloc_dst)
-            result: rcresult = client.upload(file, _TEMPDIR_ULOAD_)
+            result: rcresult = client.cmd_upload(file, _TEMPDIR_ULOAD_)
             self.assertEqual(0, result.errcode, mesg)
             index += 1
 
@@ -614,13 +615,13 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.is_connected(), True)
 
         if platform.system() == 'Windows':
-            result: rcresult = client.execute('ipconfig', '/all')
+            result: rcresult = client.cmd_execute('ipconfig', '/all')
             self.assertEqual(0, result.errcode)
         elif platform.system() == 'Darwin':
-            result: rcresult = client.execute('ifconfig')
+            result: rcresult = client.cmd_execute('ifconfig')
             self.assertEqual(0, result.errcode)
         elif platform.system() == 'Linux':
-            result: rcresult = client.execute('ip', 'a')
+            result: rcresult = client.cmd_execute('ip', 'a')
             self.assertEqual(0, result.errcode)
 
     def test_connect_then_execute_ifconfig_base64(self):
@@ -630,17 +631,17 @@ class TestPyRc(unittest.TestCase):
 
         if platform.system() == 'Windows':
             base64_arg = base64.b64encode('/all'.encode('utf-8')).decode()
-            result: rcresult = client.execute('ipconfig', base64_arg,
+            result: rcresult = client.cmd_execute('ipconfig', base64_arg,
                                               isbase64=True)
             self.assertEqual(0, result.errcode)
         elif platform.system() == 'Darwin':
             base64_arg = base64.b64encode(''.encode('utf-8')).decode()
-            result: rcresult = client.execute('ifconfig', base64_arg,
+            result: rcresult = client.cmd_execute('ifconfig', base64_arg,
                                               isbase64=True)
             self.assertEqual(0, result.errcode)
         elif platform.system() == 'Linux':
             base64_arg = base64.b64encode('a'.encode('utf-8')).decode()
-            result: rcresult = client.execute('ip', base64_arg,
+            result: rcresult = client.cmd_execute('ip', base64_arg,
                                               isbase64=True)
             self.assertEqual(0, result.errcode)
 
@@ -650,10 +651,10 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.is_connected(), True)
 
         if platform.system() == 'Windows':
-            result: rcresult = client.execute('dir')
+            result: rcresult = client.cmd_execute('dir')
             self.assertEqual(0, result.errcode)
         else:
-            result: rcresult = client.execute('ls')
+            result: rcresult = client.cmd_execute('ls')
             self.assertEqual(0, result.errcode)
 
     def test_connect_then_execute_systeminfo(self):
@@ -662,12 +663,12 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.is_connected(), True)
 
         if platform.system() == 'Windows':
-            result: rcresult = client.execute('systeminfo')
+            result: rcresult = client.cmd_execute('systeminfo')
             self.assertEqual(0, result.errcode)
             self.assertEqual('', result.text)
             self.assertEqual(result.errcode, result.data.errcode)
         else:
-            result: rcresult = client.execute('uname')
+            result: rcresult = client.cmd_execute('uname')
             self.assertEqual(0, result.errcode)
 
     def test_connect_then_execute_systeminfo_with_workdir(self):
@@ -676,10 +677,10 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.is_connected(), True)
 
         if platform.system() == 'Windows':
-            result: rcresult = client.execute('systeminfo', '', '.')
+            result: rcresult = client.cmd_execute('systeminfo', '', '.')
             self.assertEqual(0, result.errcode)
         else:
-            result: rcresult = client.execute('uname', '', '.')
+            result: rcresult = client.cmd_execute('uname', '', '.')
             self.assertEqual(0, result.errcode)
 
     def test_connect_then_execute_unknown(self):
@@ -687,7 +688,7 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
-        result: rcresult = client.execute('unknown')
+        result: rcresult = client.cmd_execute('unknown')
         self.assertEqual(result.data.errcode, result.errcode)
         self.assertNotEqual(0, result.errcode)
 
@@ -700,7 +701,7 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.is_connected(), True)
 
         self.assertEqual(os.path.exists('mkdir'), False)
-        result: rcresult = client.execute('mkdir', 'mkdir')
+        result: rcresult = client.cmd_execute('mkdir', 'mkdir')
         self.assertEqual(result.data.errcode, result.errcode)
         self.assertEqual(0, result.errcode)
         self.assertEqual(os.path.exists('mkdir'), True)
@@ -712,7 +713,7 @@ class TestPyRc(unittest.TestCase):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
-        result: rcresult = client.execute('(Get-Location).Path')
+        result: rcresult = client.cmd_execute('(Get-Location).Path')
         self.assertEqual(result.data.errcode, result.errcode)
         self.assertNotEqual(0, result.errcode)
 
@@ -722,12 +723,12 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.is_connected(), True)
 
         osname = platform.system().lower()
-        data1 = computer_info(osname, os.path.expanduser('~'))
-        result: rcresult = client.text('computer_info')
+        data1 = inncmd_sysinfo(osname, os.path.expanduser('~'))
+        result: rcresult = client.cmd_message('inncmd_sysinfo')
         self.assertEqual(result.errcode, 0)
-        self.assertEqual(result.text, 'computer_info')
+        self.assertEqual(result.text, 'inncmd_sysinfo')
         text = str(result.data, encoding='utf-8')
-        data2: computer_info = config().toCLASS(text)
+        data2: inncmd_sysinfo = CONFIG().toCLASS(text)
         self.assertEqual(data1.osname, data2.osname)
         self.assertEqual(data1.homedir, data2.homedir)
 
@@ -736,18 +737,18 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
-        result: computer_info = client.get_computer_info()
+        result: inncmd_sysinfo = client.inncmd_get_sysinfo()
         self.assertEqual('' != result.osname, True)
         self.assertEqual('' != result.homedir, True)
 
-    def test_connect_then_mkdir_1(self):
+    def test_connect_then_inncmd_make_dir_1(self):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
         path = os.path.join(_TESTDIR_, 'inncmd_mkdir_1')
         self.assertEqual(os.path.exists(path), False)
-        result: inncmd_mkdir = client.mkdir(path)
+        result: inncmd_mkdir = client.inncmd_make_dir(path)
         self.assertEqual(result.path, path)
         self.assertEqual(result.result, True)
         self.assertEqual(os.path.exists(path), True)
@@ -755,20 +756,44 @@ class TestPyRc(unittest.TestCase):
         if os.path.exists(path):
             os.rmdir(path)
 
-    def test_connect_then_mkdir_2(self):
+    def test_connect_then_inncmd_make_dir_2(self):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
 
         path = os.path.join(_TESTDIR_, 'inncmd_mkdir_2', 'AA')
         self.assertEqual(os.path.exists(path), False)
-        result: inncmd_mkdir = client.mkdir(path)
+        result: inncmd_mkdir = client.inncmd_make_dir(path)
         self.assertEqual(result.path, path)
         self.assertEqual(result.result, True)
         self.assertEqual(os.path.exists(path), True)
 
         if os.path.exists(path):
             os.rmdir(path)
+
+    def test_classify_execresult(self):
+        client = rcclient()
+
+        execrs: execresult = execresult()
+        execrs.errcode = 10
+        execrs.stderr = []
+        self.assertIsNotNone(client.classify_execresult(execrs))
+
+        execrs.errcode = 10
+        execrs.stderr = ''
+        self.assertIsNotNone(client.classify_execresult(execrs))
+
+        execrs.errcode = 10
+        execrs.stderr = None
+        self.assertIsNotNone(client.classify_execresult(execrs))
+
+        execrs.errcode = 10
+        execrs.stderr = CONFIG().toTEXT()
+        self.assertIsNotNone(client.classify_execresult(execrs))
+
+        execrs.errcode = 10
+        execrs.stderr = rcresult().toCLASS()
+        self.assertIsNotNone(client.classify_execresult(execrs))
 
 
 if __name__ == '__main__':

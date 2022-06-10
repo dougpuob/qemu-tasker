@@ -13,6 +13,11 @@ import threading
 from enum import Enum
 from types import SimpleNamespace
 
+
+# ==============================================================================
+# DEFINITIONS
+# ==============================================================================
+
 #
 # definition of unit
 #
@@ -40,7 +45,7 @@ _SIGNATURE_LIST___ = b'$SiGLiS$'
 _SIGNATURE_TEXT___ = b'$SiGTex$'
 
 
-class config():
+class CONFIG():
     def _try(self, o):
         try:
             return o.__dict__
@@ -62,7 +67,9 @@ class config():
 #
 # Exception definitions
 #
-class rcresult(config):
+
+
+class rcresult(CONFIG):
     def __init__(self, errcode: int = 0, errmsg: str = ''):
         self.errcode = errcode
         self.text = errmsg
@@ -96,7 +103,7 @@ class action_name(Enum):
     download = 2
     list = 3
     execute = 4
-    text = 5
+    message = 5
     echo = 99
 
 
@@ -124,22 +131,29 @@ class proc_status(Enum):
     exception = 6
 
 
+# ==============================================================================
+# CLASSES
+# ==============================================================================
+
 #
-# Class definitions
+# Inner Commands
 #
-class computer_info(config):
+class inncmd_sysinfo(CONFIG):
     def __init__(self, osname: str = 'unknown', homedir: str = ''):
         self.osname = osname
         self.homedir = homedir
 
 
-class inncmd_mkdir(config):
+class inncmd_mkdir(CONFIG):
     def __init__(self, path: str, result: bool = False):
         self.path = path
         self.result = result
 
 
-class execmdarg(config):
+#
+# Basic classes
+#
+class execmdarg(CONFIG):
     def __init__(self,
                  program: bytes,
                  argument: bytes = '',
@@ -151,7 +165,7 @@ class execmdarg(config):
         self.isbase64 = isbase64
 
 
-class execresult(config):
+class execresult(CONFIG):
     def __init__(self):
         self.errcode = 0
         self.stdout = []
@@ -829,14 +843,14 @@ class header_execute():
         pos2 = pos2 + hdr.chunk_size
         if pos2 - pos1 > 0:
             chunk_data_raw = payload_content[pos1:pos2]
-            chunk_data_ori: execresult = config().toCLASS(chunk_data_raw)
+            chunk_data_ori: execresult = CONFIG().toCLASS(chunk_data_raw)
 
             hdr.chunk_data = chunk_data_ori
 
         return hdr
 
 
-class header_text():
+class header_message():
     def __init__(self, kind: action_kind = action_kind.unknown, title: str = 'default', data: bytes = b''):
         self._STRUCT_FORMAT_ = '8s' + 'iiiii' + 'iii' + 'i' + 'i'
 
@@ -858,7 +872,7 @@ class header_text():
         self.header_size: int = 0
         self.total_size: int = 0
         self.payload_size: int = 0
-        self.action_name: int = action_name.text.value
+        self.action_name: int = action_name.message.value
         self.action_kind: int = kind.value
 
         self.chunk_size: int = len(data)
@@ -906,7 +920,7 @@ class header_text():
         hdr_size: int = int.from_bytes(data[8:11], 'little')
         hdr_only: bytes = data[:hdr_size]
 
-        hdr = header_text()
+        hdr = header_message()
 
         # Header files
         unpack = struct.unpack(self._STRUCT_FORMAT_, hdr_only)
@@ -1142,7 +1156,7 @@ class header():
         elif 5 == matched_index:
             logging.info('unpacking header_text ...')
 
-            hdr: header_text = header_text().unpack(full_header)
+            hdr: header_message = header_message().unpack(full_header)
             if hdr is None:
                 logging.warning('buffer is insufficient !!! (failed to unpack)')
                 return None, 0
@@ -1178,7 +1192,7 @@ class actor_callbacks():
         self.upload = None
         self.download = None
         self.execute = None
-        self.text = None
+        self.message = None
 
 
 class rcsock():
@@ -1285,11 +1299,11 @@ class rcsock():
                 #                             ask_chunk: header_execute):
                 self.server_callback.execute(self, chunk)
 
-            elif chunk.action_name == action_name.text.value:
-                # def _handle_text_command(self,
-                #                          sock: rcsock,
-                #                          ask_chunk: header_text):
-                self.server_callback.text(self, chunk)
+            elif chunk.action_name == action_name.message.value:
+                # def _handle_message_command(self,
+                #                             sock: rcsock,
+                #                             ask_chunk: header_text):
+                self.server_callback.message(self, chunk)
 
             else:
                 pass
@@ -1336,7 +1350,7 @@ class rcserver():
         self.server_callback.list = self._handle_list_command
         self.server_callback.upload = self._handle_upload_command
         self.server_callback.execute = self._handle_execute_command
-        self.server_callback.text = self._handle_text_command
+        self.server_callback.message = self._handle_message_command
 
         self.__HOST__ = host
         self.__PORT__ = port
@@ -1371,11 +1385,9 @@ class rcserver():
         self.sock.listen(10)
 
         try:
-            pack_data = header_echo().pack()
             while self._listening:
                 conn, _ = self.sock.accept()
-                logging.info('accepted!!! len(pack_data)={}'.format(len(pack_data)))
-                conn.sendall(pack_data)
+                conn.sendall(header_echo().pack())
                 self.client_list.append(rcsock(conn, self.server_callback))
 
         except Exception as e:
@@ -1687,9 +1699,9 @@ class rcserver():
             logging.info('send done ({})'.format(ask_chunk.exec.program))
             sock._send(done_chunk.pack())
 
-    def _handle_text_command(self,
-                             sock: rcsock,
-                             ask_chunk: header_text):
+    def _handle_message_command(self,
+                                sock: rcsock,
+                                ask_chunk: header_message):
 
         logging.info('-------------------------------------------')
         logging.info('title={}'.format(ask_chunk.title))
@@ -1699,11 +1711,11 @@ class rcserver():
         if 'default' == ask_chunk.title:
             data = 'Hello from server with default'.encode()
 
-        elif 'computer_info' == ask_chunk.title:
+        elif 'inncmd_sysinfo' == ask_chunk.title:
             osname = platform.system().lower()
             homedir = os.path.expanduser('~')
-            data = computer_info(osname, homedir).toTEXT().encode()
-            done_chunk = header_text(action_kind.done, ask_chunk.title, data)
+            data = inncmd_sysinfo(osname, homedir).toTEXT().encode()
+            done_chunk = header_message(action_kind.done, ask_chunk.title, data)
             sock._send(done_chunk.pack())
 
         elif 'inncmd_mkdir' == ask_chunk.title:
@@ -1723,12 +1735,12 @@ class rcserver():
                 result = False
 
             data = inncmd_mkdir(path, result).toTEXT().encode()
-            done_chunk = header_text(action_kind.done, ask_chunk.title, data)
+            done_chunk = header_message(action_kind.done, ask_chunk.title, data)
             sock._send(done_chunk.pack())
 
         else:
             data = 'Hello from server with UNKNOWN'.encode()
-            done_chunk = header_text(action_kind.done, ask_chunk.title, data)
+            done_chunk = header_message(action_kind.done, ask_chunk.title, data)
             sock._send(done_chunk.pack())
 
         return True
@@ -1762,44 +1774,25 @@ class rcclient():
         if ret:
             self._connected = False
         else:
-            chunk: list = []
-            hdr_echo = header_echo()
+            chunk = conn.recv(self.BUFF_SIZE)
+            echo_chunk = header_echo().unpack(chunk)
 
-            retry_times = 0
-            while not self._connected:
-                try:
-                    logging.info('conn={}'.format(conn))
+            try:
+                if (echo_chunk.signature[0] == _SIGNATURE_ECHO___[0]) and \
+                   (echo_chunk.signature[1] == _SIGNATURE_ECHO___[1]) and \
+                   (echo_chunk.signature[2] == _SIGNATURE_ECHO___[2]) and \
+                   (echo_chunk.signature[3] == _SIGNATURE_ECHO___[3]) and \
+                   (echo_chunk.signature[4] == _SIGNATURE_ECHO___[4]) and \
+                   (echo_chunk.signature[5] == _SIGNATURE_ECHO___[5]) and \
+                   (echo_chunk.signature[6] == _SIGNATURE_ECHO___[6]) and \
+                   (echo_chunk.signature[7] == _SIGNATURE_ECHO___[7]):
+                    self._connected = True
+                    conn.setblocking(True)
+                    self.sock = rcsock(conn)
 
-                    chunk_part = conn.recv(self.BUFF_SIZE)
-                    if len(chunk_part) > 0:
-                        chunk += chunk_part
-
-                    echo_chunk = hdr_echo.unpack(chunk_part)
-
-                    if (echo_chunk.signature[0] == _SIGNATURE_ECHO___[0]) and \
-                       (echo_chunk.signature[1] == _SIGNATURE_ECHO___[1]) and \
-                       (echo_chunk.signature[2] == _SIGNATURE_ECHO___[2]) and \
-                       (echo_chunk.signature[3] == _SIGNATURE_ECHO___[3]) and \
-                       (echo_chunk.signature[4] == _SIGNATURE_ECHO___[4]) and \
-                       (echo_chunk.signature[5] == _SIGNATURE_ECHO___[5]) and \
-                       (echo_chunk.signature[6] == _SIGNATURE_ECHO___[6]) and \
-                       (echo_chunk.signature[7] == _SIGNATURE_ECHO___[7]):
-                        self._connected = True
-                        conn.setblocking(True)
-                        self.sock = rcsock(conn)
-                        logging.info('rcsock is READY.')
-
-                except Exception as Err:
-                    self._connected = False
-                    logging.error(str(Err))
-                    logging.error('Failed to receive an ECHO from server !!!')
-                    time.sleep(1)
-                    continue
-
-                finally:
-                    retry_times += 1
-                    if retry_times >= 10:
-                        break
+            except Exception:
+                self._connected = False
+                logging.error('Failed to receive an ECHO from server !!!')
 
         return self._connected
 
@@ -1984,7 +1977,20 @@ class rcclient():
 
         return result
 
-    def upload(self, local_filepath: str, remote_dirpath: str = '.'):
+    def classify_execresult(self, cmdrs: execresult) -> rcresult:
+        result = rcresult()
+
+        result.data = cmdrs
+        if 0 != cmdrs.errcode:
+            result.errcode = cmdrs.errcode
+            if isinstance(cmdrs.stderr, list):
+                result.text = '\n'.join(cmdrs.stderr)
+            else:
+                result.text = str(cmdrs.stderr)
+
+        return result
+
+    def cmd_upload(self, local_filepath: str, remote_dirpath: str = '.'):
 
         filepath = os.path.abspath(local_filepath)
         if not os.path.exists(filepath):
@@ -2055,8 +2061,10 @@ class rcclient():
 
         return rcresult()
 
-    def download(self, remote_filepath: str, local_dirpath: str,
-                 overwrite: bool = True):
+    def cmd_download(self,
+                     remote_filepath: str,
+                     local_dirpath: str,
+                     overwrite: bool = True):
 
         # if not os.path.exists(remote_filepath):
         #     return error_file_not_found
@@ -2149,7 +2157,7 @@ class rcclient():
 
         return result
 
-    def list(self, dstdirpath: str):
+    def cmd_list(self, dstdirpath: str):
 
         ask_chunk = header_list(action_kind.ask, dstdirpath)
         self._send(ask_chunk.pack())
@@ -2185,11 +2193,11 @@ class rcclient():
         else:
             return error_wait_timeout_streaming
 
-    def execute(self,
-                program: str,
-                argument: str = '',
-                workdir: str = '.',
-                isbase64: bool = False):
+    def cmd_execute(self,
+                    program: str,
+                    argument: str = '',
+                    workdir: str = '.',
+                    isbase64: bool = False):
 
         argument_encoded = b''
         if isbase64:
@@ -2197,7 +2205,6 @@ class rcclient():
         else:
             argument_encoded = argument.encode('utf-8')
 
-        result = rcresult()
         proc_tag = 0
 
         cmdarg = execmdarg(program.encode('utf-8'),
@@ -2206,12 +2213,8 @@ class rcclient():
                            isbase64)
         cmdrs = self._execute_start(cmdarg)
 
-        result.data = cmdrs
-        if 0 != cmdrs.errcode:
-            result.errcode = cmdrs.errcode
-            result.text = '\n'.join(cmdrs.stderr)
-
-        else:
+        result: rcresult = self.classify_execresult(cmdrs)
+        if 0 == result.errcode:
             proc_tag = cmdrs.data
 
         if 0 == proc_tag:
@@ -2220,18 +2223,15 @@ class rcclient():
 
         elif proc_tag > 0:
             cmdrs = self._execute_query(cmdarg, proc_tag)
-            result.data = cmdrs
-            if 0 != cmdrs.errcode:
-                result.errcode = cmdrs.errcode
-                result.text = '\n'.join(cmdrs.stderr)
+            result: rcresult = self.classify_execresult(cmdrs)
         else:
             pass
 
         return result
 
-    def text(self, title: str, data: bytes = b''):
+    def cmd_message(self, title: str, data: bytes = b''):
 
-        ask_chunk = header_text(action_kind.ask, title, data)
+        ask_chunk = header_message(action_kind.ask, title, data)
         self._send(ask_chunk.pack())
 
         is_there_a_chunk = self._wait_until(len,
@@ -2239,7 +2239,7 @@ class rcclient():
                                             _WAIT_TIMEOUT_,
                                             self.sock.chunk_list)
         if is_there_a_chunk:
-            done_chunk: header_text = self.sock.chunk_list.pop(0)
+            done_chunk: header_message = self.sock.chunk_list.pop(0)
 
             result = rcresult()
             result.data = done_chunk.payload_chunk
@@ -2249,17 +2249,16 @@ class rcclient():
         else:
             return error_wait_timeout_streaming
 
-    def get_computer_info(self):
-
-        result: rcresult = self.text('computer_info')
+    def inncmd_get_sysinfo(self):
+        result: rcresult = self.cmd_message('inncmd_sysinfo')
         text = str(result.data, encoding='utf-8')
-        data: computer_info = config().toCLASS(text)
+        data: inncmd_sysinfo = CONFIG().toCLASS(text)
         return data
 
-    def mkdir(self, path: str):
-        result: rcresult = self.text('inncmd_mkdir', path.encode())
+    def inncmd_make_dir(self, path: str):
+        result: rcresult = self.cmd_message('inncmd_mkdir', path.encode())
         text = str(result.data, encoding='utf-8')
-        data: inncmd_mkdir = config().toCLASS(text)
+        data: inncmd_mkdir = CONFIG().toCLASS(text)
         return data
 
 
@@ -2297,7 +2296,7 @@ if __name__ == '__main__':
                 # result = rcclt.execute('ifconfig')
                 # result = rcclt.execute('devcon64', 'rescan')
                 # result = rcclt.upload('../UsbTreeView.exe', '.')
-                result = rcclt.execute('pwd')
+                result = rcclt.cmd_execute('pwd')
 
                 # # # # # # # # # # #
                 # Windows commands  #
@@ -2313,4 +2312,3 @@ if __name__ == '__main__':
                     logging.error("text={}".format(result.text))
             else:
                 logging.error("Failed to connect to server !!!")
-
