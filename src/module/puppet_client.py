@@ -170,6 +170,6 @@ class puppet_client():
       return cmdret
 
 
-    def get_computer_info(self):
-      result: inncmd_sysinfo = self.pyrc_client.inncmd_get_sysinfo()()
+    def get_sysinfo(self):
+      result: inncmd_sysinfo = self.pyrc_client.inncmd_get_sysinfo()
       return result

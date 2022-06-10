@@ -343,7 +343,7 @@ class qemu_instance:
         #     logging.info('`systeminfo` (cmdret.errcode={})'.format(cmdret.errcode))
         #     if cmdret.errcode == 0:
         #         guest_info_os_kind = config.os_kind().windows
-        pc_info: inncmd_sysinfo = self.pup_obj.get_computer_info()
+        pc_info: inncmd_sysinfo = self.pup_obj.get_sysinfo()
 
         guest_info_os_kind = config.os_kind().unknown
         if pc_info.osname == 'windows':

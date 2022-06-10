@@ -717,7 +717,7 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(result.data.errcode, result.errcode)
         self.assertNotEqual(0, result.errcode)
 
-    def test_connect_then_text_computer_info(self):
+    def test_connect_then_text_get_sysinfo(self):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
@@ -732,7 +732,7 @@ class TestPyRc(unittest.TestCase):
         self.assertEqual(data1.osname, data2.osname)
         self.assertEqual(data1.homedir, data2.homedir)
 
-    def test_connect_then_get_computer_info(self):
+    def test_connect_then_get_sysinfo(self):
         client = rcclient()
         self.assertEqual(client.connect(_HOST_, _PORT_), True)
         self.assertEqual(client.is_connected(), True)
