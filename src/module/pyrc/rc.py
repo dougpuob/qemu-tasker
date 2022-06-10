@@ -1827,7 +1827,7 @@ class rcclient():
             program = ask_chunk.exec.program
             logging.error('wait data timeout !!! ({})'.format(program))
             execrs.errcode = error_wait_timeout_streaming.errcode
-            execrs.stderr.append(error_wait_timeout_streaming.text)
+            execrs.stderr.append(error_wait_timeout_streaming.text + '(_execute_start, wait data)')
 
         else:
             program = ask_chunk.exec.program
@@ -1846,7 +1846,7 @@ class rcclient():
             program = ask_chunk.exec.program
             logging.error('wait done timeout !!! ({})'.format(program))
             execrs.errcode = error_wait_timeout_streaming.errcode
-            execrs.stderr.append(error_wait_timeout_streaming.text)
+            execrs.stderr.append(error_wait_timeout_streaming.text + '(_execute_start, wait done)')
 
         else:
             program = ask_chunk.exec.program
@@ -1891,7 +1891,7 @@ class rcclient():
             program = ask_chunk.exec.program
             logging.error('wait data timeout !!! ({})'.format(program))
             execrs.errcode = error_wait_timeout_streaming.errcode
-            execrs.stderr.append(error_wait_timeout_streaming.text)
+            execrs.stderr.append(error_wait_timeout_streaming.text + '(_execute_query_and_wait, wait data)')
 
         else:
             program = ask_chunk.exec.program
@@ -1914,7 +1914,7 @@ class rcclient():
             program = ask_chunk.exec.program
             logging.error('wait done timeout !!! ({})'.format(program))
             execrs.errcode = error_wait_timeout_streaming.errcode
-            execrs.stderr.append(error_wait_timeout_streaming.text)
+            execrs.stderr.append(error_wait_timeout_streaming.text + '(_execute_query_and_wait, wait done)')
 
         else:
             program = ask_chunk.exec.program
@@ -1946,7 +1946,7 @@ class rcclient():
             program = ask_chunk.exec.program
             logging.error('wait data timeout !!! ({})'.format(program))
             execrs.errcode = error_wait_timeout_streaming.errcode
-            execrs.stderr.append(error_wait_timeout_streaming.text)
+            execrs.stderr.append(error_wait_timeout_streaming.text + '(kill, wait data)')
 
         else:
             program = ask_chunk.exec.program
@@ -1968,7 +1968,7 @@ class rcclient():
             program = ask_chunk.exec.program
             logging.error('wait done timeout !!! ({})'.format(program))
             execrs.errcode = error_wait_timeout_streaming.errcode
-            execrs.stderr.append(error_wait_timeout_streaming.text)
+            execrs.stderr.append(error_wait_timeout_streaming.text + '(kill, wait done)')
 
         else:
             program = ask_chunk.exec.program
