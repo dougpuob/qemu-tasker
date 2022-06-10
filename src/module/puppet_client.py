@@ -108,7 +108,7 @@ class puppet_client():
 
 
     def mkdir(self, dirpath:str):
-      cmd_mkdir: inncmd_mkdir = self.pyrc_client.mkdir(dirpath)
+      cmd_mkdir: inncmd_mkdir = self.pyrc_client.inncmd_make_dir(dirpath)
 
       cmdret = config.command_return()
       if cmd_mkdir.result:
